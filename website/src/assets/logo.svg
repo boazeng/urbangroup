@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 50">
+  <rect x="0" y="5" width="40" height="40" rx="8" fill="#1B3A6B"/>
+  <text x="20" y="33" text-anchor="middle" fill="white" font-family="Arial" font-size="22" font-weight="bold">UG</text>
+  <text x="50" y="25" fill="#1B3A6B" font-family="Arial" font-size="16" font-weight="bold">קבוצת אורבן</text>
+  <text x="50" y="40" fill="#4A90D9" font-family="Arial" font-size="10">URBAN GROUP</text>
+</svg>

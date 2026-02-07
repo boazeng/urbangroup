@@ -1,0 +1,94 @@
+/* ===== CSS Variables / Design System ===== */
+:root {
+  --color-primary: #1B3A6B;
+  --color-primary-light: #2A4F8F;
+  --color-secondary: #4A90D9;
+  --color-accent: #F5A623;
+  --color-bg: #F8F9FA;
+  --color-bg-white: #FFFFFF;
+  --color-text: #2D3748;
+  --color-text-light: #718096;
+  --color-text-white: #FFFFFF;
+  --color-border: #E2E8F0;
+  --color-success: #38A169;
+  --color-card-shadow: rgba(27, 58, 107, 0.08);
+  --color-card-hover-shadow: rgba(27, 58, 107, 0.18);
+
+  --font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.5rem;
+  --font-size-2xl: 2rem;
+  --font-size-3xl: 2.75rem;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px var(--color-card-shadow);
+  --shadow-lg: 0 8px 30px var(--color-card-hover-shadow);
+
+  --max-width: 1200px;
+  --header-height: 72px;
+}
+
+/* ===== Reset & Global ===== */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  direction: rtl;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+ul {
+  list-style: none;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+.container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ===== Utility ===== */
+.section-title {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--color-primary);
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.section-subtitle {
+  font-size: var(--font-size-lg);
+  color: var(--color-text-light);
+  text-align: center;
+  margin-bottom: 48px;
+}

@@ -1,0 +1,106 @@
+.app-cards {
+  padding: 80px 0;
+  background: var(--color-bg);
+}
+
+.app-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.app-card {
+  position: relative;
+  background: var(--color-bg-white);
+  border-radius: var(--radius-md);
+  padding: 32px 28px;
+  box-shadow: var(--shadow-md);
+  transition: all 0.3s ease;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+}
+
+.app-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.app-card-disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.app-card-disabled:hover {
+  transform: none;
+  box-shadow: var(--shadow-md);
+}
+
+.app-card-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  margin-bottom: 20px;
+}
+
+.app-card-title {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 8px;
+}
+
+.app-card-desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-light);
+  line-height: 1.6;
+  flex: 1;
+}
+
+.app-card-badge {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 4px 14px;
+  background: var(--color-bg);
+  color: var(--color-text-light);
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.app-card-accent {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 4px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.app-card:hover .app-card-accent {
+  opacity: 1;
+}
+
+@media (max-width: 1024px) {
+  .app-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .app-cards {
+    padding: 50px 0;
+  }
+
+  .app-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
