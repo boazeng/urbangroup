@@ -1,0 +1,10 @@
+1000-Invoice Batch Flow - Priority Cloud
+Date: 2026-02-06 00:02:22
+Source: https://p.priority-connect.online/odata/Priority/tabz0qun.ini/demo
+Input: C:\Users\User\Aiprojects\priority\input\1000-invoice_batch.json
+
+Results: 2 OK, 0 Failed, 2 Total
+--------------------------------------------------
+  [1] Customer: 1003 -> Invoice: T95, Total: 2006.0
+  [2] Customer: 1005 -> Invoice: T96, Total: 1180.0
+--------------------------------------------------

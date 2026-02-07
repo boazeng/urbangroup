@@ -1,0 +1,18 @@
+[
+  {
+    "CUSTNAME": "1003",
+    "IVDATE": "2026-02-05",
+    "BRANCHNAME": "000",
+    "items": [
+      { "PARTNAME": "011", "TQUANT": 10, "PRICE": 170 }
+    ]
+  },
+  {
+    "CUSTNAME": "1005",
+    "IVDATE": "2026-02-05",
+    "BRANCHNAME": "000",
+    "items": [
+      { "PARTNAME": "011", "TQUANT": 5, "PRICE": 200 }
+    ]
+  }
+]
