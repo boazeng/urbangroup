@@ -1,10 +1,13 @@
 1000-Invoice Batch Flow - Priority Cloud
-Date: 2026-02-06 00:02:22
+Date: 2026-02-09 22:27:04
 Source: https://p.priority-connect.online/odata/Priority/tabz0qun.ini/demo
-Input: C:\Users\User\Aiprojects\priority\input\1000-invoice_batch.json
+Input: חשבונית עמלת גבייה - טמפלט.xlsx
+Limit: 4
 
-Results: 2 OK, 0 Failed, 2 Total
+Results: 4 OK, 0 Failed, 4 Total
 --------------------------------------------------
-  [1] Customer: 1003 -> Invoice: T95, Total: 2006.0
-  [2] Customer: 1005 -> Invoice: T96, Total: 1180.0
+  [row 1] 1001 (TGL1) -> Invoice: T130, Total: 64.22
+  [row 2] 1002 (בי"ס דנמרק ירושלים) -> Invoice: T131, Total: 38.53
+  [row 3] 1003 (המכללה הטכנולוגית י-ם) -> Invoice: T132, Total: 85.31
+  [row 4] 1004 (ביה"ס למדעים ואומנויות) -> Invoice: T133, Total: 52.29
 --------------------------------------------------

@@ -10,8 +10,9 @@ import json
 from pathlib import Path
 from datetime import datetime
 
-# Fix Windows console encoding for Hebrew
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+# Fix Windows console encoding for Hebrew (only when running directly)
+if __name__ == "__main__":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 import requests
 from requests.auth import HTTPBasicAuth
@@ -41,7 +42,7 @@ def validate_config():
         sys.exit(1)
 
 
-def create_invoice(customer, date, branch, items):
+def create_invoice(customer, date, branch, items, details=None):
     """Create a tax invoice in Priority via OData API."""
     url = f"{PRIORITY_URL}/AINVOICES"
     headers = {
@@ -57,6 +58,9 @@ def create_invoice(customer, date, branch, items):
         "BRANCHNAME": branch,
         "AINVOICEITEMS_SUBFORM": items,
     }
+
+    if details:
+        body["DETAILS"] = details
 
     print("Sending invoice data:")
     print(json.dumps(body, indent=2, ensure_ascii=False))

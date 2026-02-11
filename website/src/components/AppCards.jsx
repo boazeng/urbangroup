@@ -3,6 +3,14 @@ import './AppCards.css'
 
 const apps = [
   {
+    id: 'urban-energy',
+    title: 'אנרגיה אורבנית',
+    description: 'ניהול חשבוניות, לקוחות ודוחות עבור אנרגיה אורבנית',
+    icon: '⚡',
+    color: '#F5A623',
+    ready: true,
+  },
+  {
     id: 'customers',
     title: 'ניהול לקוחות',
     description: 'צפייה וניהול מאגר הלקוחות, פרטי התקשרות ומעקב',

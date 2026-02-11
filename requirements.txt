@@ -1,2 +1,5 @@
 requests
 python-dotenv
+openpyxl
+flask
+flask-cors

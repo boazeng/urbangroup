@@ -9,8 +9,9 @@ import io
 from pathlib import Path
 from datetime import datetime
 
-# Fix Windows console encoding for Hebrew
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+# Fix Windows console encoding for Hebrew (only when running directly)
+if __name__ == "__main__":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 import requests
 from requests.auth import HTTPBasicAuth
