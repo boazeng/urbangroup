@@ -81,7 +81,7 @@ jobs:
             --no-fail-on-empty-changeset \
             --parameter-overrides \
               Stage=${{ env.STAGE }} \
-              PriorityUrl="${{ secrets.PRIORITY_URL }}" \
+              PriorityUrl="${{ secrets.PRIORITY_URL_DEMO }}" \
               PriorityUsername="${{ secrets.PRIORITY_USERNAME }}" \
               PriorityPassword="${{ secrets.PRIORITY_PASSWORD }}" \
               WhatsAppPhoneNumberId="${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}" \
