@@ -3,4 +3,4 @@ python-dotenv
 openpyxl
 flask
 flask-cors
-mangum
+boto3
