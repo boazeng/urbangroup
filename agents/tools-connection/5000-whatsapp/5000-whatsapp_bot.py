@@ -15,11 +15,11 @@ if not isinstance(sys.stdout, io.TextIOWrapper) or sys.stdout.encoding != "utf-8
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 import requests
-from dotenv import load_dotenv
 
-# Load .env from project root
-env_path = Path(__file__).resolve().parent.parent.parent.parent / ".env"
-load_dotenv(env_path)
+if os.environ.get("IS_LAMBDA") != "true":
+    from dotenv import load_dotenv
+    env_path = Path(__file__).resolve().parent.parent.parent.parent / ".env"
+    load_dotenv(env_path)
 
 WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
 WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "")

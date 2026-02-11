@@ -16,11 +16,10 @@ if __name__ == "__main__":
 
 import requests
 from requests.auth import HTTPBasicAuth
-from dotenv import load_dotenv
-
-# Load .env from project root
-env_path = Path(__file__).resolve().parent.parent.parent / ".env"
-load_dotenv(env_path)
+if os.environ.get("IS_LAMBDA") != "true":
+    from dotenv import load_dotenv
+    env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+    load_dotenv(env_path)
 
 PRIORITY_URL = os.getenv("PRIORITY_URL", "").rstrip("/")
 PRIORITY_USERNAME = os.getenv("PRIORITY_USERNAME", "")

@@ -15,8 +15,13 @@ import openpyxl
 from flask import Flask, jsonify, send_file, request
 from flask_cors import CORS
 
-# Project root
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+IS_LAMBDA = os.environ.get("IS_LAMBDA") == "true"
+
+# In Lambda, code is deployed flat in lambda-backend/; locally, backend/ is one level down
+if IS_LAMBDA:
+    PROJECT_ROOT = Path(__file__).resolve().parent
+else:
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # Load agent 100 module
 agent_100_path = PROJECT_ROOT / "agents" / "100-customer" / "100-customer_reader.py"
@@ -71,6 +76,18 @@ def get_customers():
 @app.route("/api/template", methods=["GET"])
 def download_template():
     """Download the invoice template Excel file."""
+    if IS_LAMBDA:
+        import boto3
+        s3 = boto3.client("s3")
+        bucket = os.environ["TEMPLATE_BUCKET"]
+        key = os.environ["TEMPLATE_KEY"]
+        tmp_path = "/tmp/template.xlsx"
+        s3.download_file(bucket, key, tmp_path)
+        return send_file(
+            tmp_path,
+            as_attachment=True,
+            download_name="חשבונית עמלת גבייה - טמפלט.xlsx",
+        )
     template_path = PROJECT_ROOT / "input" / "חשבונית עמלת גבייה - טמפלט.xlsx"
     if not template_path.exists():
         return jsonify({"ok": False, "error": "Template file not found"}), 404
@@ -144,8 +161,10 @@ def run_invoices():
     uploaded = request.files["file"]
     should_finalize = request.form.get("finalize", "1") == "1"
 
-    # Save to temp file
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+    # Save to temp file (Lambda only allows /tmp)
+    tmp = tempfile.NamedTemporaryFile(
+        delete=False, suffix=".xlsx", dir="/tmp" if IS_LAMBDA else None
+    )
     uploaded.save(tmp.name)
     tmp.close()
 

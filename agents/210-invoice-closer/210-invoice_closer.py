@@ -1,7 +1,8 @@
 """
 210-Invoice Closer Agent
-Finalizes draft invoices in Priority (טיוטא → סופית) by calling the
-close-invoice.js Node.js script which uses the Priority Web SDK.
+Finalizes draft invoices in Priority (טיוטא → סופית).
+Lambda mode: invokes Node.js Lambda via boto3.
+Local mode: calls close-invoice.js via subprocess.
 """
 
 import sys
@@ -16,22 +17,20 @@ from datetime import datetime
 if __name__ == "__main__":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
-from dotenv import load_dotenv
+if os.environ.get("IS_LAMBDA") != "true":
+    from dotenv import load_dotenv
+    env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+    load_dotenv(env_path)
 
-# Load .env from project root
-env_path = Path(__file__).resolve().parent.parent.parent / ".env"
-load_dotenv(env_path)
+IS_LAMBDA = os.environ.get("IS_LAMBDA") == "true"
 
-# Path to the Node.js close-invoice script
+# Path to the Node.js close-invoice script (local dev only)
 SCRIPT_DIR = Path(__file__).resolve().parent
 CLOSE_INVOICE_JS = SCRIPT_DIR / "close-invoice.js"
 
 
 def finalize_invoice(ivnum):
     """Finalize a draft invoice in Priority (טיוטא → סופית).
-
-    Calls close-invoice.js via subprocess, which uses the Priority Web SDK
-    to run the CLOSEANINVOICE procedure.
 
     Args:
         ivnum: Invoice number (e.g. 'T99')
@@ -42,6 +41,39 @@ def finalize_invoice(ivnum):
     Raises:
         RuntimeError on failure
     """
+    if IS_LAMBDA:
+        return _finalize_via_lambda(ivnum)
+    return _finalize_via_subprocess(ivnum)
+
+
+def _finalize_via_lambda(ivnum):
+    """Invoke the Node.js Lambda to close the invoice."""
+    import boto3
+
+    client = boto3.client("lambda")
+    function_name = os.environ["INVOICE_CLOSER_FUNCTION"]
+
+    response = client.invoke(
+        FunctionName=function_name,
+        InvocationType="RequestResponse",
+        Payload=json.dumps({"ivnum": ivnum}),
+    )
+
+    data = json.loads(response["Payload"].read())
+
+    if response.get("FunctionError"):
+        raise RuntimeError(
+            f"Invoice closer Lambda error: {data.get('errorMessage', 'Unknown error')}"
+        )
+
+    if not data.get("ok"):
+        raise RuntimeError(data.get("error", "Unknown error from invoice closer"))
+
+    return data
+
+
+def _finalize_via_subprocess(ivnum):
+    """Call close-invoice.js via subprocess (local dev)."""
     if not CLOSE_INVOICE_JS.exists():
         raise RuntimeError(f"close-invoice.js not found at {CLOSE_INVOICE_JS}")
 
@@ -54,7 +86,6 @@ def finalize_invoice(ivnum):
         cwd=str(SCRIPT_DIR),
     )
 
-    # Parse JSON from stdout (last non-empty line)
     stdout_lines = [ln for ln in result.stdout.strip().splitlines() if ln.strip()]
     if not stdout_lines:
         raise RuntimeError(

@@ -1,0 +1,126 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  STACK_NAME: urbangroup-stack
+  STAGE: prod
+
+jobs:
+  deploy:
+    name: Deploy Backend + Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-arn: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      # ── Build Python Lambda package ──────────────────────
+      - name: Prepare Python Lambda
+        run: |
+          mkdir -p lambda-backend/agents/100-customer
+          mkdir -p lambda-backend/agents/200-invoices
+          mkdir -p lambda-backend/agents/210-invoice-closer
+          mkdir -p lambda-backend/agents/tools-connection/5000-whatsapp
+
+          cp backend/server.py lambda-backend/
+          touch lambda-backend/agents/__init__.py
+          touch lambda-backend/agents/100-customer/__init__.py
+          touch lambda-backend/agents/200-invoices/__init__.py
+          touch lambda-backend/agents/210-invoice-closer/__init__.py
+          touch lambda-backend/agents/tools-connection/__init__.py
+          touch lambda-backend/agents/tools-connection/5000-whatsapp/__init__.py
+
+          cp agents/100-customer/100-customer_reader.py lambda-backend/agents/100-customer/
+          cp agents/200-invoices/200-invoice_writer.py lambda-backend/agents/200-invoices/
+          cp agents/210-invoice-closer/210-invoice_closer.py lambda-backend/agents/210-invoice-closer/
+          cp agents/tools-connection/5000-whatsapp/5000-whatsapp_bot.py lambda-backend/agents/tools-connection/5000-whatsapp/
+
+      # ── Build Node.js Lambda package ─────────────────────
+      - name: Prepare Node.js Lambda
+        run: |
+          cd lambda-invoice-closer
+          npm ci --production
+
+      # ── SAM Build & Deploy ──────────────────────────────
+      - name: SAM build
+        run: sam build
+
+      - name: SAM deploy
+        run: |
+          sam deploy \
+            --stack-name ${{ env.STACK_NAME }} \
+            --region ${{ env.AWS_REGION }} \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+              Stage=${{ env.STAGE }} \
+              PriorityUrl="${{ secrets.PRIORITY_URL }}" \
+              PriorityUsername="${{ secrets.PRIORITY_USERNAME }}" \
+              PriorityPassword="${{ secrets.PRIORITY_PASSWORD }}" \
+              WhatsAppPhoneNumberId="${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}" \
+              WhatsAppAccessToken="${{ secrets.WHATSAPP_ACCESS_TOKEN }}" \
+              WhatsAppVerifyToken="${{ secrets.WHATSAPP_VERIFY_TOKEN }}"
+
+      # ── Upload Excel template to S3 ─────────────────────
+      - name: Upload template to S3
+        run: |
+          aws s3 cp "input/חשבונית עמלת גבייה - טמפלט.xlsx" \
+            "s3://urbangroup-templates-${{ env.STAGE }}/templates/invoice-template.xlsx"
+
+      # ── Build & Deploy Frontend ──────────────────────────
+      - name: Build frontend
+        run: |
+          cd website
+          npm ci
+          npm run build
+
+      - name: Deploy frontend to S3
+        run: |
+          aws s3 sync website/dist/ s3://urbangroup-frontend-${{ env.STAGE }}/ \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "index.html" \
+            --exclude "favicon.svg"
+
+          aws s3 cp website/dist/index.html \
+            s3://urbangroup-frontend-${{ env.STAGE }}/index.html \
+            --cache-control "public, max-age=0, must-revalidate"
+
+      # ── Invalidate CloudFront cache ──────────────────────
+      - name: Invalidate CloudFront
+        run: |
+          CF_ID=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionId'].OutputValue" \
+            --output text)
+
+          aws cloudfront create-invalidation \
+            --distribution-id "$CF_ID" \
+            --paths "/index.html" "/"
