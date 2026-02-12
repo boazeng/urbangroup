@@ -8,8 +8,17 @@ import os
 import io
 import tempfile
 import importlib.util
+import logging
 from pathlib import Path
 from datetime import datetime
+
+# Use logging (writes to stderr, works in Lambda where stdout is broken)
+logger = logging.getLogger("urbangroup")
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(handler)
 
 import openpyxl
 from flask import Flask, jsonify, send_file, request
@@ -252,6 +261,7 @@ def whatsapp_incoming():
     """Receive incoming WhatsApp messages from Meta."""
     payload = request.get_json(silent=True) or {}
     messages = whatsapp_bot.handle_incoming(payload)
+    logger.info(f"Webhook received: {len(messages)} message(s)")
 
     # Mark each message as read
     for msg in messages:
@@ -260,14 +270,16 @@ def whatsapp_incoming():
 
     # Auto-reply with acknowledgment (basic echo for now)
     for msg in messages:
+        logger.info(f"From {msg.get('phone')} ({msg.get('name')}): {msg.get('text', '')[:100]}")
         if msg.get("text") and msg["type"] == "text":
             try:
                 whatsapp_bot.send_message(
                     msg["phone"],
                     f"קיבלנו את ההודעה שלך: {msg['text'][:100]}"
                 )
+                logger.info(f"Auto-reply sent to {msg['phone']}")
             except Exception as e:
-                print(f"Auto-reply error: {e}")
+                logger.error(f"Auto-reply error: {e}")
 
     return jsonify({"ok": True}), 200
 

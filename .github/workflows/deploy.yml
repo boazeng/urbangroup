@@ -64,6 +64,9 @@ jobs:
       # ── Build Node.js Lambda package ─────────────────────
       - name: Prepare Node.js Lambda
         run: |
+          cp agents/210-invoice-closer/lambda-handler.js lambda-invoice-closer/index.js
+          cp agents/210-invoice-closer/package.json lambda-invoice-closer/package.json
+          cp agents/210-invoice-closer/package-lock.json lambda-invoice-closer/package-lock.json
           cd lambda-invoice-closer
           npm ci --production
 

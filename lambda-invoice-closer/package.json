@@ -1,8 +1,0 @@
-{
-  "name": "urbangroup-invoice-closer-lambda",
-  "version": "1.0.0",
-  "main": "index.js",
-  "dependencies": {
-    "priority-web-sdk": "^3.0.37"
-  }
-}
