@@ -152,9 +152,39 @@
   white-space: nowrap;
 }
 
+.sc-cell-cust {
+  font-family: monospace;
+  white-space: nowrap;
+}
+
 .sc-cell-type {
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* Branch badges */
+.sc-branch-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.sc-branch-108 {
+  background: #FFF8E1;
+  color: #F57F17;
+}
+
+.sc-branch-026 {
+  background: #E8EAF6;
+  color: #283593;
+}
+
+.sc-branch-001 {
+  background: #ECEFF1;
+  color: #546E7A;
 }
 
 .sc-cell-desc {

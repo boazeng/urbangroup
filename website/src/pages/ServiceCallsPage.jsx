@@ -34,6 +34,12 @@ const URGENCY_CLASS = {
   critical: 'sc-urg-critical',
 }
 
+const BRANCH_LABELS = {
+  '108': 'אנרגיה',
+  '026': 'חניה',
+  '001': 'כללי',
+}
+
 export default function ServiceCallsPage() {
   const [calls, setCalls] = useState([])
   const [loading, setLoading] = useState(true)
@@ -148,6 +154,8 @@ export default function ServiceCallsPage() {
                   <th>תאריך</th>
                   <th>טלפון</th>
                   <th>שם</th>
+                  <th>מס׳ לקוח</th>
+                  <th>סניף</th>
                   <th>סוג תקלה</th>
                   <th>דחיפות</th>
                   <th>תיאור</th>
@@ -161,6 +169,12 @@ export default function ServiceCallsPage() {
                     <td className="sc-cell-date">{formatDate(call.created_at)}</td>
                     <td className="sc-cell-phone" dir="ltr">{call.phone}</td>
                     <td>{call.name || '-'}</td>
+                    <td className="sc-cell-cust">{call.custname && call.custname !== '99999' ? call.custname : '-'}</td>
+                    <td>
+                      <span className={`sc-branch-badge sc-branch-${call.branchname || '001'}`}>
+                        {BRANCH_LABELS[call.branchname] || call.branchname || '-'}
+                      </span>
+                    </td>
                     <td className="sc-cell-type">{call.issue_type || '-'}</td>
                     <td>
                       <span className={`sc-urg-badge ${URGENCY_CLASS[call.urgency] || ''}`}>
@@ -189,6 +203,42 @@ export default function ServiceCallsPage() {
                             <div className="sc-detail-row">
                               <span className="sc-detail-key">תמצית:</span>
                               <span>{call.summary}</span>
+                            </div>
+                          )}
+                          {call.sernum && (
+                            <div className="sc-detail-row">
+                              <span className="sc-detail-key">מכשיר:</span>
+                              <span>{call.sernum}</span>
+                            </div>
+                          )}
+                          {call.contact_name && (
+                            <div className="sc-detail-row">
+                              <span className="sc-detail-key">איש קשר:</span>
+                              <span>{call.contact_name}</span>
+                            </div>
+                          )}
+                          {call.cdes && (
+                            <div className="sc-detail-row">
+                              <span className="sc-detail-key">שם לקוח:</span>
+                              <span>{call.cdes}</span>
+                            </div>
+                          )}
+                          {call.technicianlogin && (
+                            <div className="sc-detail-row">
+                              <span className="sc-detail-key">טכנאי:</span>
+                              <span>{call.technicianlogin}</span>
+                            </div>
+                          )}
+                          {call.callstatuscode && (
+                            <div className="sc-detail-row">
+                              <span className="sc-detail-key">סטטוס פריוריטי:</span>
+                              <span>{call.callstatuscode}</span>
+                            </div>
+                          )}
+                          {call.breakstart && (
+                            <div className="sc-detail-row">
+                              <span className="sc-detail-key">תחילת השבתה:</span>
+                              <span>{call.breakstart}</span>
                             </div>
                           )}
                         </div>

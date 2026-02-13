@@ -122,12 +122,16 @@ _service_calls_table = _dynamodb.Table(SERVICE_CALLS_TABLE_NAME)
 
 def save_service_call(phone, name, issue_type, description, urgency,
                       location="", summary="", message_id="", media_id="",
-                      source_type="whatsapp"):
+                      source_type="whatsapp",
+                      custname="", cdes="", sernum="", branchname="",
+                      callstatuscode="", technicianlogin="",
+                      contact_name="", fault_text="", internal_notes="",
+                      breakstart="", partname=""):
     """Save a new service call identified by the LLM.
 
     Args:
-        phone: Customer phone number
-        name: Customer name
+        phone: Customer phone number (PHONENUM)
+        name: Sender name from WhatsApp
         issue_type: Type of issue (נזילה, שבר, תקלת חשמל, etc.)
         description: Issue description from LLM
         urgency: low/medium/high/critical
@@ -136,6 +140,17 @@ def save_service_call(phone, name, issue_type, description, urgency,
         message_id: Original WhatsApp message ID
         media_id: WhatsApp media ID (if image)
         source_type: Source (whatsapp, phone, etc.)
+        custname: Priority CUSTNAME - customer number (default "99999")
+        cdes: Priority CDES - customer name
+        sernum: Priority SERNUM - device number
+        branchname: Priority BRANCHNAME - branch code (108/026/001)
+        callstatuscode: Priority CALLSTATUSCODE - call status
+        technicianlogin: Priority TECHNICIANLOGIN - technician
+        contact_name: Priority NAME - contact person
+        fault_text: Priority TEXT - fault description including phone
+        internal_notes: Priority internal dialogue text
+        breakstart: Priority BREAKSTART - downtime start datetime
+        partname: Priority PARTNAME - part number
 
     Returns:
         dict with saved item id
@@ -157,6 +172,19 @@ def save_service_call(phone, name, issue_type, description, urgency,
         "source_type": source_type,
         "status": "new",
         "created_at": now,
+        # Priority ERP fields
+        "custname": custname or "99999",
+        "cdes": cdes or name or "",
+        "sernum": sernum or "",
+        "branchname": branchname or "001",
+        "callstatuscode": callstatuscode or "ממתין לאישור",
+        "technicianlogin": technicianlogin or "",
+        "contact_name": contact_name or "",
+        "fault_text": fault_text or "",
+        "internal_notes": internal_notes or "",
+        "breakstart": breakstart or "",
+        "partname": partname or "",
+        "priority_pushed": False,
     }
 
     _service_calls_table.put_item(Item=item)

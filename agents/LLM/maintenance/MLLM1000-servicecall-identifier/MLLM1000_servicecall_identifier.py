@@ -40,13 +40,25 @@ SYSTEM_PROMPT = """אתה מנתח קריאות שירות של חברת Urban G
   "description": "תיאור קצר של הבעיה",
   "urgency": "low/medium/high/critical",
   "location": "מיקום אם ניתן לזהות מהתמונה או הטקסט",
-  "summary": "תמצית קצרה בעברית לשליחה חזרה ללקוח"
+  "summary": "תמצית קצרה בעברית לשליחה חזרה ללקוח",
+  "branch_context": "energy/parking/unknown",
+  "customer_number": "מספר לקוח/מנוי אם מופיע בהודעה, אחרת ריק",
+  "customer_name": "שם הלקוח אם מופיע בהודעה, אחרת ריק",
+  "device_number": "מספר מכשיר אם מופיע בהודעה, אחרת ריק",
+  "contact_name": "שם איש קשר אם מופיע בהודעה, אחרת ריק",
+  "is_system_down": false
 }
 
 כללים:
 - אם התמונה או ההודעה מתארת תקלה - סמן is_service_call=true
 - אם זו שאלה כללית או הודעה שלא קשורה לתקלה - סמן is_service_call=false
 - urgency: low=תחזוקה שוטפת, medium=תקלה לא דחופה, high=תקלה שמשפיעה על שימוש, critical=סכנה בטיחותית
+- branch_context: אם התקלה קשורה למטען/חשמל/אנרגיה = "energy", אם קשורה למתקן חניה/מחסום/שער = "parking", אחרת = "unknown"
+- customer_number: חפש מספר לקוח או מספר מנוי בהודעה (לדוגמה "מספר מנוי:5828")
+- customer_name: חפש שם לקוח בהודעה (לדוגמה "שם הלקוח:תמר שלום")
+- device_number: חפש מספר מכשיר בהודעה
+- contact_name: חפש שם איש קשר בהודעה
+- is_system_down: true אם הלקוח מדווח שהמערכת מושבתת/לא עובדת לגמרי
 - החזר JSON תקין בלבד, בלי markdown ובלי backticks"""
 
 

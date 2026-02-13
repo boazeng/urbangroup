@@ -4,8 +4,10 @@ Smart bot that receives WhatsApp messages and processes maintenance requests.
 
 Phase 2: Log incoming messages and save to DynamoDB.
 Phase 3: LLM image analysis via ChatGPT.
+Phase 4: Complete Priority ERP field mapping.
 """
 
+import os
 import logging
 from datetime import datetime
 
@@ -59,6 +61,23 @@ def _get_maint_db():
             spec.loader.exec_module(mod)
             _maint_db = mod
     return _maint_db
+
+
+# ── Priority ERP field mapping helpers ────────────────────────
+
+BRANCH_MAP = {
+    "energy": "108",
+    "parking": "026",
+    "unknown": "001",
+}
+
+
+def _get_technician():
+    """Return default technician login based on Priority environment."""
+    url = os.environ.get("PRIORITY_URL", "")
+    if "ebyael" in url:
+        return "צחי"
+    return "יוסי"
 
 
 def parse_message(text):
@@ -146,21 +165,65 @@ def process_message(phone, name, text, msg_type="text", message_id="", media_id=
                 caption=caption,
             )
             if result and result.get("is_service_call"):
-                # Save service call to DB
+                # Save service call to DB with full Priority ERP fields
                 try:
                     db = _get_maint_db()
+
+                    # Merge parsed voice-bot data with LLM result
+                    custname = (
+                        parsed_data.get("מספר מנוי")
+                        or result.get("customer_number")
+                        or "99999"
+                    )
+                    cdes = (
+                        parsed_data.get("שם הלקוח")
+                        or result.get("customer_name")
+                        or name
+                    )
+                    sernum = (
+                        parsed_data.get("מספר מכשיר")
+                        or result.get("device_number")
+                        or ""
+                    )
+                    contact_name = (
+                        parsed_data.get("שם איש קשר")
+                        or result.get("contact_name")
+                        or ""
+                    )
+
+                    # Map branch context to Priority BRANCHNAME code
+                    branch_context = result.get("branch_context", "unknown")
+                    branchname = BRANCH_MAP.get(branch_context, "001")
+
+                    # Build fault text with phone number
+                    description = result.get("description", "")
+                    fault_text = f"{description}\nטלפון: {phone}"
+
+                    # Set breakstart if system is down
+                    breakstart = ""
+                    if result.get("is_system_down"):
+                        breakstart = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
+
                     db.save_service_call(
                         phone=phone,
                         name=name,
                         issue_type=result.get("issue_type", ""),
-                        description=result.get("description", ""),
+                        description=description,
                         urgency=result.get("urgency", "medium"),
                         location=result.get("location", ""),
                         summary=result.get("summary", ""),
                         message_id=message_id,
                         media_id=media_id,
+                        custname=custname,
+                        cdes=cdes,
+                        sernum=sernum,
+                        branchname=branchname,
+                        technicianlogin=_get_technician(),
+                        contact_name=contact_name,
+                        fault_text=fault_text,
+                        breakstart=breakstart,
                     )
-                    logger.info(f"[M1000] Service call saved: {result.get('issue_type')} ({result.get('urgency')})")
+                    logger.info(f"[M1000] Service call saved: {result.get('issue_type')} ({result.get('urgency')}) branch={branchname}")
                 except Exception as e:
                     logger.error(f"[M1000] Failed to save service call: {e}")
 
