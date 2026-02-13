@@ -361,6 +361,35 @@ def update_message_status(item_id):
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+# ── Service Calls (DynamoDB) ─────────────────────────────────
+
+@app.route("/api/service-calls", methods=["GET"])
+def get_service_calls():
+    """Get service calls from DynamoDB."""
+    status = request.args.get("status")
+    phone = request.args.get("phone")
+    limit = int(request.args.get("limit", "50"))
+    try:
+        calls = maintenance_db.get_service_calls(status=status, phone=phone, limit=limit)
+        return jsonify({"ok": True, "service_calls": calls, "count": len(calls)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/service-calls/<item_id>/status", methods=["PUT"])
+def update_service_call_status(item_id):
+    """Update a service call status."""
+    data = request.get_json(silent=True) or {}
+    new_status = data.get("status")
+    if not new_status:
+        return jsonify({"ok": False, "error": "Missing status"}), 400
+    try:
+        updated = maintenance_db.update_service_call_status(item_id, new_status)
+        return jsonify({"ok": True, "service_call": updated})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 # ── Health ───────────────────────────────────────────────────
 
 @app.route("/api/health", methods=["GET"])
