@@ -57,6 +57,13 @@ invoice_closer = importlib.util.module_from_spec(spec_210)
 sys.modules["invoice_closer"] = invoice_closer
 spec_210.loader.exec_module(invoice_closer)
 
+# Load agent 300 module (service call writer)
+agent_300_path = PROJECT_ROOT / "agents" / "specific-mission-agents" / "priority-specific-agents" / "300-service-call" / "300-service_call_writer.py"
+spec_300 = importlib.util.spec_from_file_location("service_call_writer", agent_300_path)
+service_call_writer = importlib.util.module_from_spec(spec_300)
+sys.modules["service_call_writer"] = service_call_writer
+spec_300.loader.exec_module(service_call_writer)
+
 # Load agent 5000 module (WhatsApp bot)
 agent_5000_path = PROJECT_ROOT / "agents" / "tools-connection" / "5000-whatsapp" / "5000-whatsapp_bot.py"
 spec_5000 = importlib.util.spec_from_file_location("whatsapp_bot", agent_5000_path)
@@ -387,6 +394,31 @@ def update_service_call_status(item_id):
         updated = maintenance_db.update_service_call_status(item_id, new_status)
         return jsonify({"ok": True, "service_call": updated})
     except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/service-calls/<item_id>/push", methods=["POST"])
+def push_service_call_to_priority(item_id):
+    """Push a service call to Priority ERP via Agent 300."""
+    try:
+        call = maintenance_db.get_service_call(item_id)
+        if not call:
+            return jsonify({"ok": False, "error": "קריאת שירות לא נמצאה"}), 404
+
+        if call.get("priority_pushed"):
+            return jsonify({"ok": False, "error": "קריאת השירות כבר נשלחה לפריוריטי"}), 400
+
+        result = service_call_writer.create_service_call(call)
+        callno = str(result.get("CALLNO", result.get("DOCNO", "")))
+        maintenance_db.mark_service_call_pushed(item_id, callno=callno)
+
+        return jsonify({
+            "ok": True,
+            "callno": callno,
+            "priority_response": result,
+        })
+    except Exception as e:
+        logger.error(f"Error pushing service call {item_id}: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
 

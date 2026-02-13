@@ -372,3 +372,32 @@
   margin-bottom: 24px;
   text-align: center;
 }
+
+.sc-success {
+  padding: 16px;
+  background: #E8F5E9;
+  border: 1px solid #C8E6C9;
+  border-radius: var(--radius-sm);
+  color: #2E7D32;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+/* Push to Priority */
+.sc-cell-priority {
+  white-space: nowrap;
+}
+
+.sc-action-push {
+  background: #E3F2FD;
+  color: #1565C0;
+}
+
+.sc-action-push:hover:not(:disabled) {
+  background: #BBDEFB;
+}
+
+.sc-action-push:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

@@ -247,3 +247,46 @@ def update_service_call_status(item_id, new_status):
     )
     logger.info(f"Updated service call {item_id} status to {new_status}")
     return resp.get("Attributes", {})
+
+
+def get_service_call(item_id):
+    """Get a single service call by ID.
+
+    Args:
+        item_id: The service call UUID
+
+    Returns:
+        Service call dict, or None if not found
+    """
+    resp = _service_calls_table.get_item(Key={"id": item_id})
+    return resp.get("Item")
+
+
+def mark_service_call_pushed(item_id, callno=""):
+    """Mark a service call as pushed to Priority ERP.
+
+    Args:
+        item_id: The service call UUID
+        callno: Priority CALLNO returned from the API
+
+    Returns:
+        Updated item
+    """
+    update_expr = "SET priority_pushed = :pushed, updated_at = :now"
+    expr_values = {
+        ":pushed": True,
+        ":now": datetime.utcnow().isoformat() + "Z",
+    }
+
+    if callno:
+        update_expr += ", priority_callno = :callno"
+        expr_values[":callno"] = callno
+
+    resp = _service_calls_table.update_item(
+        Key={"id": item_id},
+        UpdateExpression=update_expr,
+        ExpressionAttributeValues=expr_values,
+        ReturnValues="ALL_NEW",
+    )
+    logger.info(f"Marked service call {item_id} as pushed to Priority (CALLNO={callno})")
+    return resp.get("Attributes", {})

@@ -46,6 +46,8 @@ export default function ServiceCallsPage() {
   const [error, setError] = useState(null)
   const [filterStatus, setFilterStatus] = useState('')
   const [expandedId, setExpandedId] = useState(null)
+  const [pushingId, setPushingId] = useState(null)
+  const [pushResult, setPushResult] = useState(null)
 
   async function fetchCalls() {
     setLoading(true)
@@ -85,6 +87,33 @@ export default function ServiceCallsPage() {
     } catch (e) {
       // ignore
     }
+  }
+
+  async function pushToPriority(id) {
+    setPushingId(id)
+    setPushResult(null)
+    try {
+      const res = await fetch(`${API_BASE}/api/service-calls/${id}/push`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setPushResult({ id, ok: true, callno: data.callno })
+        setCalls((prev) =>
+          prev.map((c) =>
+            c.id === id
+              ? { ...c, priority_pushed: true, priority_callno: data.callno }
+              : c
+          )
+        )
+      } else {
+        setPushResult({ id, ok: false, error: data.error })
+      }
+    } catch (e) {
+      setPushResult({ id, ok: false, error: 'שגיאה בתקשורת עם השרת' })
+    }
+    setPushingId(null)
   }
 
   function formatDate(isoStr) {
@@ -134,6 +163,14 @@ export default function ServiceCallsPage() {
           ))}
         </div>
 
+        {/* Push result banners */}
+        {pushResult && pushResult.ok && (
+          <div className="sc-success">קריאת שירות נשלחה בהצלחה לפריוריטי! מספר: {pushResult.callno}</div>
+        )}
+        {pushResult && !pushResult.ok && (
+          <div className="sc-error">שגיאה בשליחה לפריוריטי: {pushResult.error}</div>
+        )}
+
         {/* Content */}
         {error && (
           <div className="sc-error">{error}</div>
@@ -160,6 +197,7 @@ export default function ServiceCallsPage() {
                   <th>דחיפות</th>
                   <th>תיאור</th>
                   <th>סטטוס</th>
+                  <th>פריוריטי</th>
                   <th>פעולות</th>
                 </tr>
               </thead>
@@ -248,6 +286,21 @@ export default function ServiceCallsPage() {
                       <span className={`sc-badge ${STATUS_CLASS[call.status] || ''}`}>
                         {STATUS_LABELS[call.status] || call.status}
                       </span>
+                    </td>
+                    <td className="sc-cell-priority">
+                      {call.priority_pushed ? (
+                        <span className="sc-badge sc-badge-ok" title={call.priority_callno || ''}>
+                          {call.priority_callno || 'נשלח'}
+                        </span>
+                      ) : (
+                        <button
+                          className="sc-action-btn sc-action-push"
+                          onClick={() => pushToPriority(call.id)}
+                          disabled={pushingId === call.id}
+                        >
+                          {pushingId === call.id ? 'שולח...' : 'שלח לפריוריטי'}
+                        </button>
+                      )}
                     </td>
                     <td className="sc-cell-actions">
                       {call.status === 'new' && (
