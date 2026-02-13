@@ -82,6 +82,11 @@ def create_service_call(service_call_data):
         if val:
             body[priority_key] = val
 
+    # Project name in DETAILS
+    cdes = service_call_data.get("cdes", "")
+    if cdes:
+        body["DETAILS"] = cdes
+
     # Build fault description text for DOCTEXT_Q_2_SUBFORM
     text_parts = []
     for key in ("fault_text", "description", "internal_notes"):
