@@ -83,19 +83,16 @@ def process_message(phone, name, text, msg_type="text", message_id=""):
     logger.info(f"  Text: {text}")
     logger.info("=" * 50)
 
-    if msg_type != "text" or not text:
-        return None
+    # Parse structured fields from text messages
+    parsed_data = parse_message(text) if msg_type == "text" and text else {}
 
-    # Parse structured fields from voice-bot messages
-    parsed_data = parse_message(text)
-
-    # Save to DynamoDB
+    # Save ALL messages to DynamoDB (text, image, audio, etc.)
     try:
         db = _get_db()
         db.save_message(
             phone=phone,
             name=name,
-            text=text,
+            text=text or f"[{msg_type}]",
             msg_type=msg_type,
             message_id=message_id,
             parsed_data=parsed_data if parsed_data else None,
@@ -103,5 +100,8 @@ def process_message(phone, name, text, msg_type="text", message_id=""):
         logger.info(f"[M1000] Message saved to DB ({len(parsed_data)} fields parsed)")
     except Exception as e:
         logger.error(f"[M1000] Failed to save to DB: {e}")
+
+    if msg_type != "text" or not text:
+        return None
 
     return f"[M1000] קיבלנו את ההודעה שלך:\n{text[:200]}"
