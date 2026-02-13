@@ -168,14 +168,20 @@ def handle_incoming(payload):
                 msg_type = msg.get("type", "")
 
                 text = ""
+                media_id = ""
+                caption = ""
                 if msg_type == "text":
                     text = msg.get("text", {}).get("body", "")
                 elif msg_type == "image":
                     text = "[תמונה]"
+                    media_id = msg.get("image", {}).get("id", "")
+                    caption = msg.get("image", {}).get("caption", "")
                 elif msg_type == "document":
                     text = "[מסמך]"
+                    media_id = msg.get("document", {}).get("id", "")
                 elif msg_type == "audio":
                     text = "[הודעה קולית]"
+                    media_id = msg.get("audio", {}).get("id", "")
                 elif msg_type == "location":
                     text = "[מיקום]"
                 else:
@@ -190,6 +196,8 @@ def handle_incoming(payload):
                     "type": msg_type,
                     "timestamp": timestamp,
                     "message_id": msg.get("id", ""),
+                    "media_id": media_id,
+                    "caption": caption,
                 })
 
     return messages

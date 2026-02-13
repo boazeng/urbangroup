@@ -24,6 +24,10 @@ Parameters:
   WhatsAppVerifyToken:
     Type: String
     NoEcho: true
+  OpenAiApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
 
 Globals:
   Function:
@@ -72,6 +76,9 @@ Resources:
           TEMPLATE_KEY: templates/invoice-template.xlsx
           INVOICE_CLOSER_FUNCTION: !Ref InvoiceCloserFunction
           MESSAGES_TABLE: !Ref MessagesTable
+          SERVICE_CALLS_TABLE: !Ref ServiceCallsTable
+          OPENAI_API_KEY: !Ref OpenAiApiKey
+          OPENAI_MODEL: gpt-4o
           IS_LAMBDA: "true"
       Policies:
         - S3ReadPolicy:
@@ -80,6 +87,8 @@ Resources:
             FunctionName: !Ref InvoiceCloserFunction
         - DynamoDBCrudPolicy:
             TableName: !Ref MessagesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ServiceCallsTable
       Events:
         ApiCatchAll:
           Type: HttpApi
@@ -125,6 +134,42 @@ Resources:
         - IndexName: status-created_at-index
           KeySchema:
             - AttributeName: status
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  # ── DynamoDB Table for Service Calls ────────────────
+  ServiceCallsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub urbangroup-service-calls-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+        - AttributeName: created_at
+          AttributeType: S
+        - AttributeName: phone
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: status-created_at-index
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: phone-created_at-index
+          KeySchema:
+            - AttributeName: phone
               KeyType: HASH
             - AttributeName: created_at
               KeyType: RANGE

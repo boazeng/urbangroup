@@ -3,6 +3,7 @@ M1000 - Maintenance WhatsApp Bot
 Smart bot that receives WhatsApp messages and processes maintenance requests.
 
 Phase 2: Log incoming messages and save to DynamoDB.
+Phase 3: LLM image analysis via ChatGPT.
 """
 
 import logging
@@ -10,25 +11,54 @@ from datetime import datetime
 
 logger = logging.getLogger("urbangroup.M1000")
 
-# Lazy-load db module to avoid boto3 import failure in environments without AWS
-_db = None
+# Lazy-load modules to avoid import failures in environments without AWS/deps
+_maint_db = None
+_llm = None
 
 
-def _get_db():
-    global _db
-    if _db is None:
+def _get_llm():
+    global _llm
+    if _llm is None:
         try:
-            from . import M1000_db
-            _db = M1000_db
+            from agents.LLM.maintenance import MLLM1000_servicecall_identifier as mod
+            _llm = mod
         except ImportError:
             import importlib.util
             import os
-            db_path = os.path.join(os.path.dirname(__file__), "M1000_db.py")
-            spec = importlib.util.spec_from_file_location("M1000_db", db_path)
+            llm_path = os.path.join(
+                os.path.dirname(__file__), "..", "..", "..", "LLM",
+                "maintenance", "MLLM1000-servicecall-identifier",
+                "MLLM1000_servicecall_identifier.py",
+            )
+            llm_path = os.path.normpath(llm_path)
+            spec = importlib.util.spec_from_file_location(
+                "MLLM1000_servicecall_identifier", llm_path
+            )
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
-            _db = mod
-    return _db
+            _llm = mod
+    return _llm
+
+
+def _get_maint_db():
+    global _maint_db
+    if _maint_db is None:
+        try:
+            from database.maintenance import maintenance_db
+            _maint_db = maintenance_db
+        except ImportError:
+            import importlib.util
+            import os
+            db_path = os.path.join(
+                os.path.dirname(__file__), "..", "..", "..", "..",
+                "database", "maintenance", "maintenance_db.py",
+            )
+            db_path = os.path.normpath(db_path)
+            spec = importlib.util.spec_from_file_location("maintenance_db", db_path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            _maint_db = mod
+    return _maint_db
 
 
 def parse_message(text):
@@ -61,7 +91,7 @@ def parse_message(text):
     return parsed
 
 
-def process_message(phone, name, text, msg_type="text", message_id=""):
+def process_message(phone, name, text, msg_type="text", message_id="", media_id="", caption=""):
     """Process an incoming WhatsApp message.
 
     Args:
@@ -70,6 +100,8 @@ def process_message(phone, name, text, msg_type="text", message_id=""):
         text: Message text
         msg_type: Message type (text, image, audio, etc.)
         message_id: WhatsApp message ID
+        media_id: WhatsApp media ID (for images/documents/audio)
+        caption: Image caption if provided
 
     Returns:
         str: Response text to send back via WhatsApp, or None to skip reply
@@ -81,6 +113,8 @@ def process_message(phone, name, text, msg_type="text", message_id=""):
     logger.info(f"  From: {phone} ({name})")
     logger.info(f"  Type: {msg_type}")
     logger.info(f"  Text: {text}")
+    if media_id:
+        logger.info(f"  Media ID: {media_id}")
     logger.info("=" * 50)
 
     # Parse structured fields from text messages
@@ -88,7 +122,7 @@ def process_message(phone, name, text, msg_type="text", message_id=""):
 
     # Save ALL messages to DynamoDB (text, image, audio, etc.)
     try:
-        db = _get_db()
+        db = _get_maint_db()
         db.save_message(
             phone=phone,
             name=name,
@@ -100,6 +134,57 @@ def process_message(phone, name, text, msg_type="text", message_id=""):
         logger.info(f"[M1000] Message saved to DB ({len(parsed_data)} fields parsed)")
     except Exception as e:
         logger.error(f"[M1000] Failed to save to DB: {e}")
+
+    # Send to LLM for service call identification (images and text)
+    if msg_type in ("image", "text") and (media_id or text):
+        try:
+            llm = _get_llm()
+            result = llm.process(
+                msg_type=msg_type,
+                text=text,
+                media_id=media_id,
+                caption=caption,
+            )
+            if result and result.get("is_service_call"):
+                # Save service call to DB
+                try:
+                    db = _get_maint_db()
+                    db.save_service_call(
+                        phone=phone,
+                        name=name,
+                        issue_type=result.get("issue_type", ""),
+                        description=result.get("description", ""),
+                        urgency=result.get("urgency", "medium"),
+                        location=result.get("location", ""),
+                        summary=result.get("summary", ""),
+                        message_id=message_id,
+                        media_id=media_id,
+                    )
+                    logger.info(f"[M1000] Service call saved: {result.get('issue_type')} ({result.get('urgency')})")
+                except Exception as e:
+                    logger.error(f"[M1000] Failed to save service call: {e}")
+
+                summary = result.get("summary", "")
+                urgency_map = {"low": "נמוכה", "medium": "בינונית", "high": "גבוהה", "critical": "קריטית"}
+                urgency_heb = urgency_map.get(result.get("urgency", ""), result.get("urgency", ""))
+                return (
+                    f"זוהתה קריאת שירות:\n"
+                    f"סוג: {result.get('issue_type', 'לא ידוע')}\n"
+                    f"דחיפות: {urgency_heb}\n"
+                    f"{summary}"
+                )
+
+            elif result:
+                # LLM analyzed but not a service call
+                summary = result.get("summary", "")
+                if summary:
+                    return summary
+
+        except Exception as e:
+            logger.error(f"[M1000] LLM analysis failed: {e}")
+
+        if msg_type == "image":
+            return "קיבלנו את התמונה. לא זוהתה תקלה."
 
     if msg_type != "text" or not text:
         return None

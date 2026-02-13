@@ -71,12 +71,12 @@ m1000_bot = importlib.util.module_from_spec(spec_m1000)
 sys.modules["m1000_bot"] = m1000_bot
 spec_m1000.loader.exec_module(m1000_bot)
 
-# Load M1000 database module
-m1000_db_path = PROJECT_ROOT / "agents" / "smart-agents-and-bots" / "maintenance" / "M1000-maintenance-whatsapp-bot" / "M1000_db.py"
-spec_m1000_db = importlib.util.spec_from_file_location("m1000_db", m1000_db_path)
-m1000_db = importlib.util.module_from_spec(spec_m1000_db)
-sys.modules["m1000_db"] = m1000_db
-spec_m1000_db.loader.exec_module(m1000_db)
+# Load maintenance database module
+maint_db_path = PROJECT_ROOT / "database" / "maintenance" / "maintenance_db.py"
+spec_maint_db = importlib.util.spec_from_file_location("maintenance_db", maint_db_path)
+maintenance_db = importlib.util.module_from_spec(spec_maint_db)
+sys.modules["maintenance_db"] = maintenance_db
+spec_maint_db.loader.exec_module(maintenance_db)
 
 # Ensure stdout is usable (use the latest UTF-8 wrapper or restore original)
 if sys.stdout.closed:
@@ -292,6 +292,8 @@ def whatsapp_incoming():
                 text=msg.get("text", ""),
                 msg_type=msg.get("type", "text"),
                 message_id=msg.get("message_id", ""),
+                media_id=msg.get("media_id", ""),
+                caption=msg.get("caption", ""),
             )
             if response:
                 whatsapp_bot.send_message(msg["phone"], response)
@@ -339,7 +341,7 @@ def get_messages():
     status = request.args.get("status")
     limit = int(request.args.get("limit", "50"))
     try:
-        messages = m1000_db.get_messages(status=status, limit=limit)
+        messages = maintenance_db.get_messages(status=status, limit=limit)
         return jsonify({"ok": True, "messages": messages, "count": len(messages)})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -353,7 +355,7 @@ def update_message_status(item_id):
     if not new_status:
         return jsonify({"ok": False, "error": "Missing status"}), 400
     try:
-        updated = m1000_db.update_status(item_id, new_status)
+        updated = maintenance_db.update_message_status(item_id, new_status)
         return jsonify({"ok": True, "message": updated})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
