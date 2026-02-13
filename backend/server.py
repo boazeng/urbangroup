@@ -64,6 +64,13 @@ whatsapp_bot = importlib.util.module_from_spec(spec_5000)
 sys.modules["whatsapp_bot"] = whatsapp_bot
 spec_5000.loader.exec_module(whatsapp_bot)
 
+# Load M1000 bot (maintenance WhatsApp smart bot)
+m1000_path = PROJECT_ROOT / "agents" / "smart-agents-and-bots" / "maintenance" / "M1000-maintenance-whatsapp-bot" / "M1000_bot.py"
+spec_m1000 = importlib.util.spec_from_file_location("m1000_bot", m1000_path)
+m1000_bot = importlib.util.module_from_spec(spec_m1000)
+sys.modules["m1000_bot"] = m1000_bot
+spec_m1000.loader.exec_module(m1000_bot)
+
 # Ensure stdout is usable (use the latest UTF-8 wrapper or restore original)
 if sys.stdout.closed:
     sys.stdout = _saved_stdout
@@ -268,18 +275,21 @@ def whatsapp_incoming():
         if msg.get("message_id"):
             whatsapp_bot.mark_as_read(msg["message_id"])
 
-    # Auto-reply with acknowledgment (basic echo for now)
+    # Route messages through M1000 smart bot
     for msg in messages:
         logger.info(f"From {msg.get('phone')} ({msg.get('name')}): {msg.get('text', '')[:100]}")
-        if msg.get("text") and msg["type"] == "text":
-            try:
-                whatsapp_bot.send_message(
-                    msg["phone"],
-                    f"קיבלנו את ההודעה שלך: {msg['text'][:100]}"
-                )
-                logger.info(f"Auto-reply sent to {msg['phone']}")
-            except Exception as e:
-                logger.error(f"Auto-reply error: {e}")
+        try:
+            response = m1000_bot.process_message(
+                phone=msg.get("phone", ""),
+                name=msg.get("name", ""),
+                text=msg.get("text", ""),
+                msg_type=msg.get("type", "text"),
+            )
+            if response:
+                whatsapp_bot.send_message(msg["phone"], response)
+                logger.info(f"M1000 reply sent to {msg['phone']}")
+        except Exception as e:
+            logger.error(f"M1000 bot error: {e}")
 
     return jsonify({"ok": True}), 200
 
