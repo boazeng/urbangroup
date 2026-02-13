@@ -17,7 +17,7 @@ export default function Header() {
     <header className="header">
       <div className="container header-inner">
         <Link to="/" className="header-logo">
-          <img src={logo} alt="קבוצת אורבן" />
+          <img src={logo} alt="Urban Group" />
         </Link>
         <nav className="header-nav">
           {navItems.map((item) => (

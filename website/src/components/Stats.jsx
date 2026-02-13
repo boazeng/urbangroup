@@ -12,7 +12,7 @@ export default function Stats() {
     <section className="stats" id="stats">
       <div className="container">
         <h2 className="section-title">הקבוצה במספרים</h2>
-        <p className="section-subtitle">קבוצת אורבן — מובילה בתחום החנייה והניהול בישראל</p>
+        <p className="section-subtitle">Urban Group — מובילה בתחום החנייה והניהול בישראל</p>
         <div className="stats-grid">
           {stats.map((stat, i) => (
             <div key={i} className="stat-item">

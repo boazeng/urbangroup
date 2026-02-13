@@ -4,7 +4,7 @@ import './MaintenancePage.css'
 const sections = [
   {
     id: 'messages',
-    title: 'הודעות נכנסות',
+    title: 'הודעות WhatsApp',
     description: 'צפייה בכל ההודעות שהתקבלו מ-WhatsApp — טקסט, תמונות והודעות קוליות',
     icon: '💬',
     link: '/maintenance/messages',
@@ -24,13 +24,7 @@ export default function MaintenancePage() {
       <div className="container">
         <Link to="/" className="mnt-back">&rarr; חזרה לדף הבית</Link>
 
-        <div className="mnt-dash-header">
-          <span className="mnt-dash-icon">🏗️</span>
-          <div>
-            <h1 className="mnt-title">אחזקה</h1>
-            <p className="mnt-subtitle">ניהול תחזוקת מבנים — הודעות, קריאות שירות ומעקב</p>
-          </div>
-        </div>
+        <h1 className="mnt-title">ניהול פעולות אחזקה</h1>
 
         <section className="mnt-sections">
           <div className="mnt-sections-grid">

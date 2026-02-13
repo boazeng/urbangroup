@@ -7,7 +7,7 @@ export default function Footer() {
     <footer className="footer">
       <div className="container footer-inner">
         <div className="footer-brand">
-          <h3 className="footer-logo">קבוצת אורבן</h3>
+          <h3 className="footer-logo">Urban Group</h3>
           <p className="footer-tagline">פתרונות חנייה וניהול מתקדמים</p>
         </div>
         <div className="footer-links">
@@ -27,7 +27,7 @@ export default function Footer() {
       </div>
       <div className="footer-bottom">
         <div className="container">
-          <span>© {year} קבוצת אורבן — כל הזכויות שמורות</span>
+          <span>© {year} Urban Group — כל הזכויות שמורות</span>
         </div>
       </div>
     </footer>
