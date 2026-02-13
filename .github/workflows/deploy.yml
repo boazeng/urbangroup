@@ -104,7 +104,7 @@ jobs:
               WhatsAppPhoneNumberId="${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}" \
               WhatsAppAccessToken="${{ secrets.WHATSAPP_ACCESS_TOKEN }}" \
               WhatsAppVerifyToken="${{ secrets.WHATSAPP_VERIFY_TOKEN }}" \
-              OpenAiApiKey="${{ secrets.OPENAI_API_KEY }}"
+              "OpenAiApiKey=${{ secrets.OPENAI_API_KEY }}"
 
       # ── Upload Excel template to S3 ─────────────────────
       - name: Upload template to S3
