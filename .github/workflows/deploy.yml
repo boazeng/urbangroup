@@ -63,6 +63,7 @@ jobs:
           cp agents/specific-mission-agents/priority-specific-agents/200-invoices/200-invoice_writer.py lambda-backend/agents/specific-mission-agents/priority-specific-agents/200-invoices/
           cp agents/specific-mission-agents/priority-specific-agents/210-invoice-closer/210-invoice_closer.py lambda-backend/agents/specific-mission-agents/priority-specific-agents/210-invoice-closer/
           cp agents/smart-agents-and-bots/maintenance/M1000-maintenance-whatsapp-bot/M1000_bot.py lambda-backend/agents/smart-agents-and-bots/maintenance/M1000-maintenance-whatsapp-bot/
+          cp agents/smart-agents-and-bots/maintenance/M1000-maintenance-whatsapp-bot/M1000_db.py lambda-backend/agents/smart-agents-and-bots/maintenance/M1000-maintenance-whatsapp-bot/
           cp agents/tools-connection/5000-whatsapp/5000-whatsapp_bot.py lambda-backend/agents/tools-connection/5000-whatsapp/
 
       # ── Build Node.js Lambda package ─────────────────────

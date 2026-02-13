@@ -71,12 +71,15 @@ Resources:
           TEMPLATE_BUCKET: !Sub urbangroup-templates-${Stage}
           TEMPLATE_KEY: templates/invoice-template.xlsx
           INVOICE_CLOSER_FUNCTION: !Ref InvoiceCloserFunction
+          MESSAGES_TABLE: !Ref MessagesTable
           IS_LAMBDA: "true"
       Policies:
         - S3ReadPolicy:
             BucketName: !Sub urbangroup-templates-${Stage}
         - LambdaInvokePolicy:
             FunctionName: !Ref InvoiceCloserFunction
+        - DynamoDBCrudPolicy:
+            TableName: !Ref MessagesTable
       Events:
         ApiCatchAll:
           Type: HttpApi
@@ -101,6 +104,32 @@ Resources:
       Runtime: nodejs20.x
       Timeout: 90
       MemorySize: 256
+
+  # ── DynamoDB Table for WhatsApp Messages ────────────
+  MessagesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub urbangroup-messages-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+        - AttributeName: created_at
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: status-created_at-index
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
 
   # ── S3 Bucket for Templates ─────────────────────────
   TemplateBucket:
