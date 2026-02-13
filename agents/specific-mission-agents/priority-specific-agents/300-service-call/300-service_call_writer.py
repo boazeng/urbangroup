@@ -44,12 +44,12 @@ def create_service_call(service_call_data):
             internal_notes, breakstart, partname
 
     Returns:
-        dict with full API response JSON (includes CALLNO)
+        dict with full API response JSON (includes DOCNO)
 
     Raises:
         requests.exceptions.HTTPError on API failure
     """
-    url = f"{PRIORITY_URL}/SERVCALLS"
+    url = f"{PRIORITY_URL}/DOCUMENTS_Q"
     headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
@@ -64,43 +64,30 @@ def create_service_call(service_call_data):
 
     body = {
         "CUSTNAME": service_call_data.get("custname", "99999"),
-        "CDES": service_call_data.get("cdes", ""),
         "BRANCHNAME": branchname,
-        "CALLSTATUSCODE": service_call_data.get("callstatuscode", "ממתין לאישור"),
-        "TECHNICIANLOGIN": service_call_data.get("technicianlogin", ""),
-        "STARTDATE": datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
+        "STARTDATE": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
     # Optional fields — only include if non-empty
-    sernum = service_call_data.get("sernum", "")
-    if sernum:
-        body["SERNUM"] = sernum
+    for dynamo_key, priority_key in [
+        ("technicianlogin", "TECHNICIANLOGIN"),
+        ("sernum", "SERNUM"),
+        ("contact_name", "NAME"),
+        ("phone", "PHONENUM"),
+        ("partname", "PARTNAME"),
+    ]:
+        val = service_call_data.get(dynamo_key, "")
+        if val:
+            body[priority_key] = val
 
-    contact_name = service_call_data.get("contact_name", "")
-    if contact_name:
-        body["NAME"] = contact_name
-
-    phone = service_call_data.get("phone", "")
-    if phone:
-        body["PHONENUM"] = phone
-
-    partname = service_call_data.get("partname", "")
-    if partname:
-        body["PARTNAME"] = partname
-
-    breakstart = service_call_data.get("breakstart", "")
-    if breakstart:
-        body["BREAKSTART"] = breakstart
-
-    # TEXT field — fault description (subform)
-    fault_text = service_call_data.get("fault_text", "")
-    if fault_text:
-        body["SERVICECALLTEXT_SUBFORM"] = [{"TEXT": fault_text}]
-
-    # Internal notes — dialogue subform
-    internal_notes = service_call_data.get("internal_notes", "")
-    if internal_notes:
-        body["SERVICECALLDIAL_SUBFORM"] = [{"TEXT": internal_notes}]
+    # Build DETAILS from fault_text, description, and internal_notes
+    details_parts = []
+    for key in ("fault_text", "description", "internal_notes"):
+        val = service_call_data.get(key, "")
+        if val:
+            details_parts.append(val)
+    if details_parts:
+        body["DETAILS"] = "\n".join(details_parts)
 
     logger.info(f"Sending service call to Priority: {json.dumps(body, indent=2, ensure_ascii=False)}")
 
@@ -108,7 +95,7 @@ def create_service_call(service_call_data):
     response.raise_for_status()
 
     result = response.json()
-    logger.info(f"Service call created: {result.get('CALLNO', 'N/A')}")
+    logger.info(f"Service call created: DOCNO={result.get('DOCNO', 'N/A')}")
     return result
 
 

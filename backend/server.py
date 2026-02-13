@@ -409,7 +409,7 @@ def push_service_call_to_priority(item_id):
             return jsonify({"ok": False, "error": "קריאת השירות כבר נשלחה לפריוריטי"}), 400
 
         result = service_call_writer.create_service_call(call)
-        callno = str(result.get("CALLNO", result.get("DOCNO", "")))
+        callno = str(result.get("DOCNO", ""))
         maintenance_db.mark_service_call_pushed(item_id, callno=callno)
 
         return jsonify({
