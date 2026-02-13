@@ -1,0 +1,16 @@
+{
+  "name": "410-supplier-invoice-closer",
+  "version": "1.0.0",
+  "main": "close-supplier-invoice.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "dotenv": "^17.2.4",
+    "priority-web-sdk": "^3.0.37"
+  }
+}

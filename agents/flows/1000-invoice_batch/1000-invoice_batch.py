@@ -22,14 +22,14 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 # Load agent 200 module (uses importlib because folder name has hyphens)
 # Agent 200's module-level code sets sys.stdout to UTF-8
-agent_200_path = PROJECT_ROOT / "agents" / "200-invoices" / "200-invoice_writer.py"
+agent_200_path = PROJECT_ROOT / "agents" / "specific-mission-agents" / "priority-specific-agents" / "200-invoices" / "200-invoice_writer.py"
 spec = importlib.util.spec_from_file_location("invoice_writer", agent_200_path)
 invoice_writer = importlib.util.module_from_spec(spec)
 sys.modules["invoice_writer"] = invoice_writer
 spec.loader.exec_module(invoice_writer)
 
 # Load agent 100 module (customer reader)
-agent_100_path = PROJECT_ROOT / "agents" / "100-customer" / "100-customer_reader.py"
+agent_100_path = PROJECT_ROOT / "agents" / "specific-mission-agents" / "priority-specific-agents" / "100-customer" / "100-customer_reader.py"
 spec_100 = importlib.util.spec_from_file_location("customer_reader", agent_100_path)
 customer_reader = importlib.util.module_from_spec(spec_100)
 sys.modules["customer_reader"] = customer_reader

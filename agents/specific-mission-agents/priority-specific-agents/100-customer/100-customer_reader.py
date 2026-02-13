@@ -1,12 +1,11 @@
 """
-200-Invoice Writer Agent
-Connects to Priority Cloud OData API and creates a tax invoice (חשבונית מס).
+100-Customer Reader Agent
+Connects to Priority Cloud OData API and reads the customer list.
 """
 
 import sys
 import os
 import io
-import json
 from pathlib import Path
 from datetime import datetime
 
@@ -18,7 +17,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 if os.environ.get("IS_LAMBDA") != "true":
     from dotenv import load_dotenv
-    env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+    env_path = Path(__file__).resolve().parent.parent.parent.parent.parent / ".env"
     load_dotenv(env_path)
 
 PRIORITY_URL = os.getenv("PRIORITY_URL", "").rstrip("/")
@@ -41,39 +40,29 @@ def validate_config():
         sys.exit(1)
 
 
-def create_invoice(customer, date, branch, items, details=None):
-    """Create a tax invoice in Priority via OData API."""
-    url = f"{PRIORITY_URL}/AINVOICES"
+def fetch_customers(top=100):
+    """Fetch customers from Priority OData API."""
+    url = f"{PRIORITY_URL}/CUSTOMERS"
+    params = {
+        "$top": top,
+        "$select": "CUSTNAME,CUSTDES",
+    }
     headers = {
-        "Content-Type": "application/json",
         "Accept": "application/json",
         "OData-Version": "4.0",
     }
     auth = HTTPBasicAuth(PRIORITY_USERNAME, PRIORITY_PASSWORD)
 
-    body = {
-        "CUSTNAME": customer,
-        "IVDATE": date,
-        "BRANCHNAME": branch,
-        "AINVOICEITEMS_SUBFORM": items,
-    }
-
-    if details:
-        body["DETAILS"] = details
-
-    print("Sending invoice data:")
-    print(json.dumps(body, indent=2, ensure_ascii=False))
-    print()
-
-    response = requests.post(url, json=body, headers=headers, auth=auth)
+    response = requests.get(url, params=params, headers=headers, auth=auth)
     response.raise_for_status()
 
-    return response.json()
+    data = response.json()
+    return data.get("value", [])
 
 
 def main():
     print("=" * 60)
-    print("  200-Invoice Writer - Priority Cloud")
+    print("  100-Customer Reader - Priority Cloud")
     print("=" * 60)
     print()
 
@@ -83,55 +72,57 @@ def main():
     print(f"User: {PRIORITY_USERNAME}")
     print()
 
-    # Invoice data
-    customer = "1003"
-    date = datetime.now().strftime("%Y-%m-%d")
-    branch = "000"
-    items = [
-        {
-            "PARTNAME": "011",
-            "TQUANT": 10,
-            "PRICE": 170,
-        }
-    ]
-
     try:
-        result = create_invoice(customer, date, branch, items)
+        customers = fetch_customers(top=100)
     except requests.exceptions.HTTPError as e:
-        print(f"Error: HTTP {e.response.status_code}")
-        print(f"Response: {e.response.text}")
+        if e.response.status_code == 401:
+            print("Error: Authentication failed. Check your username and password.")
+        elif e.response.status_code == 403:
+            print("Error: Access denied. Check your user permissions in Priority.")
+        elif e.response.status_code == 404:
+            print("Error: API endpoint not found. Check your PRIORITY_URL.")
+        else:
+            print(f"Error: HTTP {e.response.status_code} - {e.response.text}")
         sys.exit(1)
     except requests.exceptions.ConnectionError:
         print("Error: Could not connect to Priority server. Check your URL and network.")
         sys.exit(1)
 
-    print("Invoice created successfully!")
-    print()
-    print("Response:")
-    print(json.dumps(result, indent=2, ensure_ascii=False))
+    if not customers:
+        print("No customers found.")
+        return
+
+    # Build output lines
+    lines = []
+    lines.append(f"Found {len(customers)} customers:")
+    lines.append("-" * 50)
+    lines.append(f"{'#':<5} {'Customer Code':<20} {'Customer Name'}")
+    lines.append("-" * 50)
+
+    for i, cust in enumerate(customers, 1):
+        code = cust.get("CUSTNAME", "N/A")
+        name = cust.get("CUSTDES", "N/A")
+        lines.append(f"{i:<5} {code:<20} {name}")
+
+    lines.append("-" * 50)
+    lines.append(f"Total: {len(customers)} customers")
+
+    # Print to console
+    for line in lines:
+        print(line)
 
     # Save to output file
-    output_dir = Path(__file__).resolve().parent.parent / "output"
+    output_dir = Path(__file__).resolve().parent.parent.parent.parent / "output"
     output_dir.mkdir(exist_ok=True)
 
-    output_file = output_dir / "200-invoice_write.txt"
+    output_file = output_dir / "100-customer_list.txt"
 
     with open(output_file, "w", encoding="utf-8") as f:
-        f.write("200-Invoice Writer - Priority Cloud\n")
+        f.write(f"100-Customer Reader - Priority Cloud\n")
         f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write(f"Source: {PRIORITY_URL}\n")
         f.write("\n")
-        f.write(f"Customer: {customer}\n")
-        f.write(f"Invoice Date: {date}\n")
-        f.write(f"Branch: {branch}\n")
-        f.write(f"Items:\n")
-        for item in items:
-            f.write(f"  Part: {item['PARTNAME']}, "
-                    f"Qty: {item['TQUANT']}, "
-                    f"Price: {item['PRICE']}\n")
-        f.write("\n")
-        f.write("API Response:\n")
-        f.write(json.dumps(result, indent=2, ensure_ascii=False))
+        f.write("\n".join(lines))
         f.write("\n")
 
     print()

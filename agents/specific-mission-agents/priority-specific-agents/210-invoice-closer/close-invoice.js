@@ -15,7 +15,7 @@
 const path = require('path');
 
 // Load .env from project root
-require('dotenv').config({ path: path.resolve(__dirname, '..', '..', '.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '..', '..', '..', '..', '.env') });
 
 const { login, formStart } = require('priority-web-sdk');
 

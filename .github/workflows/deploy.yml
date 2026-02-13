@@ -43,30 +43,32 @@ jobs:
       # ── Build Python Lambda package ──────────────────────
       - name: Prepare Python Lambda
         run: |
-          mkdir -p lambda-backend/agents/100-customer
-          mkdir -p lambda-backend/agents/200-invoices
-          mkdir -p lambda-backend/agents/210-invoice-closer
+          mkdir -p lambda-backend/agents/specific-mission-agents/priority-specific-agents/100-customer
+          mkdir -p lambda-backend/agents/specific-mission-agents/priority-specific-agents/200-invoices
+          mkdir -p lambda-backend/agents/specific-mission-agents/priority-specific-agents/210-invoice-closer
           mkdir -p lambda-backend/agents/tools-connection/5000-whatsapp
 
           cp backend/server.py lambda-backend/
           touch lambda-backend/agents/__init__.py
-          touch lambda-backend/agents/100-customer/__init__.py
-          touch lambda-backend/agents/200-invoices/__init__.py
-          touch lambda-backend/agents/210-invoice-closer/__init__.py
+          touch lambda-backend/agents/specific-mission-agents/__init__.py
+          touch lambda-backend/agents/specific-mission-agents/priority-specific-agents/__init__.py
+          touch lambda-backend/agents/specific-mission-agents/priority-specific-agents/100-customer/__init__.py
+          touch lambda-backend/agents/specific-mission-agents/priority-specific-agents/200-invoices/__init__.py
+          touch lambda-backend/agents/specific-mission-agents/priority-specific-agents/210-invoice-closer/__init__.py
           touch lambda-backend/agents/tools-connection/__init__.py
           touch lambda-backend/agents/tools-connection/5000-whatsapp/__init__.py
 
-          cp agents/100-customer/100-customer_reader.py lambda-backend/agents/100-customer/
-          cp agents/200-invoices/200-invoice_writer.py lambda-backend/agents/200-invoices/
-          cp agents/210-invoice-closer/210-invoice_closer.py lambda-backend/agents/210-invoice-closer/
+          cp agents/specific-mission-agents/priority-specific-agents/100-customer/100-customer_reader.py lambda-backend/agents/specific-mission-agents/priority-specific-agents/100-customer/
+          cp agents/specific-mission-agents/priority-specific-agents/200-invoices/200-invoice_writer.py lambda-backend/agents/specific-mission-agents/priority-specific-agents/200-invoices/
+          cp agents/specific-mission-agents/priority-specific-agents/210-invoice-closer/210-invoice_closer.py lambda-backend/agents/specific-mission-agents/priority-specific-agents/210-invoice-closer/
           cp agents/tools-connection/5000-whatsapp/5000-whatsapp_bot.py lambda-backend/agents/tools-connection/5000-whatsapp/
 
       # ── Build Node.js Lambda package ─────────────────────
       - name: Prepare Node.js Lambda
         run: |
-          cp agents/210-invoice-closer/lambda-handler.js lambda-invoice-closer/index.js
-          cp agents/210-invoice-closer/package.json lambda-invoice-closer/package.json
-          cp agents/210-invoice-closer/package-lock.json lambda-invoice-closer/package-lock.json
+          cp agents/specific-mission-agents/priority-specific-agents/210-invoice-closer/lambda-handler.js lambda-invoice-closer/index.js
+          cp agents/specific-mission-agents/priority-specific-agents/210-invoice-closer/package.json lambda-invoice-closer/package.json
+          cp agents/specific-mission-agents/priority-specific-agents/210-invoice-closer/package-lock.json lambda-invoice-closer/package-lock.json
           cd lambda-invoice-closer
           npm ci --production
 

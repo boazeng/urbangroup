@@ -19,7 +19,7 @@ if __name__ == "__main__":
 
 if os.environ.get("IS_LAMBDA") != "true":
     from dotenv import load_dotenv
-    env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+    env_path = Path(__file__).resolve().parent.parent.parent.parent.parent / ".env"
     load_dotenv(env_path)
 
 IS_LAMBDA = os.environ.get("IS_LAMBDA") == "true"
@@ -142,7 +142,7 @@ def main():
     print(f"Results: {ok} finalized, {failed} failed out of {len(results)}")
 
     # Save to output file
-    output_dir = Path(__file__).resolve().parent.parent.parent / "output"
+    output_dir = Path(__file__).resolve().parent.parent.parent.parent.parent / "output"
     output_dir.mkdir(exist_ok=True)
 
     output_file = output_dir / "210-invoice_closer.txt"
