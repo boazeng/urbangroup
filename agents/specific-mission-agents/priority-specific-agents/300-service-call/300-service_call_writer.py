@@ -57,13 +57,15 @@ def create_service_call(service_call_data):
     }
     auth = HTTPBasicAuth(PRIORITY_USERNAME, PRIORITY_PASSWORD)
 
-    # In demo environment, BRANCHNAME must always be "000"
+    # In demo environment, force defaults (customers/branches don't match)
     branchname = service_call_data.get("branchname", "001")
+    custname = service_call_data.get("custname", "99999")
     if is_demo_env():
         branchname = "000"
+        custname = "99999"
 
     body = {
-        "CUSTNAME": service_call_data.get("custname", "99999"),
+        "CUSTNAME": custname,
         "BRANCHNAME": branchname,
         "STARTDATE": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
@@ -92,7 +94,15 @@ def create_service_call(service_call_data):
     logger.info(f"Sending service call to Priority: {json.dumps(body, indent=2, ensure_ascii=False)}")
 
     response = requests.post(url, json=body, headers=headers, auth=auth)
-    response.raise_for_status()
+    if response.status_code >= 400:
+        # Extract Priority's error message for better diagnostics
+        try:
+            err_data = response.json()
+            err_msg = err_data.get("FORM", {}).get("InterfaceErrors", {}).get("text", "")
+        except Exception:
+            err_msg = response.text[:300]
+        logger.error(f"Priority API error {response.status_code}: {err_msg}")
+        response.raise_for_status()
 
     result = response.json()
     logger.info(f"Service call created: DOCNO={result.get('DOCNO', 'N/A')}")
