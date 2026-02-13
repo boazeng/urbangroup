@@ -82,14 +82,14 @@ def create_service_call(service_call_data):
         if val:
             body[priority_key] = val
 
-    # Build DETAILS from fault_text, description, and internal_notes
-    details_parts = []
+    # Build fault description text for DOCTEXT_Q_2_SUBFORM
+    text_parts = []
     for key in ("fault_text", "description", "internal_notes"):
         val = service_call_data.get(key, "")
         if val:
-            details_parts.append(val)
-    if details_parts:
-        body["DETAILS"] = "\n".join(details_parts)
+            text_parts.append(val)
+    if text_parts:
+        body["DOCTEXT_Q_2_SUBFORM"] = {"TEXT": "\n".join(text_parts)}
 
     logger.info(f"Sending service call to Priority: {json.dumps(body, indent=2, ensure_ascii=False)}")
 
