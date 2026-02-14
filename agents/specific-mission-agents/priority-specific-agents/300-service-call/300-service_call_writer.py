@@ -73,12 +73,13 @@ def create_service_call(service_call_data):
     custname = service_call_data.get("custname", "99999")
     if is_demo_env():
         branchname = "000"
-        # Use actual customer if they exist in Priority, otherwise fall back to 99999
-        if not custname or custname == "99999" or not customer_exists(custname):
-            logger.info(f"Customer '{custname}' not found in Priority, using 99999")
-            custname = "99999"
-        else:
-            logger.info(f"Customer '{custname}' found in Priority, using it")
+
+    # Validate customer exists in Priority, fall back to 99999 if not
+    if not custname or custname == "99999" or not customer_exists(custname):
+        logger.info(f"Customer '{custname}' not found in Priority, using 99999")
+        custname = "99999"
+    else:
+        logger.info(f"Customer '{custname}' found in Priority, using it")
 
     body = {
         "CUSTNAME": custname,
