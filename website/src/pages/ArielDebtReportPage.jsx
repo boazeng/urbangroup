@@ -5,14 +5,6 @@ import './ArielPage.css'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:5000' : ''
 
-const BUCKET_LABELS = {
-  current: 'שוטף',
-  '30': '30 יום',
-  '60': '60 יום',
-  '90': '90 יום',
-  '120plus': '120+ יום',
-}
-
 export default function ArielDebtReportPage() {
   const { env } = useEnv()
   const [report, setReport] = useState(null)
@@ -65,7 +57,7 @@ export default function ArielDebtReportPage() {
           <div className="ariel-report">
             <div className="ariel-report-header">
               <span className="ariel-report-meta">
-                סניף 102 | חתך 102-1 | {report.ariel_customer_count} חשבונות בחתך | {report.filtered_customer_count} לקוחות עם יתרה
+                חתך 102-1 | {report.ariel_customer_count} חשבונות בחתך | {report.filtered_customer_count} לקוחות עם יתרה
               </span>
             </div>
 
@@ -75,12 +67,7 @@ export default function ArielDebtReportPage() {
                   <tr>
                     <th>מס׳ לקוח</th>
                     <th>שם לקוח</th>
-                    <th className="ariel-num">{BUCKET_LABELS.current}</th>
-                    <th className="ariel-num">{BUCKET_LABELS['30']}</th>
-                    <th className="ariel-num">{BUCKET_LABELS['60']}</th>
-                    <th className="ariel-num">{BUCKET_LABELS['90']}</th>
-                    <th className="ariel-num">{BUCKET_LABELS['120plus']}</th>
-                    <th className="ariel-num ariel-total-col">סה״כ</th>
+                    <th className="ariel-num">יתרה</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -88,14 +75,7 @@ export default function ArielDebtReportPage() {
                     <tr key={cust.custname}>
                       <td className="ariel-cell-cust">{cust.custname}</td>
                       <td>{cust.cdes}</td>
-                      <td className="ariel-num">{formatCurrency(cust.current)}</td>
-                      <td className="ariel-num">{formatCurrency(cust['30'])}</td>
-                      <td className="ariel-num">{formatCurrency(cust['60'])}</td>
-                      <td className="ariel-num">{formatCurrency(cust['90'])}</td>
-                      <td className={`ariel-num ${cust['120plus'] > 0 ? 'ariel-overdue' : ''}`}>
-                        {formatCurrency(cust['120plus'])}
-                      </td>
-                      <td className="ariel-num ariel-total-col">{formatCurrency(cust.total)}</td>
+                      <td className="ariel-num">{formatCurrency(cust.balance)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -103,12 +83,7 @@ export default function ArielDebtReportPage() {
                   <tr className="ariel-totals-row">
                     <td></td>
                     <td className="ariel-totals-label">סה״כ</td>
-                    <td className="ariel-num">{formatCurrency(report.totals.current)}</td>
-                    <td className="ariel-num">{formatCurrency(report.totals['30'])}</td>
-                    <td className="ariel-num">{formatCurrency(report.totals['60'])}</td>
-                    <td className="ariel-num">{formatCurrency(report.totals['90'])}</td>
-                    <td className="ariel-num">{formatCurrency(report.totals['120plus'])}</td>
-                    <td className="ariel-num ariel-total-col">{formatCurrency(report.totals.total)}</td>
+                    <td className="ariel-num">{formatCurrency(report.total_balance)}</td>
                   </tr>
                 </tfoot>
               </table>
