@@ -64,6 +64,13 @@ service_call_writer = importlib.util.module_from_spec(spec_300)
 sys.modules["service_call_writer"] = service_call_writer
 spec_300.loader.exec_module(service_call_writer)
 
+# Load aging report module
+aging_report_path = PROJECT_ROOT / "agents" / "specific-mission-agents" / "priority-specific-agents" / "reports" / "aging_report.py"
+spec_aging = importlib.util.spec_from_file_location("aging_report", aging_report_path)
+aging_report = importlib.util.module_from_spec(spec_aging)
+sys.modules["aging_report"] = aging_report
+spec_aging.loader.exec_module(aging_report)
+
 # Load agent 5000 module (WhatsApp bot)
 agent_5000_path = PROJECT_ROOT / "agents" / "tools-connection" / "5000-whatsapp" / "5000-whatsapp_bot.py"
 spec_5000 = importlib.util.spec_from_file_location("whatsapp_bot", agent_5000_path)
@@ -419,6 +426,19 @@ def push_service_call_to_priority(item_id):
         })
     except Exception as e:
         logger.error(f"Error pushing service call {item_id}: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# ── Reports ──────────────────────────────────────────────────
+
+@app.route("/api/reports/aging", methods=["GET"])
+def get_aging_report():
+    """Generate aging report for consolidated invoices."""
+    try:
+        report = aging_report.fetch_aging_report()
+        return jsonify({"ok": True, **report})
+    except Exception as e:
+        logger.error(f"Error generating aging report: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
 

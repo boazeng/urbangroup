@@ -5,6 +5,7 @@ import './Header.css'
 const navItems = [
   { path: '/', label: 'דף הבית' },
   { path: '/maintenance', label: 'אחזקה' },
+  { path: '/ariel', label: 'אריאל' },
   { path: '/apps', label: 'אפליקציות' },
   { path: '/reports', label: 'דוחות' },
   { path: '/settings', label: 'הגדרות' },
