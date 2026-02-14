@@ -94,21 +94,6 @@ def _run_uncharged_report():
     return _format_uncharged_report(report)
 
 
-def _match_command(text):
-    """Match user text to a known command. Returns command key or None."""
-    t = text.strip()
-    debt_keywords = ["דוח חייבים", "חייבים", "חובות", "יתרות"]
-    uncharged_keywords = ["תעודות שלא חויבו", "תעודות משלוח", "תעודות", "לא חויבו"]
-
-    for kw in debt_keywords:
-        if kw in t:
-            return "debt"
-    for kw in uncharged_keywords:
-        if kw in t:
-            return "uncharged"
-    return None
-
-
 def process_message(phone, name, text, msg_type="text", message_id="",
                     media_id="", caption=""):
     """Process an incoming WhatsApp message for Ariel.
@@ -126,16 +111,28 @@ def process_message(phone, name, text, msg_type="text", message_id="",
     if msg_type != "text":
         return "הודעתך התקבלה. שלח הודעת טקסט עם פקודה."
 
-    command = _match_command(text)
+    # Use LLM to parse command
+    import allm1000_command_parser
+    parsed = allm1000_command_parser.parse_command(text)
 
-    if command == "debt":
+    if not parsed:
+        return (
+            "לא הצלחתי לעבד את הבקשה.\n\n"
+            "הפקודות הזמינות:\n"
+            "• *דוח חייבים* — דוח יתרות לקוחות\n"
+            "• *תעודות שלא חויבו* — תעודות משלוח פתוחות"
+        )
+
+    command = parsed.get("command")
+
+    if command == "debt_report":
         try:
             return _run_debt_report()
         except Exception as e:
             logger.error(f"AR1000 report error: {e}")
             return f"שגיאה בהפקת דוח חייבים: {e}"
 
-    elif command == "uncharged":
+    elif command == "uncharged_delivery":
         try:
             return _run_uncharged_report()
         except Exception as e:
@@ -143,9 +140,9 @@ def process_message(phone, name, text, msg_type="text", message_id="",
             return f"שגיאה בהפקת דוח תעודות: {e}"
 
     else:
-        return (
+        return parsed.get("reply", (
             "לא הבנתי את הבקשה.\n\n"
             "הפקודות הזמינות:\n"
             "• *דוח חייבים* — דוח יתרות לקוחות\n"
             "• *תעודות שלא חויבו* — תעודות משלוח פתוחות"
-        )
+        ))

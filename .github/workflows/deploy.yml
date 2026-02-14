@@ -54,6 +54,7 @@ jobs:
           mkdir -p lambda-backend/agents/tools-connection/5010-whatsapp
           mkdir -p lambda-backend/agents/smart-agents-and-bots/ariel/A1000-ariel-whatsapp-bot
           mkdir -p lambda-backend/agents/LLM/maintenance/MLLM1000-servicecall-identifier
+          mkdir -p lambda-backend/agents/LLM/ariel/ALLM1000-command-parser
           mkdir -p lambda-backend/database/maintenance
 
           cp backend/server.py lambda-backend/
@@ -75,6 +76,8 @@ jobs:
           touch lambda-backend/agents/LLM/__init__.py
           touch lambda-backend/agents/LLM/maintenance/__init__.py
           touch lambda-backend/agents/LLM/maintenance/MLLM1000-servicecall-identifier/__init__.py
+          touch lambda-backend/agents/LLM/ariel/__init__.py
+          touch lambda-backend/agents/LLM/ariel/ALLM1000-command-parser/__init__.py
           touch lambda-backend/database/__init__.py
           touch lambda-backend/database/maintenance/__init__.py
 
@@ -87,6 +90,7 @@ jobs:
           cp agents/flows/ariel/AR10010-uncharged-delivery.py lambda-backend/agents/flows/ariel/
           cp agents/smart-agents-and-bots/maintenance/M1000-maintenance-whatsapp-bot/M1000_bot.py lambda-backend/agents/smart-agents-and-bots/maintenance/M1000-maintenance-whatsapp-bot/
           cp agents/LLM/maintenance/MLLM1000-servicecall-identifier/MLLM1000_servicecall_identifier.py lambda-backend/agents/LLM/maintenance/MLLM1000-servicecall-identifier/
+          cp agents/LLM/ariel/ALLM1000-command-parser/ALLM1000_command_parser.py lambda-backend/agents/LLM/ariel/ALLM1000-command-parser/
           cp database/maintenance/maintenance_db.py lambda-backend/database/maintenance/
           cp agents/tools-connection/5000-whatsapp/5000-whatsapp_bot.py lambda-backend/agents/tools-connection/5000-whatsapp/
           cp agents/tools-connection/5010-whatsapp/5010-whatsapp_bot.py lambda-backend/agents/tools-connection/5010-whatsapp/
