@@ -32,14 +32,28 @@ PRIORITY_PASSWORD = os.getenv("PRIORITY_PASSWORD", "")
 ARIEL_BRANCH = "102"
 
 
-def generate_report():
-    """Fetch uncharged delivery notes for branch 102."""
+def generate_report(filters=None):
+    """Fetch uncharged delivery notes for branch 102.
+
+    Args:
+        filters: Optional dict with keys: customer_name, min_amount, date_from, date_to
+    """
+    filters = filters or {}
     headers = {"Accept": "application/json", "OData-Version": "4.0"}
     auth = HTTPBasicAuth(PRIORITY_USERNAME, PRIORITY_PASSWORD)
 
+    odata_filter = f"BRANCHNAME eq '{ARIEL_BRANCH}' and IVALL eq 'N'"
+
+    date_from = filters.get("date_from")
+    date_to = filters.get("date_to")
+    if date_from:
+        odata_filter += f" and CURDATE ge {date_from}T00:00:00Z"
+    if date_to:
+        odata_filter += f" and CURDATE le {date_to}T23:59:59Z"
+
     url = (
         f"{PRIORITY_URL}/DOCUMENTS_D"
-        f"?$filter=BRANCHNAME eq '{ARIEL_BRANCH}' and IVALL eq 'N'"
+        f"?$filter={odata_filter}"
         f"&$select=DOCNO,CUSTNAME,CDES,CURDATE,TOTPRICE,STATDES,CODEDES,DETAILS"
         f"&$orderby=CURDATE desc"
     )
@@ -54,14 +68,25 @@ def generate_report():
 
     logger.info(f"Fetched {len(all_docs)} uncharged deliveries for branch {ARIEL_BRANCH}")
 
+    min_amount = float(filters.get("min_amount") or 0)
+    customer_filter = (filters.get("customer_name") or "").strip().lower()
+
     documents = []
     for doc in all_docs:
+        totprice = float(doc.get("TOTPRICE", 0) or 0)
+        if min_amount and totprice < min_amount:
+            continue
+        if customer_filter:
+            cdes = (doc.get("CDES", "") or "").lower()
+            custname = (doc.get("CUSTNAME", "") or "").lower()
+            if customer_filter not in cdes and customer_filter not in custname:
+                continue
         documents.append({
             "docno": doc.get("DOCNO", ""),
             "custname": doc.get("CUSTNAME", ""),
             "cdes": doc.get("CDES", ""),
             "curdate": (doc.get("CURDATE", "") or "")[:10],
-            "totprice": float(doc.get("TOTPRICE", 0) or 0),
+            "totprice": totprice,
             "statdes": doc.get("STATDES", ""),
             "codedes": doc.get("CODEDES", "") or "",
             "details": doc.get("DETAILS", "") or "",
@@ -74,6 +99,7 @@ def generate_report():
         "total_amount": total_amount,
         "document_count": len(documents),
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "filters_applied": {k: v for k, v in filters.items() if v},
     }
 
 

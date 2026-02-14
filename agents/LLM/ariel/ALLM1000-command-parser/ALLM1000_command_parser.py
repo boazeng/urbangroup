@@ -26,7 +26,9 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
 
 SYSTEM_PROMPT = """אתה עוזר חכם של חברת אריאל (סניף 102 של Urban Group).
-תפקידך לזהות מה המשתמש רוצה מתוך הודעת WhatsApp.
+תפקידך לזהות מה המשתמש רוצה מתוך הודעת WhatsApp, כולל סינונים אם צוינו.
+
+התאריך היום: {today}
 
 הפקודות הזמינות:
 1. **debt_report** — דוח חייבים / יתרות לקוחות. דוגמאות: "דוח חייבים", "מה היתרות", "מי חייב לנו", "חובות", "מצב חייבים", "תראה לי את החובות"
@@ -38,14 +40,35 @@ SYSTEM_PROMPT = """אתה עוזר חכם של חברת אריאל (סניף 102
 {
   "command": "debt_report" / "uncharged_delivery" / "unknown",
   "confidence": "high" / "medium" / "low",
-  "reply": "תשובה קצרה בעברית אם command=unknown, אחרת ריק"
+  "reply": "תשובה קצרה בעברית אם command=unknown, אחרת ריק",
+  "filters": {
+    "customer_name": null,
+    "min_amount": null,
+    "date_from": null,
+    "date_to": null
+  }
 }
+
+הסבר על filters:
+- customer_name: שם לקוח או מספר לקוח אם המשתמש ציין (טקסט חופשי). דוגמאות: "דוח חייבים ללקוח גרינברג", "תעודות של לקוח 1003"
+- min_amount: סכום מינימלי אם צוין (מספר). דוגמאות: "חובות מעל 10000", "תעודות מעל 5000 שקל"
+- date_from: תאריך התחלה בפורמט YYYY-MM-DD אם צוין. דוגמאות: "מינואר" = "{year}-01-01", "מהחודש האחרון" = חודש אחורה מהיום, "מתחילת השנה" = "{year}-01-01"
+- date_to: תאריך סיום בפורמט YYYY-MM-DD אם צוין. דוגמאות: "עד דצמבר" = "{year}-12-31"
+- אם המשתמש לא ציין סינון ספציפי — השאר את השדה null
 
 כללים:
 - אם אתה לא בטוח לגמרי אבל זה נשמע קשור — תן confidence=medium ותבחר את הפקודה הכי מתאימה
 - אם זה לא קשור בכלל לאף פקודה — command=unknown ובשדה reply תכתוב הודעה ידידותית שמסבירה מה אתה יכול לעשות
-- בשדה reply כשcommand=unknown, תזכיר את שתי הפקודות הזמינות
+- בשדה reply כשcommand=unknown, תזכיר את שתי הפקודות הזמינות ואת אפשרויות הסינון
 - החזר JSON תקין בלבד"""
+
+
+def _get_system_prompt():
+    """Build system prompt with current date."""
+    from datetime import datetime
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    year = datetime.utcnow().strftime("%Y")
+    return SYSTEM_PROMPT.replace("{today}", today).replace("{year}", year)
 
 
 def _call_openai(text):
@@ -63,10 +86,10 @@ def _call_openai(text):
         json={
             "model": OPENAI_MODEL,
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": _get_system_prompt()},
                 {"role": "user", "content": text},
             ],
-            "max_tokens": 200,
+            "max_tokens": 300,
         },
         timeout=15,
     )

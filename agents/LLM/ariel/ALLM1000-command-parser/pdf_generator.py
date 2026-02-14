@@ -38,6 +38,20 @@ def _create_pdf():
     return pdf
 
 
+def _format_filters_line(filters):
+    """Format active filters as a Hebrew string for display in PDF."""
+    parts = []
+    if filters.get("customer_name"):
+        parts.append(f"לקוח: {filters['customer_name']}")
+    if filters.get("min_amount"):
+        parts.append(f"מינימום: {float(filters['min_amount']):,.0f} ₪")
+    if filters.get("date_from"):
+        parts.append(f"מתאריך: {filters['date_from']}")
+    if filters.get("date_to"):
+        parts.append(f"עד תאריך: {filters['date_to']}")
+    return " | ".join(parts) if parts else ""
+
+
 def generate_debt_report_pdf(report):
     """Generate a PDF for the AR1000 debt customer report.
 
@@ -59,6 +73,13 @@ def generate_debt_report_pdf(report):
     now = datetime.utcnow().strftime("%d/%m/%Y %H:%M")
     pdf.cell(0, 7, _rtl(f"תאריך: {now}"), new_x="LMARGIN", new_y="NEXT", align="R")
     pdf.cell(0, 7, _rtl(f"לקוחות עם יתרה: {report['filtered_customer_count']}"), new_x="LMARGIN", new_y="NEXT", align="R")
+
+    # Show active filters
+    filters_line = _format_filters_line(report.get("filters_applied", {}))
+    if filters_line:
+        pdf.set_font("DejaVu", "B", 10)
+        pdf.cell(0, 7, _rtl(f"סינון: {filters_line}"), new_x="LMARGIN", new_y="NEXT", align="R")
+
     pdf.ln(5)
 
     # Table header
@@ -108,6 +129,13 @@ def generate_uncharged_report_pdf(report):
     now = datetime.utcnow().strftime("%d/%m/%Y %H:%M")
     pdf.cell(0, 7, _rtl(f"תאריך: {now}"), new_x="LMARGIN", new_y="NEXT", align="R")
     pdf.cell(0, 7, _rtl(f"תעודות: {report['document_count']}"), new_x="LMARGIN", new_y="NEXT", align="R")
+
+    # Show active filters
+    filters_line = _format_filters_line(report.get("filters_applied", {}))
+    if filters_line:
+        pdf.set_font("DejaVu", "B", 10)
+        pdf.cell(0, 7, _rtl(f"סינון: {filters_line}"), new_x="LMARGIN", new_y="NEXT", align="R")
+
     pdf.ln(5)
 
     # Table header

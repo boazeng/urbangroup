@@ -34,8 +34,13 @@ PRIORITY_PASSWORD = os.getenv("PRIORITY_PASSWORD", "")
 ARIEL_ACNGCODE = "102-1"
 
 
-def generate_report():
-    """Fetch Ariel accounts (ACNGCODE='102-1') with their current balance from ACCOUNTS_RECEIVABLE."""
+def generate_report(filters=None):
+    """Fetch Ariel accounts (ACNGCODE='102-1') with their current balance from ACCOUNTS_RECEIVABLE.
+
+    Args:
+        filters: Optional dict with keys: customer_name, min_amount
+    """
+    filters = filters or {}
     headers = {"Accept": "application/json", "OData-Version": "4.0"}
     auth = HTTPBasicAuth(PRIORITY_USERNAME, PRIORITY_PASSWORD)
 
@@ -55,12 +60,22 @@ def generate_report():
 
     logger.info(f"Fetched {len(all_accounts)} Ariel accounts (ACNGCODE={ARIEL_ACNGCODE})")
 
+    min_amount = float(filters.get("min_amount") or 0)
+    customer_filter = (filters.get("customer_name") or "").strip().lower()
+
     # Filter to accounts with non-zero balance
     customers = []
     for acc in all_accounts:
         balance = float(acc.get("BALANCE3", 0) or 0)
         if balance == 0:
             continue
+        if min_amount and balance < min_amount:
+            continue
+        if customer_filter:
+            name = (acc.get("ACCDES", "") or "").lower()
+            code = (acc.get("ACCNAME", "") or "").lower()
+            if customer_filter not in name and customer_filter not in code:
+                continue
         customers.append({
             "custname": acc.get("ACCNAME", ""),
             "cdes": acc.get("ACCDES", ""),
@@ -78,6 +93,7 @@ def generate_report():
         "ariel_customer_count": len(all_accounts),
         "filtered_customer_count": len(customers),
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "filters_applied": {k: v for k, v in filters.items() if v},
     }
 
 

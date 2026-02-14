@@ -56,14 +56,14 @@ def _set_real_env():
         ar10010_report.PRIORITY_URL = real_url
 
 
-def _run_debt_report_pdf(phone):
+def _run_debt_report_pdf(phone, filters=None):
     """Run AR1000, generate PDF, send via WhatsApp."""
     _set_real_env()
     import ar1000_report
     import pdf_generator
     import whatsapp_bot_ariel
 
-    report = ar1000_report.generate_report()
+    report = ar1000_report.generate_report(filters=filters)
     pdf_bytes = pdf_generator.generate_debt_report_pdf(report)
 
     now = datetime.utcnow().strftime("%Y%m%d_%H%M")
@@ -74,14 +74,14 @@ def _run_debt_report_pdf(phone):
     logger.info(f"Debt report PDF sent to {phone}: {filename}")
 
 
-def _run_uncharged_report_pdf(phone):
+def _run_uncharged_report_pdf(phone, filters=None):
     """Run AR10010, generate PDF, send via WhatsApp."""
     _set_real_env()
     import ar10010_report
     import pdf_generator
     import whatsapp_bot_ariel
 
-    report = ar10010_report.generate_report()
+    report = ar10010_report.generate_report(filters=filters)
     pdf_bytes = pdf_generator.generate_uncharged_report_pdf(report)
 
     now = datetime.utcnow().strftime("%Y%m%d_%H%M")
@@ -125,10 +125,13 @@ def process_message(phone, name, text, msg_type="text", message_id="",
         )
 
     command = parsed.get("command")
+    filters = parsed.get("filters") or {}
+    # Remove null/None values from filters
+    filters = {k: v for k, v in filters.items() if v is not None}
 
     if command == "debt_report":
         try:
-            _run_debt_report_pdf(phone)
+            _run_debt_report_pdf(phone, filters)
             return None  # PDF already sent
         except Exception as e:
             logger.error(f"AR1000 report error: {e}")
@@ -136,7 +139,7 @@ def process_message(phone, name, text, msg_type="text", message_id="",
 
     elif command == "uncharged_delivery":
         try:
-            _run_uncharged_report_pdf(phone)
+            _run_uncharged_report_pdf(phone, filters)
             return None  # PDF already sent
         except Exception as e:
             logger.error(f"AR10010 report error: {e}")
