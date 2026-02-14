@@ -17,6 +17,13 @@ export default function ArielPage() {
               <p className="ariel-section-desc">הפקת דוח גיול חובות מחשבוניות מרכזות בפריוריטי — פילוח לפי לקוח וגיל חוב</p>
               <span className="ariel-section-action">צפייה &larr;</span>
             </Link>
+
+            <Link to="/ariel/debt-report" className="ariel-section-card">
+              <span className="ariel-section-icon">📋</span>
+              <h3 className="ariel-section-title">דוח חייבים לקוחות אריאל</h3>
+              <p className="ariel-section-desc">דוח חייבים מסונן ללקוחות אריאל (חתך 102-1) — סניף 102</p>
+              <span className="ariel-section-action">צפייה &larr;</span>
+            </Link>
           </div>
         </section>
       </div>

@@ -71,6 +71,13 @@ aging_report = importlib.util.module_from_spec(spec_aging)
 sys.modules["aging_report"] = aging_report
 spec_aging.loader.exec_module(aging_report)
 
+# Load AR1000 module (Ariel debt customer report)
+ar1000_path = PROJECT_ROOT / "agents" / "flows" / "ariel" / "AR1000-debt-customer-report.py"
+spec_ar1000 = importlib.util.spec_from_file_location("ar1000_report", ar1000_path)
+ar1000_report = importlib.util.module_from_spec(spec_ar1000)
+sys.modules["ar1000_report"] = ar1000_report
+spec_ar1000.loader.exec_module(ar1000_report)
+
 # Load agent 5000 module (WhatsApp bot)
 agent_5000_path = PROJECT_ROOT / "agents" / "tools-connection" / "5000-whatsapp" / "5000-whatsapp_bot.py"
 spec_5000 = importlib.util.spec_from_file_location("whatsapp_bot", agent_5000_path)
@@ -465,6 +472,18 @@ def get_aging_report():
         return jsonify({"ok": True, **report})
     except Exception as e:
         logger.error(f"Error generating aging report: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/reports/ariel-debt", methods=["GET"])
+def get_ariel_debt_report():
+    """Generate AR1000 Ariel debt customer report."""
+    set_priority_env()
+    try:
+        report = ar1000_report.generate_report()
+        return jsonify({"ok": True, **report})
+    except Exception as e:
+        logger.error(f"Error generating Ariel debt report: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
