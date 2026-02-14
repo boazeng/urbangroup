@@ -34,6 +34,18 @@ def is_demo_env():
     return "demo" in PRIORITY_URL.lower()
 
 
+def customer_exists(custname):
+    """Check if a customer exists in Priority."""
+    url = f"{PRIORITY_URL}/CUSTOMERS('{custname}')"
+    headers = {"Accept": "application/json", "OData-Version": "4.0"}
+    auth = HTTPBasicAuth(PRIORITY_USERNAME, PRIORITY_PASSWORD)
+    try:
+        resp = requests.get(url, headers=headers, auth=auth)
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+
 def create_service_call(service_call_data):
     """Create a service call in Priority via OData API.
 
@@ -57,12 +69,16 @@ def create_service_call(service_call_data):
     }
     auth = HTTPBasicAuth(PRIORITY_USERNAME, PRIORITY_PASSWORD)
 
-    # In demo environment, force defaults (customers/branches don't match)
     branchname = service_call_data.get("branchname", "001")
     custname = service_call_data.get("custname", "99999")
     if is_demo_env():
         branchname = "000"
-        custname = "99999"
+        # Use actual customer if they exist in Priority, otherwise fall back to 99999
+        if not custname or custname == "99999" or not customer_exists(custname):
+            logger.info(f"Customer '{custname}' not found in Priority, using 99999")
+            custname = "99999"
+        else:
+            logger.info(f"Customer '{custname}' found in Priority, using it")
 
     body = {
         "CUSTNAME": custname,
