@@ -51,7 +51,7 @@ def generate_report(days_back=30):
     url = (
         f"{PRIORITY_URL}/CINVOICES"
         f"?$filter={odata_filter}"
-        f"&$select=IVNUM,CUSTNAME,CDES,IVDATE,TOTPRICE,QPRICE,VAT,STATDES,CODEDES,DETAILS,DOCNO"
+        f"&$select=IVNUM,CUSTNAME,CDES,IVDATE,TOTPRICE,QPRICE,VAT,STATDES,CODEDES,DETAILS,DOCNO,EXTFILEFLAG"
         f"&$orderby=CUSTNAME,IVDATE desc"
     )
 
@@ -91,6 +91,7 @@ def generate_report(days_back=30):
             "codedes": inv.get("CODEDES", "") or "",
             "details": inv.get("DETAILS", "") or "",
             "docno": inv.get("DOCNO", "") or "",
+            "has_attachment": inv.get("EXTFILEFLAG") == "Y",
         })
         customers_map[cust]["total"] += totprice
         customers_map[cust]["total_before_vat"] += qprice

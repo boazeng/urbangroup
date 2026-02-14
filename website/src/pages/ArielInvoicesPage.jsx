@@ -120,6 +120,7 @@ export default function ArielInvoicesPage() {
                     <th>שם לקוח</th>
                     <th>חשבוניות</th>
                     <th className="ariel-num">סה״כ</th>
+                    <th style={{width: '50px', textAlign: 'center'}}>נספח</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -136,6 +137,7 @@ export default function ArielInvoicesPage() {
                         <td>{cust.cdes}</td>
                         <td>{cust.invoices.length}</td>
                         <td className="ariel-num">{formatCurrency(cust.total)}</td>
+                        <td></td>
                       </tr>
                       {expandedCustomers.has(cust.custname) && cust.invoices.map((inv) => (
                         <tr key={inv.ivnum} className="ariel-invoice-row">
@@ -144,6 +146,7 @@ export default function ArielInvoicesPage() {
                           <td>{inv.codedes || inv.details}</td>
                           <td>{inv.ivdate}</td>
                           <td className="ariel-num">{formatCurrency(inv.totprice)}</td>
+                          <td style={{textAlign: 'center'}}>{inv.has_attachment ? '✓' : ''}</td>
                         </tr>
                       ))}
                     </>
@@ -156,6 +159,7 @@ export default function ArielInvoicesPage() {
                     <td className="ariel-totals-label">סה״כ</td>
                     <td>{report.total_invoices}</td>
                     <td className="ariel-num">{formatCurrency(report.total_amount)}</td>
+                    <td></td>
                   </tr>
                 </tfoot>
               </table>
