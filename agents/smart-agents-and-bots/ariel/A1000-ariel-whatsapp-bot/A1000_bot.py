@@ -132,7 +132,7 @@ def process_message(phone, name, text, msg_type="text", message_id="",
     if command == "debt_report":
         try:
             _run_debt_report_pdf(phone, filters)
-            return None  # PDF already sent
+            return "דוח חייבים נשלח בהצלחה ✓"
         except Exception as e:
             logger.error(f"AR1000 report error: {e}")
             return f"שגיאה בהפקת דוח חייבים: {e}"
@@ -140,14 +140,14 @@ def process_message(phone, name, text, msg_type="text", message_id="",
     elif command == "uncharged_delivery":
         try:
             _run_uncharged_report_pdf(phone, filters)
-            return None  # PDF already sent
+            return "דוח תעודות משלוח נשלח בהצלחה ✓"
         except Exception as e:
             logger.error(f"AR10010 report error: {e}")
             return f"שגיאה בהפקת דוח תעודות: {e}"
 
     else:
         return parsed.get("reply", (
-            "לא הבנתי את הבקשה.\n\n"
+            "קיבלתי את ההודעה, לא נדרשת פעולה מצידי.\n\n"
             "הפקודות הזמינות:\n"
             "• *דוח חייבים* — דוח יתרות לקוחות\n"
             "• *תעודות שלא חויבו* — תעודות משלוח פתוחות"

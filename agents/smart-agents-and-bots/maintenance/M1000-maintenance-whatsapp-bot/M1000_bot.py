@@ -251,6 +251,6 @@ def process_message(phone, name, text, msg_type="text", message_id="", media_id=
             return "קיבלנו את התמונה. לא זוהתה תקלה."
 
     if msg_type != "text" or not text:
-        return None
+        return "קיבלתי את ההודעה, לא נדרשת פעולה מצידי."
 
     return f"[M1000] קיבלנו את ההודעה שלך:\n{text[:200]}"
