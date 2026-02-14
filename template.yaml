@@ -6,7 +6,10 @@ Parameters:
   Stage:
     Type: String
     Default: prod
-  PriorityUrl:
+  PriorityUrlDemo:
+    Type: String
+    NoEcho: true
+  PriorityUrlReal:
     Type: String
     NoEcho: true
   PriorityUsername:
@@ -36,7 +39,9 @@ Globals:
     Environment:
       Variables:
         STAGE: !Ref Stage
-        PRIORITY_URL: !Ref PriorityUrl
+        PRIORITY_URL: !Ref PriorityUrlDemo
+        PRIORITY_URL_DEMO: !Ref PriorityUrlDemo
+        PRIORITY_URL_REAL: !Ref PriorityUrlReal
         PRIORITY_USERNAME: !Ref PriorityUsername
         PRIORITY_PASSWORD: !Ref PriorityPassword
 

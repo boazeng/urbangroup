@@ -100,7 +100,9 @@ app = Flask(__name__)
 CORS(app)
 
 # ── Environment switching (demo / real) ──────────────────────
-PRIORITY_URL_DEMO = os.getenv("PRIORITY_URL_DEMO", "").rstrip("/")
+# Fallback to PRIORITY_URL for backward compat (e.g. Lambda with old config)
+_fallback_url = os.getenv("PRIORITY_URL", "")
+PRIORITY_URL_DEMO = os.getenv("PRIORITY_URL_DEMO", _fallback_url).rstrip("/")
 PRIORITY_URL_REAL = os.getenv("PRIORITY_URL_REAL", "").rstrip("/")
 
 

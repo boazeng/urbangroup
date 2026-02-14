@@ -104,7 +104,8 @@ jobs:
             --s3-bucket aws-sam-cli-managed-default-samclisourcebucket-ebw2dr9e8ezp \
             --parameter-overrides \
               Stage=${{ env.STAGE }} \
-              PriorityUrl="${{ secrets.PRIORITY_URL_DEMO }}" \
+              PriorityUrlDemo="${{ secrets.PRIORITY_URL_DEMO }}" \
+              PriorityUrlReal="${{ secrets.PRIORITY_URL_REAL }}" \
               PriorityUsername="${{ secrets.PRIORITY_USERNAME }}" \
               PriorityPassword="${{ secrets.PRIORITY_PASSWORD }}" \
               WhatsAppPhoneNumberId="${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}" \
