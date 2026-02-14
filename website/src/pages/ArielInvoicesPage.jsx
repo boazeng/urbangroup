@@ -120,7 +120,7 @@ export default function ArielInvoicesPage() {
                     <th>שם לקוח</th>
                     <th>חשבוניות</th>
                     <th className="ariel-num">סה״כ</th>
-                    <th style={{width: '50px', textAlign: 'center'}}>נספח</th>
+                    <th style={{width: '60px', textAlign: 'center'}}>הודפס</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -146,7 +146,7 @@ export default function ArielInvoicesPage() {
                           <td>{inv.codedes || inv.details}</td>
                           <td>{inv.ivdate}</td>
                           <td className="ariel-num">{formatCurrency(inv.totprice)}</td>
-                          <td style={{textAlign: 'center'}}>{inv.has_attachment ? '✓' : ''}</td>
+                          <td style={{textAlign: 'center'}}>{inv.printed ? '✓' : ''}</td>
                         </tr>
                       ))}
                     </>
