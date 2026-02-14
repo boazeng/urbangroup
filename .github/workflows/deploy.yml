@@ -56,8 +56,11 @@ jobs:
           mkdir -p lambda-backend/agents/LLM/maintenance/MLLM1000-servicecall-identifier
           mkdir -p lambda-backend/agents/LLM/ariel/ALLM1000-command-parser
           mkdir -p lambda-backend/database/maintenance
+          mkdir -p lambda-backend/fonts
 
           cp backend/server.py lambda-backend/
+          cp fonts/DejaVuSans.ttf lambda-backend/fonts/
+          cp fonts/DejaVuSans-Bold.ttf lambda-backend/fonts/
           touch lambda-backend/agents/__init__.py
           touch lambda-backend/agents/specific-mission-agents/__init__.py
           touch lambda-backend/agents/specific-mission-agents/priority-specific-agents/__init__.py
@@ -91,6 +94,7 @@ jobs:
           cp agents/smart-agents-and-bots/maintenance/M1000-maintenance-whatsapp-bot/M1000_bot.py lambda-backend/agents/smart-agents-and-bots/maintenance/M1000-maintenance-whatsapp-bot/
           cp agents/LLM/maintenance/MLLM1000-servicecall-identifier/MLLM1000_servicecall_identifier.py lambda-backend/agents/LLM/maintenance/MLLM1000-servicecall-identifier/
           cp agents/LLM/ariel/ALLM1000-command-parser/ALLM1000_command_parser.py lambda-backend/agents/LLM/ariel/ALLM1000-command-parser/
+          cp agents/LLM/ariel/ALLM1000-command-parser/pdf_generator.py lambda-backend/agents/LLM/ariel/ALLM1000-command-parser/
           cp database/maintenance/maintenance_db.py lambda-backend/database/maintenance/
           cp agents/tools-connection/5000-whatsapp/5000-whatsapp_bot.py lambda-backend/agents/tools-connection/5000-whatsapp/
           cp agents/tools-connection/5010-whatsapp/5010-whatsapp_bot.py lambda-backend/agents/tools-connection/5010-whatsapp/

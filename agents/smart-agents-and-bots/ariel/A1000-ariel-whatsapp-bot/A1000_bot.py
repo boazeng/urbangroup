@@ -1,21 +1,19 @@
 """
 A1000 - Ariel WhatsApp Bot
 Smart bot for the Ariel branch.
-Accepts commands from the owner (Boaz) and runs reports.
+Accepts commands from the owner (Boaz) and runs reports as PDF.
 
 Supported commands:
-- דוח חייבים  → AR1000 debt customer report
-- תעודות שלא חויבו  → AR10010 uncharged delivery notes
+- דוח חייבים  → AR1000 debt customer report (PDF)
+- תעודות שלא חויבו  → AR10010 uncharged delivery notes (PDF)
 """
 
-import sys
 import os
 import uuid
 import logging
 from datetime import datetime
 
 import boto3
-from boto3.dynamodb.conditions import Key
 
 logger = logging.getLogger("urbangroup.A1000")
 
@@ -48,38 +46,6 @@ def save_message(phone, name, text, msg_type="text", message_id=""):
     return item_id
 
 
-def _format_debt_report(report):
-    """Format AR1000 debt report as WhatsApp message."""
-    lines = []
-    lines.append("📊 *דוח חייבים — אריאל*")
-    lines.append(f"תאריך: {datetime.utcnow().strftime('%d/%m/%Y %H:%M')}")
-    lines.append(f"לקוחות עם יתרה: {report['filtered_customer_count']}")
-    lines.append("")
-
-    for c in report["customers"]:
-        lines.append(f"• {c['cdes']} ({c['custname']}): *{c['balance']:,.0f}* ₪")
-
-    lines.append("")
-    lines.append(f"*סה״כ: {report['total_balance']:,.0f} ₪*")
-    return "\n".join(lines)
-
-
-def _format_uncharged_report(report):
-    """Format AR10010 uncharged delivery report as WhatsApp message."""
-    lines = []
-    lines.append("📋 *תעודות משלוח שלא חויבו — אריאל*")
-    lines.append(f"תאריך: {datetime.utcnow().strftime('%d/%m/%Y %H:%M')}")
-    lines.append(f"תעודות: {report['document_count']}")
-    lines.append("")
-
-    for d in report["documents"]:
-        lines.append(f"• ת.משלוח {d['docno']} | {d['cdes']} | {d['curdate']} | *{d['totprice']:,.0f}* ₪")
-
-    lines.append("")
-    lines.append(f"*סה״כ: {report['total_amount']:,.0f} ₪*")
-    return "\n".join(lines)
-
-
 def _set_real_env():
     """Set Priority URL to real (ebyael) for Ariel reports."""
     real_url = os.environ.get("PRIORITY_URL_REAL", "").rstrip("/")
@@ -90,20 +56,40 @@ def _set_real_env():
         ar10010_report.PRIORITY_URL = real_url
 
 
-def _run_debt_report():
-    """Run AR1000 and return formatted text."""
+def _run_debt_report_pdf(phone):
+    """Run AR1000, generate PDF, send via WhatsApp."""
     _set_real_env()
     import ar1000_report
+    import pdf_generator
+    import whatsapp_bot_ariel
+
     report = ar1000_report.generate_report()
-    return _format_debt_report(report)
+    pdf_bytes = pdf_generator.generate_debt_report_pdf(report)
+
+    now = datetime.utcnow().strftime("%Y%m%d_%H%M")
+    filename = f"debt_report_{now}.pdf"
+    caption = f"דוח חייבים — {report['filtered_customer_count']} לקוחות, סה״כ {report['total_balance']:,.0f} ₪"
+
+    whatsapp_bot_ariel.send_document(phone, pdf_bytes, filename, caption)
+    logger.info(f"Debt report PDF sent to {phone}: {filename}")
 
 
-def _run_uncharged_report():
-    """Run AR10010 and return formatted text."""
+def _run_uncharged_report_pdf(phone):
+    """Run AR10010, generate PDF, send via WhatsApp."""
     _set_real_env()
     import ar10010_report
+    import pdf_generator
+    import whatsapp_bot_ariel
+
     report = ar10010_report.generate_report()
-    return _format_uncharged_report(report)
+    pdf_bytes = pdf_generator.generate_uncharged_report_pdf(report)
+
+    now = datetime.utcnow().strftime("%Y%m%d_%H%M")
+    filename = f"uncharged_delivery_{now}.pdf"
+    caption = f"תעודות משלוח שלא חויבו — {report['document_count']} תעודות, סה״כ {report['total_amount']:,.0f} ₪"
+
+    whatsapp_bot_ariel.send_document(phone, pdf_bytes, filename, caption)
+    logger.info(f"Uncharged delivery PDF sent to {phone}: {filename}")
 
 
 def process_message(phone, name, text, msg_type="text", message_id="",
@@ -112,6 +98,9 @@ def process_message(phone, name, text, msg_type="text", message_id="",
 
     Only the owner (OWNER_PHONE) can issue commands.
     Others get a generic acknowledgment.
+
+    Returns:
+        str: Text reply, or None if a PDF was sent instead.
     """
     save_message(phone, name, text, msg_type, message_id)
 
@@ -139,14 +128,16 @@ def process_message(phone, name, text, msg_type="text", message_id="",
 
     if command == "debt_report":
         try:
-            return _run_debt_report()
+            _run_debt_report_pdf(phone)
+            return None  # PDF already sent
         except Exception as e:
             logger.error(f"AR1000 report error: {e}")
             return f"שגיאה בהפקת דוח חייבים: {e}"
 
     elif command == "uncharged_delivery":
         try:
-            return _run_uncharged_report()
+            _run_uncharged_report_pdf(phone)
+            return None  # PDF already sent
         except Exception as e:
             logger.error(f"AR10010 report error: {e}")
             return f"שגיאה בהפקת דוח תעודות: {e}"

@@ -106,6 +106,13 @@ allm1000_module = importlib.util.module_from_spec(spec_allm1000)
 sys.modules["allm1000_command_parser"] = allm1000_module
 spec_allm1000.loader.exec_module(allm1000_module)
 
+# Load PDF generator for Ariel reports
+pdf_gen_path = PROJECT_ROOT / "agents" / "LLM" / "ariel" / "ALLM1000-command-parser" / "pdf_generator.py"
+spec_pdf_gen = importlib.util.spec_from_file_location("pdf_generator", pdf_gen_path)
+pdf_gen_module = importlib.util.module_from_spec(spec_pdf_gen)
+sys.modules["pdf_generator"] = pdf_gen_module
+spec_pdf_gen.loader.exec_module(pdf_gen_module)
+
 # Load A1000 bot (Ariel WhatsApp smart bot)
 a1000_path = PROJECT_ROOT / "agents" / "smart-agents-and-bots" / "ariel" / "A1000-ariel-whatsapp-bot" / "A1000_bot.py"
 spec_a1000 = importlib.util.spec_from_file_location("a1000_bot", a1000_path)

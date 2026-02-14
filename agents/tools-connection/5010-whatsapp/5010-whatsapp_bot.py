@@ -26,6 +26,57 @@ WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN_ARIEL", "")
 WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN_ARIEL", "")
 
 API_URL = f"https://graph.facebook.com/v21.0/{WHATSAPP_PHONE_NUMBER_ID}/messages"
+MEDIA_URL = f"https://graph.facebook.com/v21.0/{WHATSAPP_PHONE_NUMBER_ID}/media"
+
+
+def upload_media(file_bytes, mime_type="application/pdf", filename="document.pdf"):
+    """Upload media to WhatsApp Cloud API.
+
+    Returns:
+        str: media_id for use in send_document
+    """
+    headers = {"Authorization": f"Bearer {WHATSAPP_ACCESS_TOKEN}"}
+    resp = requests.post(
+        MEDIA_URL,
+        headers=headers,
+        files={"file": (filename, file_bytes, mime_type)},
+        data={"messaging_product": "whatsapp"},
+    )
+    resp.raise_for_status()
+    return resp.json().get("id")
+
+
+def send_document(phone, file_bytes, filename="document.pdf", caption=""):
+    """Upload a document and send it via WhatsApp.
+
+    Args:
+        phone: Recipient phone number
+        file_bytes: Document content as bytes
+        filename: Display filename
+        caption: Optional caption text
+    """
+    media_id = upload_media(file_bytes, "application/pdf", filename)
+
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_ACCESS_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": phone,
+        "type": "document",
+        "document": {
+            "id": media_id,
+            "filename": filename,
+        },
+    }
+    if caption:
+        payload["document"]["caption"] = caption
+
+    resp = requests.post(API_URL, json=payload, headers=headers)
+    resp.raise_for_status()
+    return resp.json()
 
 
 def send_message(phone, text):
