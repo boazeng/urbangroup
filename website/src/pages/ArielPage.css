@@ -281,6 +281,23 @@
   color: var(--color-primary);
 }
 
+/* Expandable rows (invoices) */
+.ariel-expandable-row {
+  font-weight: 600;
+  background: var(--color-bg);
+}
+
+.ariel-expandable-row:hover {
+  background: #e8ecf2 !important;
+}
+
+.ariel-invoice-row td {
+  font-size: calc(var(--font-size-sm) * 0.92);
+  color: var(--color-text-light);
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+
 /* Print button */
 .ariel-print-btn {
   padding: 8px 20px;

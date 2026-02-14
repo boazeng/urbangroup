@@ -24,6 +24,13 @@ export default function ArielPage() {
               <p className="ariel-section-desc">תעודות משלוח פתוחות שטרם חויבו — סניף 102</p>
               <span className="ariel-section-action">צפייה &larr;</span>
             </Link>
+
+            <Link to="/ariel/invoices" className="ariel-section-card">
+              <span className="ariel-section-icon">🧾</span>
+              <h3 className="ariel-section-title">חשבוניות מרכזות</h3>
+              <p className="ariel-section-desc">חשבוניות מרכזות שיצאו בחודש האחרון — מחולק לפי לקוחות</p>
+              <span className="ariel-section-action">צפייה &larr;</span>
+            </Link>
           </div>
         </section>
       </div>
