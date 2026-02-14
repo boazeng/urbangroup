@@ -459,8 +459,9 @@ def push_service_call_to_priority(item_id):
 def get_aging_report():
     """Generate aging report for consolidated invoices."""
     set_priority_env()
+    branch = request.args.get("branch") or None
     try:
-        report = aging_report.fetch_aging_report()
+        report = aging_report.fetch_aging_report(branch=branch)
         return jsonify({"ok": True, **report})
     except Exception as e:
         logger.error(f"Error generating aging report: {e}")

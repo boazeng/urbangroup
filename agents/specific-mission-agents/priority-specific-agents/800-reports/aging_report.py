@@ -37,8 +37,11 @@ AGE_BUCKETS = [
 ]
 
 
-def fetch_aging_report():
+def fetch_aging_report(branch=None):
     """Fetch consolidated invoices from Priority and compute aging buckets.
+
+    Args:
+        branch: optional branch code to filter by (e.g. "108", "026")
 
     Returns:
         dict with:
@@ -53,8 +56,11 @@ def fetch_aging_report():
     auth = HTTPBasicAuth(PRIORITY_USERNAME, PRIORITY_PASSWORD)
 
     # Fetch all finalized consolidated invoices
-    select = "CUSTNAME,CDES,IVNUM,IVDATE,TOTPRICE,CASHPAYMENT,DEBIT"
-    url = f"{PRIORITY_URL}/CINVOICES?$filter=FINAL eq 'Y'&$select={select}"
+    select = "CUSTNAME,CDES,IVNUM,IVDATE,TOTPRICE,CASHPAYMENT,DEBIT,BRANCHNAME"
+    odata_filter = "FINAL eq 'Y'"
+    if branch:
+        odata_filter += f" and BRANCHNAME eq '{branch}'"
+    url = f"{PRIORITY_URL}/CINVOICES?$filter={odata_filter}&$select={select}"
 
     all_invoices = []
     while url:

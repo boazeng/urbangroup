@@ -13,16 +13,28 @@ const BUCKET_LABELS = {
   '120plus': '120+ יום',
 }
 
+const BRANCH_OPTIONS = [
+  { value: '', label: 'כל הסניפים' },
+  { value: '108', label: 'אנרגיה (108)' },
+  { value: '026', label: 'חניה (026)' },
+  { value: '001', label: 'כללי (001)' },
+]
+
 export default function AgingReportPage() {
   const { env } = useEnv()
   const [report, setReport] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [branch, setBranch] = useState('')
 
   useEffect(() => {
+    setLoading(true)
+    setError(null)
+    setReport(null)
     async function fetchReport() {
       try {
-        const res = await fetch(`${API_BASE}/api/reports/aging?env=${env}`)
+        const branchParam = branch ? `&branch=${branch}` : ''
+        const res = await fetch(`${API_BASE}/api/reports/aging?env=${env}${branchParam}`)
         const data = await res.json()
         if (data.ok) {
           setReport(data)
@@ -35,7 +47,7 @@ export default function AgingReportPage() {
       setLoading(false)
     }
     fetchReport()
-  }, [env])
+  }, [env, branch])
 
   function formatCurrency(num) {
     if (!num) return '-'
@@ -48,6 +60,21 @@ export default function AgingReportPage() {
         <Link to="/ariel" className="ariel-back">&rarr; חזרה לאריאל</Link>
 
         <h1 className="ariel-title">דוח גיול חובות — חשבוניות מרכזות</h1>
+
+        <div className="ariel-filters">
+          <label className="ariel-filter-label">סניף:</label>
+          <div className="ariel-filter-btns">
+            {BRANCH_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                className={`ariel-filter-btn ${branch === opt.value ? 'active' : ''}`}
+                onClick={() => setBranch(opt.value)}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {error && <div className="ariel-error">{error}</div>}
 
