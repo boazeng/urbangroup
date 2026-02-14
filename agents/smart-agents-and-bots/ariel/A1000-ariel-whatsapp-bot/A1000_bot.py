@@ -1,10 +1,14 @@
 """
 A1000 - Ariel WhatsApp Bot
-Placeholder smart bot for the Ariel branch.
-Logs incoming messages to DynamoDB and replies with a confirmation.
-Custom logic to be added later.
+Smart bot for the Ariel branch.
+Accepts commands from the owner (Boaz) and runs reports.
+
+Supported commands:
+- דוח חייבים  → AR1000 debt customer report
+- תעודות שלא חויבו  → AR10010 uncharged delivery notes
 """
 
+import sys
 import os
 import uuid
 import logging
@@ -19,6 +23,8 @@ _dynamodb = boto3.resource("dynamodb", region_name=os.environ.get("AWS_REGION", 
 
 ARIEL_MESSAGES_TABLE_NAME = os.environ.get("ARIEL_MESSAGES_TABLE", "urbangroup-ariel-messages-prod")
 _ariel_messages_table = _dynamodb.Table(ARIEL_MESSAGES_TABLE_NAME)
+
+OWNER_PHONE = "972542777757"
 
 
 def save_message(phone, name, text, msg_type="text", message_id=""):
@@ -42,24 +48,104 @@ def save_message(phone, name, text, msg_type="text", message_id=""):
     return item_id
 
 
+def _format_debt_report(report):
+    """Format AR1000 debt report as WhatsApp message."""
+    lines = []
+    lines.append("📊 *דוח חייבים — אריאל*")
+    lines.append(f"תאריך: {datetime.utcnow().strftime('%d/%m/%Y %H:%M')}")
+    lines.append(f"לקוחות עם יתרה: {report['filtered_customer_count']}")
+    lines.append("")
+
+    for c in report["customers"]:
+        lines.append(f"• {c['cdes']} ({c['custname']}): *{c['balance']:,.0f}* ₪")
+
+    lines.append("")
+    lines.append(f"*סה״כ: {report['total_balance']:,.0f} ₪*")
+    return "\n".join(lines)
+
+
+def _format_uncharged_report(report):
+    """Format AR10010 uncharged delivery report as WhatsApp message."""
+    lines = []
+    lines.append("📋 *תעודות משלוח שלא חויבו — אריאל*")
+    lines.append(f"תאריך: {datetime.utcnow().strftime('%d/%m/%Y %H:%M')}")
+    lines.append(f"תעודות: {report['document_count']}")
+    lines.append("")
+
+    for d in report["documents"]:
+        lines.append(f"• ת.משלוח {d['docno']} | {d['cdes']} | {d['curdate']} | *{d['totprice']:,.0f}* ₪")
+
+    lines.append("")
+    lines.append(f"*סה״כ: {report['total_amount']:,.0f} ₪*")
+    return "\n".join(lines)
+
+
+def _run_debt_report():
+    """Run AR1000 and return formatted text."""
+    import ar1000_report
+    report = ar1000_report.generate_report()
+    return _format_debt_report(report)
+
+
+def _run_uncharged_report():
+    """Run AR10010 and return formatted text."""
+    import ar10010_report
+    report = ar10010_report.generate_report()
+    return _format_uncharged_report(report)
+
+
+def _match_command(text):
+    """Match user text to a known command. Returns command key or None."""
+    t = text.strip()
+    debt_keywords = ["דוח חייבים", "חייבים", "חובות", "יתרות"]
+    uncharged_keywords = ["תעודות שלא חויבו", "תעודות משלוח", "תעודות", "לא חויבו"]
+
+    for kw in debt_keywords:
+        if kw in t:
+            return "debt"
+    for kw in uncharged_keywords:
+        if kw in t:
+            return "uncharged"
+    return None
+
+
 def process_message(phone, name, text, msg_type="text", message_id="",
                     media_id="", caption=""):
     """Process an incoming WhatsApp message for Ariel.
 
-    Args:
-        phone: Sender phone number
-        name: Sender name
-        text: Message text
-        msg_type: Message type (text, image, audio, etc.)
-        message_id: WhatsApp message ID
-        media_id: Media ID (for images/documents/audio)
-        caption: Image caption (if applicable)
-
-    Returns:
-        str: Response text to send back, or None for no reply
+    Only the owner (OWNER_PHONE) can issue commands.
+    Others get a generic acknowledgment.
     """
-    # Save to DynamoDB
     save_message(phone, name, text, msg_type, message_id)
 
-    # Placeholder response — replace with custom Ariel logic later
-    return "הודעתך התקבלה — צוות אריאל"
+    # Only owner can issue commands
+    if phone != OWNER_PHONE:
+        return "הודעתך התקבלה — צוות אריאל"
+
+    # Only text messages can be commands
+    if msg_type != "text":
+        return "הודעתך התקבלה. שלח הודעת טקסט עם פקודה."
+
+    command = _match_command(text)
+
+    if command == "debt":
+        try:
+            return _run_debt_report()
+        except Exception as e:
+            logger.error(f"AR1000 report error: {e}")
+            return f"שגיאה בהפקת דוח חייבים: {e}"
+
+    elif command == "uncharged":
+        try:
+            return _run_uncharged_report()
+        except Exception as e:
+            logger.error(f"AR10010 report error: {e}")
+            return f"שגיאה בהפקת דוח תעודות: {e}"
+
+    else:
+        return (
+            "לא הבנתי את הבקשה.\n\n"
+            "הפקודות הזמינות:\n"
+            "• *דוח חייבים* — דוח יתרות לקוחות\n"
+            "• *תעודות שלא חויבו* — תעודות משלוח פתוחות"
+        )
