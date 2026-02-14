@@ -162,6 +162,32 @@
   white-space: nowrap;
 }
 
+.sc-cell-location {
+  max-width: 200px;
+  word-break: break-word;
+}
+
+/* System down badges */
+.sc-down-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.sc-down-yes {
+  background: #FFEBEE;
+  color: #B71C1C;
+  font-weight: 800;
+}
+
+.sc-down-no {
+  background: #E8F5E9;
+  color: #2E7D32;
+}
+
 /* Branch badges */
 .sc-branch-badge {
   display: inline-block;

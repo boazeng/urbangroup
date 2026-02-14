@@ -194,6 +194,8 @@ export default function ServiceCallsPage() {
                   <th>מס׳ לקוח</th>
                   <th>סניף</th>
                   <th>סוג תקלה</th>
+                  <th>כתובת</th>
+                  <th>מושבת</th>
                   <th>דחיפות</th>
                   <th>תיאור</th>
                   <th>סטטוס</th>
@@ -214,6 +216,14 @@ export default function ServiceCallsPage() {
                       </span>
                     </td>
                     <td className="sc-cell-type">{call.issue_type || '-'}</td>
+                    <td className="sc-cell-location">{call.location || '-'}</td>
+                    <td>
+                      {call.is_system_down ? (
+                        <span className="sc-down-badge sc-down-yes">כן</span>
+                      ) : (
+                        <span className="sc-down-badge sc-down-no">לא</span>
+                      )}
+                    </td>
                     <td>
                       <span className={`sc-urg-badge ${URGENCY_CLASS[call.urgency] || ''}`}>
                         {URGENCY_LABELS[call.urgency] || call.urgency}
@@ -231,12 +241,6 @@ export default function ServiceCallsPage() {
                       </div>
                       {expandedId === call.id && (
                         <div className="sc-details">
-                          {call.location && (
-                            <div className="sc-detail-row">
-                              <span className="sc-detail-key">מיקום:</span>
-                              <span>{call.location}</span>
-                            </div>
-                          )}
                           {call.summary && (
                             <div className="sc-detail-row">
                               <span className="sc-detail-key">תמצית:</span>
