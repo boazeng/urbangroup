@@ -95,8 +95,15 @@
 .ariel-filters {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 12px 24px;
   margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.ariel-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .ariel-filter-label {
