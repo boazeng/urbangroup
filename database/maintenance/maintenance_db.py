@@ -126,7 +126,8 @@ def save_service_call(phone, name, issue_type, description, urgency,
                       custname="", cdes="", sernum="", branchname="",
                       callstatuscode="", technicianlogin="",
                       contact_name="", fault_text="", internal_notes="",
-                      breakstart="", partname=""):
+                      breakstart="", partname="",
+                      is_system_down=False):
     """Save a new service call identified by the LLM.
 
     Args:
@@ -184,6 +185,7 @@ def save_service_call(phone, name, issue_type, description, urgency,
         "internal_notes": internal_notes or "",
         "breakstart": breakstart or "",
         "partname": partname or "",
+        "is_system_down": bool(is_system_down),
         "priority_pushed": False,
     }
 

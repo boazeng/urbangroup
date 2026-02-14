@@ -222,6 +222,7 @@ def process_message(phone, name, text, msg_type="text", message_id="", media_id=
                         contact_name=contact_name,
                         fault_text=fault_text,
                         breakstart=breakstart,
+                        is_system_down=bool(result.get("is_system_down")),
                     )
                     logger.info(f"[M1000] Service call saved: {result.get('issue_type')} ({result.get('urgency')}) branch={branchname}")
                 except Exception as e:
