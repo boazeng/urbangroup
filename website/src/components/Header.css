@@ -71,6 +71,37 @@
   font-size: var(--font-size-sm);
 }
 
+/* Environment toggle */
+.header-env-toggle {
+  display: flex;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
+}
+
+.header-env-btn {
+  padding: 4px 14px;
+  border: none;
+  border-radius: calc(var(--radius-sm) - 2px);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: rgba(255, 255, 255, 0.6);
+  background: transparent;
+}
+
+.header-env-btn:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.header-env-btn.active {
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--color-primary);
+}
+
 @media (max-width: 768px) {
   .header-inner {
     gap: 16px;

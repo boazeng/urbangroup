@@ -1,0 +1,12 @@
+{
+  "name": "810-aging-report",
+  "version": "1.0.0",
+  "main": "810-aging-report.js",
+  "scripts": {
+    "start": "node 810-aging-report.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.4",
+    "priority-web-sdk": "^3.0.37"
+  }
+}

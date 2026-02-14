@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useEnv } from '../contexts/EnvContext'
 import './ServiceCallsPage.css'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:5000' : ''
@@ -41,6 +42,7 @@ const BRANCH_LABELS = {
 }
 
 export default function ServiceCallsPage() {
+  const { env } = useEnv()
   const [calls, setCalls] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -53,7 +55,7 @@ export default function ServiceCallsPage() {
     setLoading(true)
     setError(null)
     try {
-      const params = filterStatus ? `?status=${filterStatus}` : ''
+      const params = filterStatus ? `?status=${filterStatus}&env=${env}` : `?env=${env}`
       const res = await fetch(`${API_BASE}/api/service-calls${params}`)
       const data = await res.json()
       if (data.ok) {
@@ -69,11 +71,11 @@ export default function ServiceCallsPage() {
 
   useEffect(() => {
     fetchCalls()
-  }, [filterStatus])
+  }, [filterStatus, env])
 
   async function updateStatus(id, newStatus) {
     try {
-      const res = await fetch(`${API_BASE}/api/service-calls/${id}/status`, {
+      const res = await fetch(`${API_BASE}/api/service-calls/${id}/status?env=${env}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
@@ -93,7 +95,7 @@ export default function ServiceCallsPage() {
     setPushingId(id)
     setPushResult(null)
     try {
-      const res = await fetch(`${API_BASE}/api/service-calls/${id}/push`, {
+      const res = await fetch(`${API_BASE}/api/service-calls/${id}/push?env=${env}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       })

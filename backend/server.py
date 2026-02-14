@@ -65,7 +65,7 @@ sys.modules["service_call_writer"] = service_call_writer
 spec_300.loader.exec_module(service_call_writer)
 
 # Load aging report module
-aging_report_path = PROJECT_ROOT / "agents" / "specific-mission-agents" / "priority-specific-agents" / "reports" / "aging_report.py"
+aging_report_path = PROJECT_ROOT / "agents" / "specific-mission-agents" / "priority-specific-agents" / "800-reports" / "aging_report.py"
 spec_aging = importlib.util.spec_from_file_location("aging_report", aging_report_path)
 aging_report = importlib.util.module_from_spec(spec_aging)
 sys.modules["aging_report"] = aging_report
@@ -99,10 +99,30 @@ if sys.stdout.closed:
 app = Flask(__name__)
 CORS(app)
 
+# ── Environment switching (demo / real) ──────────────────────
+PRIORITY_URL_DEMO = os.getenv("PRIORITY_URL_DEMO", "").rstrip("/")
+PRIORITY_URL_REAL = os.getenv("PRIORITY_URL_REAL", "").rstrip("/")
+
+
+def get_priority_url():
+    """Return the Priority URL matching the request's ?env= param."""
+    env = request.args.get("env", "demo")
+    return PRIORITY_URL_REAL if env == "real" else PRIORITY_URL_DEMO
+
+
+def set_priority_env():
+    """Set PRIORITY_URL on all agent modules according to the request env."""
+    url = get_priority_url()
+    customer_reader.PRIORITY_URL = url
+    invoice_writer.PRIORITY_URL = url
+    service_call_writer.PRIORITY_URL = url
+    aging_report.PRIORITY_URL = url
+
 
 @app.route("/api/customers", methods=["GET"])
 def get_customers():
     """Fetch customer list from Priority ERP."""
+    set_priority_env()
     try:
         customers = customer_reader.fetch_customers(top=9999)
         return jsonify({"ok": True, "customers": customers})
@@ -192,6 +212,7 @@ def parse_excel_invoices(filepath):
 @app.route("/api/invoices/run", methods=["POST"])
 def run_invoices():
     """Process uploaded Excel file and create invoices in Priority."""
+    set_priority_env()
     if "file" not in request.files:
         return jsonify({"ok": False, "error": "No file uploaded"}), 400
 
@@ -407,6 +428,7 @@ def update_service_call_status(item_id):
 @app.route("/api/service-calls/<item_id>/push", methods=["POST"])
 def push_service_call_to_priority(item_id):
     """Push a service call to Priority ERP via Agent 300."""
+    set_priority_env()
     try:
         call = maintenance_db.get_service_call(item_id)
         if not call:
@@ -434,6 +456,7 @@ def push_service_call_to_priority(item_id):
 @app.route("/api/reports/aging", methods=["GET"])
 def get_aging_report():
     """Generate aging report for consolidated invoices."""
+    set_priority_env()
     try:
         report = aging_report.fetch_aging_report()
         return jsonify({"ok": True, **report})
@@ -451,7 +474,8 @@ def health():
 
 if __name__ == "__main__":
     print("Urban Group Backend API")
-    print(f"Priority URL: {customer_reader.PRIORITY_URL}")
+    print(f"Priority Demo: {PRIORITY_URL_DEMO}")
+    print(f"Priority Real: {PRIORITY_URL_REAL}")
     print("Starting on http://localhost:5000")
     app.run(
         host="0.0.0.0",

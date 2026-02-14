@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useEnv } from '../contexts/EnvContext'
 import logo from '../assets/logo.svg'
 import './Header.css'
 
@@ -13,6 +14,8 @@ const navItems = [
 
 export default function Header() {
   const location = useLocation()
+  const { env, setEnv } = useEnv()
+  const isDemo = env === 'demo'
 
   return (
     <header className="header">
@@ -32,6 +35,20 @@ export default function Header() {
           ))}
         </nav>
         <div className="header-user">
+          <div className="header-env-toggle">
+            <button
+              className={`header-env-btn ${isDemo ? 'active' : ''}`}
+              onClick={() => setEnv('demo')}
+            >
+              דמו
+            </button>
+            <button
+              className={`header-env-btn ${!isDemo ? 'active' : ''}`}
+              onClick={() => setEnv('real')}
+            >
+              אמיתי
+            </button>
+          </div>
           <div className="header-user-avatar">מנ</div>
           <span className="header-user-name">מנהל מערכת</span>
         </div>

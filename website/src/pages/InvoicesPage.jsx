@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useEnv } from '../contexts/EnvContext'
 import * as XLSX from 'xlsx'
 import './InvoicesPage.css'
 
@@ -177,6 +178,7 @@ function validateFile(rows) {
 }
 
 export default function InvoicesPage() {
+  const { env } = useEnv()
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState(null) // { valid, errors, headers, dataRows, dataCount }
   const [parsing, setParsing] = useState(false)
@@ -191,7 +193,7 @@ export default function InvoicesPage() {
   // Fetch customer list from Priority on mount
   useEffect(() => {
     setCustomerLoading(true)
-    fetch('/api/customers')
+    fetch(`/api/customers?env=${env}`)
       .then((res) => res.json())
       .then((data) => {
         if (data.ok) {
@@ -206,7 +208,7 @@ export default function InvoicesPage() {
         setCustomerError('לא ניתן להתחבר לשרת — הפעל את backend/server.py')
       })
       .finally(() => setCustomerLoading(false))
-  }, [])
+  }, [env])
 
   const processFile = async (f) => {
     setFile(f)
@@ -263,7 +265,7 @@ export default function InvoicesPage() {
       formData.append('file', file)
       formData.append('finalize', finalize ? '1' : '0')
 
-      const res = await fetch('/api/invoices/run', {
+      const res = await fetch(`/api/invoices/run?env=${env}`, {
         method: 'POST',
         body: formData,
       })

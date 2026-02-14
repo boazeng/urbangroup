@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useEnv } from '../contexts/EnvContext'
 import './MessagesPage.css'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:5000' : ''
@@ -19,6 +20,7 @@ const STATUS_CLASS = {
 }
 
 export default function MessagesPage() {
+  const { env } = useEnv()
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -29,7 +31,7 @@ export default function MessagesPage() {
     setLoading(true)
     setError(null)
     try {
-      const params = filterStatus ? `?status=${filterStatus}` : ''
+      const params = filterStatus ? `?status=${filterStatus}&env=${env}` : `?env=${env}`
       const res = await fetch(`${API_BASE}/api/messages${params}`)
       const data = await res.json()
       if (data.ok) {
@@ -45,11 +47,11 @@ export default function MessagesPage() {
 
   useEffect(() => {
     fetchMessages()
-  }, [filterStatus])
+  }, [filterStatus, env])
 
   async function updateStatus(id, newStatus) {
     try {
-      const res = await fetch(`${API_BASE}/api/messages/${id}/status`, {
+      const res = await fetch(`${API_BASE}/api/messages/${id}/status?env=${env}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),

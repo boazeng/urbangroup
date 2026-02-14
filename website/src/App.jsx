@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
+import { EnvProvider } from './contexts/EnvContext'
 import Header from './components/Header'
 import Footer from './components/Footer'
 import HomePage from './pages/HomePage'
@@ -9,10 +10,11 @@ import MaintenancePage from './pages/MaintenancePage'
 import MessagesPage from './pages/MessagesPage'
 import ServiceCallsPage from './pages/ServiceCallsPage'
 import ArielPage from './pages/ArielPage'
+import AgingReportPage from './pages/AgingReportPage'
 
 export default function App() {
   return (
-    <>
+    <EnvProvider>
       <Header />
       <main>
         <Routes>
@@ -21,6 +23,7 @@ export default function App() {
           <Route path="/maintenance/messages" element={<MessagesPage />} />
           <Route path="/maintenance/service-calls" element={<ServiceCallsPage />} />
           <Route path="/ariel" element={<ArielPage />} />
+          <Route path="/ariel/aging-report" element={<AgingReportPage />} />
           <Route path="/app/urban-energy" element={<UrbanEnergyPage />} />
           <Route path="/app/urban-energy/invoices" element={<InvoicesPage />} />
           <Route path="/app/:appId" element={<AppPage />} />
@@ -28,6 +31,6 @@ export default function App() {
         </Routes>
       </main>
       <Footer />
-    </>
+    </EnvProvider>
   )
 }
