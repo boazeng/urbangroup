@@ -114,6 +114,9 @@ export default function ArielUnchargedDeliveryPage() {
               <span className="ariel-report-meta">
                 סניף 102 | {filtered.documents.length} תעודות ({daysBack} יום אחרונים{statusFilter !== 'all' ? ` | ${statusFilter}` : ''}) | סה״כ {formatCurrency(filtered.total)} ₪
               </span>
+              <button className="ariel-print-btn" onClick={() => window.print()}>
+                הדפסה
+              </button>
             </div>
 
             <div className="ariel-card">

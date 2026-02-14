@@ -59,6 +59,9 @@ export default function ArielDebtReportPage() {
               <span className="ariel-report-meta">
                 חתך 102-1 | {report.ariel_customer_count} חשבונות בחתך | {report.filtered_customer_count} לקוחות עם יתרה
               </span>
+              <button className="ariel-print-btn" onClick={() => window.print()}>
+                הדפסה
+              </button>
             </div>
 
             <div className="ariel-card">

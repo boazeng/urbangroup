@@ -4,7 +4,6 @@ Generates Hebrew RTL PDF documents using fpdf2 + python-bidi.
 """
 
 import os
-import io
 import logging
 from datetime import datetime
 from pathlib import Path
@@ -23,6 +22,17 @@ else:
 FONT_REGULAR = str(FONT_DIR / "DejaVuSans.ttf")
 FONT_BOLD = str(FONT_DIR / "DejaVuSans-Bold.ttf")
 
+# Colors
+COLOR_PRIMARY = (25, 55, 109)       # Dark blue
+COLOR_HEADER_BG = (37, 99, 186)     # Blue header
+COLOR_HEADER_TEXT = (255, 255, 255)  # White
+COLOR_ROW_ALT = (241, 245, 251)     # Light blue-gray
+COLOR_ROW_WHITE = (255, 255, 255)
+COLOR_BORDER = (200, 210, 225)
+COLOR_TOTAL_BG = (230, 238, 250)
+COLOR_TEXT = (30, 30, 30)
+COLOR_TEXT_LIGHT = (100, 110, 130)
+
 
 def _rtl(text):
     """Apply BiDi algorithm for correct Hebrew display in PDF."""
@@ -36,6 +46,26 @@ def _create_pdf():
     pdf.add_font("DejaVu", "B", FONT_BOLD)
     pdf.set_auto_page_break(auto=True, margin=15)
     return pdf
+
+
+def _draw_header_bar(pdf, title, page_width):
+    """Draw a colored title bar at the top of the page."""
+    pdf.set_fill_color(*COLOR_PRIMARY)
+    pdf.rect(0, 0, page_width, 28, "F")
+    pdf.set_font("DejaVu", "B", 16)
+    pdf.set_text_color(*COLOR_HEADER_TEXT)
+    pdf.set_y(6)
+    pdf.cell(0, 16, _rtl(title), align="R")
+    pdf.set_y(30)
+    pdf.set_text_color(*COLOR_TEXT)
+
+
+def _draw_meta_line(pdf, label, value):
+    """Draw a metadata line (label: value)."""
+    pdf.set_font("DejaVu", "B", 9)
+    pdf.set_text_color(*COLOR_TEXT_LIGHT)
+    pdf.cell(0, 6, _rtl(f"{label}: {value}"), new_x="LMARGIN", new_y="NEXT", align="R")
+    pdf.set_text_color(*COLOR_TEXT)
 
 
 def _format_filters_line(filters):
@@ -52,122 +82,153 @@ def _format_filters_line(filters):
     return " | ".join(parts) if parts else ""
 
 
-def generate_debt_report_pdf(report):
-    """Generate a PDF for the AR1000 debt customer report.
+def _draw_table_header(pdf, columns):
+    """Draw table header row with colored background."""
+    pdf.set_fill_color(*COLOR_HEADER_BG)
+    pdf.set_text_color(*COLOR_HEADER_TEXT)
+    pdf.set_font("DejaVu", "B", 9)
+    row_h = 9
+    for col in columns:
+        pdf.cell(col["w"], row_h, _rtl(col["label"]), border=0, align="R", fill=True)
+    pdf.ln()
+    pdf.set_text_color(*COLOR_TEXT)
 
-    Args:
-        report: dict from ar1000_report.generate_report()
 
-    Returns:
-        bytes: PDF file content
-    """
-    pdf = _create_pdf()
-    pdf.add_page()
-
-    # Title
-    pdf.set_font("DejaVu", "B", 18)
-    pdf.cell(0, 12, _rtl("דוח חייבים — אריאל"), new_x="LMARGIN", new_y="NEXT", align="R")
-
-    # Date + summary
-    pdf.set_font("DejaVu", "", 10)
-    now = datetime.utcnow().strftime("%d/%m/%Y %H:%M")
-    pdf.cell(0, 7, _rtl(f"תאריך: {now}"), new_x="LMARGIN", new_y="NEXT", align="R")
-    pdf.cell(0, 7, _rtl(f"לקוחות עם יתרה: {report['filtered_customer_count']}"), new_x="LMARGIN", new_y="NEXT", align="R")
-
-    # Show active filters
-    filters_line = _format_filters_line(report.get("filters_applied", {}))
-    if filters_line:
-        pdf.set_font("DejaVu", "B", 10)
-        pdf.cell(0, 7, _rtl(f"סינון: {filters_line}"), new_x="LMARGIN", new_y="NEXT", align="R")
-
-    pdf.ln(5)
-
-    # Table header
-    col_widths = [50, 90, 50]  # Balance, Name, Customer#
-    pdf.set_font("DejaVu", "B", 11)
-    pdf.cell(col_widths[0], 8, _rtl("יתרה (₪)"), border="B", align="R")
-    pdf.cell(col_widths[1], 8, _rtl("שם לקוח"), border="B", align="R")
-    pdf.cell(col_widths[2], 8, _rtl("מס׳ לקוח"), border="B", align="R")
+def _draw_table_row(pdf, columns, values, row_idx):
+    """Draw a single table row with alternating colors."""
+    bg = COLOR_ROW_ALT if row_idx % 2 == 0 else COLOR_ROW_WHITE
+    pdf.set_fill_color(*bg)
+    pdf.set_font("DejaVu", "", 9)
+    row_h = 7
+    for i, col in enumerate(columns):
+        pdf.cell(col["w"], row_h, _rtl(values[i]), border=0, align="R", fill=True)
     pdf.ln()
 
-    # Table rows
-    pdf.set_font("DejaVu", "", 10)
-    for c in report["customers"]:
-        pdf.cell(col_widths[0], 7, _rtl(f'{c["balance"]:,.0f}'), align="R")
-        pdf.cell(col_widths[1], 7, _rtl(c["cdes"][:40]), align="R")
-        pdf.cell(col_widths[2], 7, _rtl(c["custname"]), align="R")
-        pdf.ln()
+
+def _draw_total_row(pdf, columns, values):
+    """Draw the totals row with emphasis."""
+    # Thin separator line
+    x_start = pdf.get_x()
+    y = pdf.get_y()
+    total_w = sum(c["w"] for c in columns)
+    pdf.set_draw_color(*COLOR_BORDER)
+    pdf.line(x_start, y, x_start + total_w, y)
+    pdf.ln(1)
+
+    pdf.set_fill_color(*COLOR_TOTAL_BG)
+    pdf.set_font("DejaVu", "B", 10)
+    row_h = 9
+    for i, col in enumerate(columns):
+        pdf.cell(col["w"], row_h, _rtl(values[i]), border=0, align="R", fill=True)
+    pdf.ln()
+
+
+def generate_debt_report_pdf(report):
+    """Generate a PDF for the AR1000 debt customer report."""
+    pdf = _create_pdf()
+    pdf.add_page()
+    page_w = pdf.w
+
+    # Title bar
+    _draw_header_bar(pdf, "דוח חייבים — אריאל", page_w)
+
+    # Meta info
+    now = datetime.utcnow().strftime("%d/%m/%Y %H:%M")
+    _draw_meta_line(pdf, "תאריך הפקה", now)
+    _draw_meta_line(pdf, "לקוחות עם יתרה", str(report['filtered_customer_count']))
+
+    # Filters
+    filters_line = _format_filters_line(report.get("filters_applied", {}))
+    if filters_line:
+        pdf.set_font("DejaVu", "B", 9)
+        pdf.set_text_color(*COLOR_PRIMARY)
+        pdf.cell(0, 6, _rtl(f"סינון: {filters_line}"), new_x="LMARGIN", new_y="NEXT", align="R")
+        pdf.set_text_color(*COLOR_TEXT)
+
+    pdf.ln(4)
+
+    # Table
+    columns = [
+        {"label": "יתרה (₪)", "w": 45},
+        {"label": "שם לקוח", "w": 95},
+        {"label": "מס׳ לקוח", "w": 50},
+    ]
+
+    _draw_table_header(pdf, columns)
+
+    for idx, c in enumerate(report["customers"]):
+        values = [
+            f'{c["balance"]:,.0f}',
+            c["cdes"][:40],
+            c["custname"],
+        ]
+        _draw_table_row(pdf, columns, values, idx)
 
     # Total
-    pdf.ln(3)
-    pdf.set_font("DejaVu", "B", 12)
-    pdf.cell(col_widths[0], 9, _rtl(f'{report["total_balance"]:,.0f} ₪'), border="T", align="R")
-    pdf.cell(col_widths[1], 9, _rtl("סה״כ"), border="T", align="R")
-    pdf.cell(col_widths[2], 9, "", border="T")
+    _draw_total_row(pdf, columns, [
+        f'{report["total_balance"]:,.0f} ₪',
+        "סה״כ",
+        "",
+    ])
 
     return pdf.output()
 
 
 def generate_uncharged_report_pdf(report):
-    """Generate a PDF for the AR10010 uncharged delivery notes report.
-
-    Args:
-        report: dict from ar10010_report.generate_report()
-
-    Returns:
-        bytes: PDF file content
-    """
+    """Generate a PDF for the AR10010 uncharged delivery notes report."""
     pdf = _create_pdf()
-    pdf.add_page("L")  # Landscape for more columns
+    pdf.add_page("L")  # Landscape
+    page_w = pdf.w
 
-    # Title
-    pdf.set_font("DejaVu", "B", 18)
-    pdf.cell(0, 12, _rtl("תעודות משלוח שלא חויבו — אריאל"), new_x="LMARGIN", new_y="NEXT", align="R")
+    # Title bar
+    _draw_header_bar(pdf, "תעודות משלוח שלא חויבו — אריאל", page_w)
 
-    # Date + summary
-    pdf.set_font("DejaVu", "", 10)
+    # Meta info
     now = datetime.utcnow().strftime("%d/%m/%Y %H:%M")
-    pdf.cell(0, 7, _rtl(f"תאריך: {now}"), new_x="LMARGIN", new_y="NEXT", align="R")
-    pdf.cell(0, 7, _rtl(f"תעודות: {report['document_count']}"), new_x="LMARGIN", new_y="NEXT", align="R")
+    _draw_meta_line(pdf, "תאריך הפקה", now)
+    _draw_meta_line(pdf, "תעודות", str(report['document_count']))
 
-    # Show active filters
+    # Filters
     filters_line = _format_filters_line(report.get("filters_applied", {}))
     if filters_line:
-        pdf.set_font("DejaVu", "B", 10)
-        pdf.cell(0, 7, _rtl(f"סינון: {filters_line}"), new_x="LMARGIN", new_y="NEXT", align="R")
+        pdf.set_font("DejaVu", "B", 9)
+        pdf.set_text_color(*COLOR_PRIMARY)
+        pdf.cell(0, 6, _rtl(f"סינון: {filters_line}"), new_x="LMARGIN", new_y="NEXT", align="R")
+        pdf.set_text_color(*COLOR_TEXT)
 
-    pdf.ln(5)
+    pdf.ln(4)
 
-    # Table header
-    col_widths = [35, 30, 80, 40, 45, 47]  # Status, Amount, Name, Date, Customer, DocNo
-    pdf.set_font("DejaVu", "B", 10)
-    pdf.cell(col_widths[0], 8, _rtl("סטטוס"), border="B", align="R")
-    pdf.cell(col_widths[1], 8, _rtl("סכום (₪)"), border="B", align="R")
-    pdf.cell(col_widths[2], 8, _rtl("שם לקוח"), border="B", align="R")
-    pdf.cell(col_widths[3], 8, _rtl("תאריך"), border="B", align="R")
-    pdf.cell(col_widths[4], 8, _rtl("מס׳ לקוח"), border="B", align="R")
-    pdf.cell(col_widths[5], 8, _rtl("ת. משלוח"), border="B", align="R")
-    pdf.ln()
+    # Table
+    columns = [
+        {"label": "סטטוס", "w": 32},
+        {"label": "סכום (₪)", "w": 35},
+        {"label": "שם לקוח", "w": 80},
+        {"label": "תאריך", "w": 35},
+        {"label": "מס׳ לקוח", "w": 40},
+        {"label": "ת. משלוח", "w": 45},
+    ]
 
-    # Table rows
-    pdf.set_font("DejaVu", "", 9)
-    for d in report["documents"]:
-        pdf.cell(col_widths[0], 7, _rtl(d["statdes"]), align="R")
-        pdf.cell(col_widths[1], 7, _rtl(f'{d["totprice"]:,.0f}'), align="R")
-        pdf.cell(col_widths[2], 7, _rtl(d["cdes"][:35]), align="R")
-        pdf.cell(col_widths[3], 7, _rtl(d["curdate"]), align="R")
-        pdf.cell(col_widths[4], 7, _rtl(d["custname"]), align="R")
-        pdf.cell(col_widths[5], 7, _rtl(d["docno"]), align="R")
-        pdf.ln()
+    _draw_table_header(pdf, columns)
+
+    for idx, d in enumerate(report["documents"]):
+        values = [
+            d["statdes"],
+            f'{d["totprice"]:,.0f}',
+            d["cdes"][:35],
+            d["curdate"],
+            d["custname"],
+            d["docno"],
+        ]
+        _draw_table_row(pdf, columns, values, idx)
 
     # Total
-    pdf.ln(3)
-    pdf.set_font("DejaVu", "B", 11)
-    pdf.cell(col_widths[0], 9, "", border="T")
-    pdf.cell(col_widths[1], 9, _rtl(f'{report["total_amount"]:,.0f} ₪'), border="T", align="R")
-    pdf.cell(col_widths[2], 9, _rtl("סה״כ"), border="T", align="R")
-    pdf.cell(col_widths[3], 9, "", border="T")
-    pdf.cell(col_widths[4], 9, "", border="T")
-    pdf.cell(col_widths[5], 9, "", border="T")
+    _draw_total_row(pdf, columns, [
+        "",
+        f'{report["total_amount"]:,.0f} ₪',
+        "סה״כ",
+        "",
+        "",
+        "",
+    ])
 
     return pdf.output()
