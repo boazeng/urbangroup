@@ -27,6 +27,18 @@ Parameters:
   WhatsAppVerifyToken:
     Type: String
     NoEcho: true
+  WhatsAppPhoneNumberIdAriel:
+    Type: String
+    NoEcho: true
+    Default: ""
+  WhatsAppAccessTokenAriel:
+    Type: String
+    NoEcho: true
+    Default: ""
+  WhatsAppVerifyTokenAriel:
+    Type: String
+    NoEcho: true
+    Default: ""
   OpenAiApiKey:
     Type: String
     NoEcho: true
@@ -83,6 +95,10 @@ Resources:
           MESSAGES_TABLE: !Ref MessagesTable
           SERVICE_CALLS_TABLE: !Ref ServiceCallsTable
           OPENAI_API_KEY: !Ref OpenAiApiKey
+          WHATSAPP_PHONE_NUMBER_ID_ARIEL: !Ref WhatsAppPhoneNumberIdAriel
+          WHATSAPP_ACCESS_TOKEN_ARIEL: !Ref WhatsAppAccessTokenAriel
+          WHATSAPP_VERIFY_TOKEN_ARIEL: !Ref WhatsAppVerifyTokenAriel
+          ARIEL_MESSAGES_TABLE: !Ref ArielMessagesTable
           OPENAI_MODEL: gpt-4o
           IS_LAMBDA: "true"
       Policies:
@@ -94,6 +110,8 @@ Resources:
             TableName: !Ref MessagesTable
         - DynamoDBCrudPolicy:
             TableName: !Ref ServiceCallsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArielMessagesTable
       Events:
         ApiCatchAll:
           Type: HttpApi
@@ -175,6 +193,32 @@ Resources:
         - IndexName: phone-created_at-index
           KeySchema:
             - AttributeName: phone
+              KeyType: HASH
+            - AttributeName: created_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  # ── DynamoDB Table for Ariel WhatsApp Messages ──────
+  ArielMessagesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub urbangroup-ariel-messages-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+        - AttributeName: created_at
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: status-created_at-index
+          KeySchema:
+            - AttributeName: status
               KeyType: HASH
             - AttributeName: created_at
               KeyType: RANGE

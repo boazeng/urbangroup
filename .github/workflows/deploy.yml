@@ -51,6 +51,8 @@ jobs:
           mkdir -p lambda-backend/agents/flows/ariel
           mkdir -p lambda-backend/agents/smart-agents-and-bots/maintenance/M1000-maintenance-whatsapp-bot
           mkdir -p lambda-backend/agents/tools-connection/5000-whatsapp
+          mkdir -p lambda-backend/agents/tools-connection/5010-whatsapp
+          mkdir -p lambda-backend/agents/smart-agents-and-bots/ariel/A1000-ariel-whatsapp-bot
           mkdir -p lambda-backend/agents/LLM/maintenance/MLLM1000-servicecall-identifier
           mkdir -p lambda-backend/database/maintenance
 
@@ -67,6 +69,9 @@ jobs:
           touch lambda-backend/agents/flows/ariel/__init__.py
           touch lambda-backend/agents/tools-connection/__init__.py
           touch lambda-backend/agents/tools-connection/5000-whatsapp/__init__.py
+          touch lambda-backend/agents/tools-connection/5010-whatsapp/__init__.py
+          touch lambda-backend/agents/smart-agents-and-bots/ariel/__init__.py
+          touch lambda-backend/agents/smart-agents-and-bots/ariel/A1000-ariel-whatsapp-bot/__init__.py
           touch lambda-backend/agents/LLM/__init__.py
           touch lambda-backend/agents/LLM/maintenance/__init__.py
           touch lambda-backend/agents/LLM/maintenance/MLLM1000-servicecall-identifier/__init__.py
@@ -84,6 +89,8 @@ jobs:
           cp agents/LLM/maintenance/MLLM1000-servicecall-identifier/MLLM1000_servicecall_identifier.py lambda-backend/agents/LLM/maintenance/MLLM1000-servicecall-identifier/
           cp database/maintenance/maintenance_db.py lambda-backend/database/maintenance/
           cp agents/tools-connection/5000-whatsapp/5000-whatsapp_bot.py lambda-backend/agents/tools-connection/5000-whatsapp/
+          cp agents/tools-connection/5010-whatsapp/5010-whatsapp_bot.py lambda-backend/agents/tools-connection/5010-whatsapp/
+          cp agents/smart-agents-and-bots/ariel/A1000-ariel-whatsapp-bot/A1000_bot.py lambda-backend/agents/smart-agents-and-bots/ariel/A1000-ariel-whatsapp-bot/
 
       # ── Build Node.js Lambda package ─────────────────────
       - name: Prepare Node.js Lambda
@@ -116,6 +123,9 @@ jobs:
               WhatsAppPhoneNumberId="${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}" \
               WhatsAppAccessToken="${{ secrets.WHATSAPP_ACCESS_TOKEN }}" \
               WhatsAppVerifyToken="${{ secrets.WHATSAPP_VERIFY_TOKEN }}" \
+              WhatsAppPhoneNumberIdAriel="${{ secrets.WHATSAPP_PHONE_NUMBER_ID_ARIEL }}" \
+              WhatsAppAccessTokenAriel="${{ secrets.WHATSAPP_ACCESS_TOKEN_ARIEL }}" \
+              WhatsAppVerifyTokenAriel="${{ secrets.WHATSAPP_VERIFY_TOKEN_ARIEL }}" \
               "OpenAiApiKey=${{ secrets.OPENAI_API_KEY }}"
 
       # ── Upload Excel template to S3 ─────────────────────

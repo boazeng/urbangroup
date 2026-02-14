@@ -92,6 +92,20 @@ whatsapp_bot = importlib.util.module_from_spec(spec_5000)
 sys.modules["whatsapp_bot"] = whatsapp_bot
 spec_5000.loader.exec_module(whatsapp_bot)
 
+# Load agent 5010 module (Ariel WhatsApp bot)
+agent_5010_path = PROJECT_ROOT / "agents" / "tools-connection" / "5010-whatsapp" / "5010-whatsapp_bot.py"
+spec_5010 = importlib.util.spec_from_file_location("whatsapp_bot_ariel", agent_5010_path)
+whatsapp_bot_ariel = importlib.util.module_from_spec(spec_5010)
+sys.modules["whatsapp_bot_ariel"] = whatsapp_bot_ariel
+spec_5010.loader.exec_module(whatsapp_bot_ariel)
+
+# Load A1000 bot (Ariel WhatsApp smart bot)
+a1000_path = PROJECT_ROOT / "agents" / "smart-agents-and-bots" / "ariel" / "A1000-ariel-whatsapp-bot" / "A1000_bot.py"
+spec_a1000 = importlib.util.spec_from_file_location("a1000_bot", a1000_path)
+a1000_bot = importlib.util.module_from_spec(spec_a1000)
+sys.modules["a1000_bot"] = a1000_bot
+spec_a1000.loader.exec_module(a1000_bot)
+
 # Load M1000 bot (maintenance WhatsApp smart bot)
 m1000_path = PROJECT_ROOT / "agents" / "smart-agents-and-bots" / "maintenance" / "M1000-maintenance-whatsapp-bot" / "M1000_bot.py"
 spec_m1000 = importlib.util.spec_from_file_location("m1000_bot", m1000_path)
@@ -380,6 +394,82 @@ def whatsapp_send():
             if not text:
                 return jsonify({"ok": False, "error": "Missing text"}), 400
             result = whatsapp_bot.send_message(phone, text)
+
+        return jsonify({"ok": True, "result": result})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# ── WhatsApp Ariel Webhook Routes ────────────────────────────
+
+@app.route("/api/whatsapp-ariel/webhook", methods=["GET"])
+def whatsapp_ariel_verify():
+    """Meta webhook verification for Ariel number."""
+    mode = request.args.get("hub.mode", "")
+    token = request.args.get("hub.verify_token", "")
+    challenge = request.args.get("hub.challenge", "")
+
+    result = whatsapp_bot_ariel.verify_webhook(mode, token, challenge)
+    if result:
+        return result, 200
+    return "Forbidden", 403
+
+
+@app.route("/api/whatsapp-ariel/webhook", methods=["POST"])
+def whatsapp_ariel_incoming():
+    """Receive incoming WhatsApp messages from Ariel Meta App."""
+    payload = request.get_json(silent=True) or {}
+    messages = whatsapp_bot_ariel.handle_incoming(payload)
+    logger.info(f"Ariel webhook received: {len(messages)} message(s)")
+
+    for msg in messages:
+        if msg.get("message_id"):
+            whatsapp_bot_ariel.mark_as_read(msg["message_id"])
+
+    for msg in messages:
+        logger.info(f"Ariel from {msg.get('phone')} ({msg.get('name')}): {msg.get('text', '')[:100]}")
+        try:
+            response = a1000_bot.process_message(
+                phone=msg.get("phone", ""),
+                name=msg.get("name", ""),
+                text=msg.get("text", ""),
+                msg_type=msg.get("type", "text"),
+                message_id=msg.get("message_id", ""),
+                media_id=msg.get("media_id", ""),
+                caption=msg.get("caption", ""),
+            )
+            if response:
+                whatsapp_bot_ariel.send_message(msg["phone"], response)
+                logger.info(f"A1000 reply sent to {msg['phone']}")
+        except Exception as e:
+            logger.error(f"A1000 bot error: {e}")
+
+    return jsonify({"ok": True}), 200
+
+
+@app.route("/api/whatsapp-ariel/send", methods=["POST"])
+def whatsapp_ariel_send():
+    """Send a WhatsApp message from the Ariel number."""
+    data = request.get_json(silent=True) or {}
+    phone = data.get("phone", "")
+    text = data.get("text", "")
+    template_name = data.get("template")
+
+    if not phone:
+        return jsonify({"ok": False, "error": "Missing phone number"}), 400
+
+    try:
+        if template_name:
+            result = whatsapp_bot_ariel.send_template(
+                phone,
+                template_name,
+                language=data.get("language", "he"),
+                parameters=data.get("parameters"),
+            )
+        else:
+            if not text:
+                return jsonify({"ok": False, "error": "Missing text"}), 400
+            result = whatsapp_bot_ariel.send_message(phone, text)
 
         return jsonify({"ok": True, "result": result})
     except Exception as e:
