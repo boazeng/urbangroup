@@ -126,6 +126,7 @@ def set_priority_env():
     invoice_writer.PRIORITY_URL = url
     service_call_writer.PRIORITY_URL = url
     aging_report.PRIORITY_URL = url
+    ar1000_report.PRIORITY_URL = url
 
 
 @app.route("/api/customers", methods=["GET"])
