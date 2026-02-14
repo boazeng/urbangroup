@@ -80,8 +80,19 @@ def _format_uncharged_report(report):
     return "\n".join(lines)
 
 
+def _set_real_env():
+    """Set Priority URL to real (ebyael) for Ariel reports."""
+    real_url = os.environ.get("PRIORITY_URL_REAL", "").rstrip("/")
+    if real_url:
+        import ar1000_report
+        import ar10010_report
+        ar1000_report.PRIORITY_URL = real_url
+        ar10010_report.PRIORITY_URL = real_url
+
+
 def _run_debt_report():
     """Run AR1000 and return formatted text."""
+    _set_real_env()
     import ar1000_report
     report = ar1000_report.generate_report()
     return _format_debt_report(report)
@@ -89,6 +100,7 @@ def _run_debt_report():
 
 def _run_uncharged_report():
     """Run AR10010 and return formatted text."""
+    _set_real_env()
     import ar10010_report
     report = ar10010_report.generate_report()
     return _format_uncharged_report(report)
