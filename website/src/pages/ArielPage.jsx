@@ -47,15 +47,20 @@ export default function ArielPage() {
 
         <h1 className="ariel-title">אריאל</h1>
 
-        <div className="ariel-actions">
-          <button
-            className="ariel-report-btn"
-            onClick={generateReport}
-            disabled={loading}
-          >
-            {loading ? 'מפיק דוח...' : 'הפקת דוח גיול חובות (חשבוניות מרכזות)'}
-          </button>
-        </div>
+        <section className="ariel-sections">
+          <div className="ariel-sections-grid">
+            <button
+              className="ariel-section-card"
+              onClick={generateReport}
+              disabled={loading}
+            >
+              <span className="ariel-section-icon">📊</span>
+              <h3 className="ariel-section-title">דוח גיול חובות</h3>
+              <p className="ariel-section-desc">הפקת דוח גיול חובות מחשבוניות מרכזות בפריוריטי — פילוח לפי לקוח וגיל חוב</p>
+              <span className="ariel-section-action">{loading ? 'מפיק דוח...' : 'הפקה'} &larr;</span>
+            </button>
+          </div>
+        </section>
 
         {error && <div className="ariel-error">{error}</div>}
 

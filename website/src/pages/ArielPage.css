@@ -24,31 +24,71 @@
   margin-bottom: 24px;
 }
 
-/* Actions */
-.ariel-actions {
+/* Section cards grid (matching MaintenancePage) */
+.ariel-sections {
   margin-bottom: 24px;
 }
 
-.ariel-report-btn {
-  padding: 12px 28px;
-  background: var(--color-secondary);
-  color: var(--color-text-white);
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-base);
-  font-weight: 600;
+.ariel-sections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.ariel-section-card {
+  background: var(--color-bg-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 28px;
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  text-align: right;
   cursor: pointer;
-  transition: all 0.2s;
   font-family: inherit;
 }
 
-.ariel-report-btn:hover:not(:disabled) {
-  background: var(--color-primary);
+.ariel-section-card:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--color-secondary);
 }
 
-.ariel-report-btn:disabled {
+.ariel-section-card:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.ariel-section-icon {
+  font-size: 32px;
+  margin-bottom: 16px;
+}
+
+.ariel-section-title {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-bottom: 8px;
+}
+
+.ariel-section-desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-light);
+  line-height: 1.6;
+  flex: 1;
+  margin-bottom: 16px;
+}
+
+.ariel-section-action {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-secondary);
+}
+
+.ariel-section-card:hover:not(:disabled) .ariel-section-action {
+  color: var(--color-primary);
 }
 
 /* States */
