@@ -40,7 +40,7 @@ def generate_report():
     url = (
         f"{PRIORITY_URL}/DOCUMENTS_D"
         f"?$filter=BRANCHNAME eq '{ARIEL_BRANCH}' and IVALL eq 'N'"
-        f"&$select=DOCNO,CUSTNAME,CDES,CURDATE,TOTPRICE,STATDES"
+        f"&$select=DOCNO,CUSTNAME,CDES,CURDATE,TOTPRICE,STATDES,CODEDES,DETAILS"
         f"&$orderby=CURDATE desc"
     )
 
@@ -63,6 +63,8 @@ def generate_report():
             "curdate": (doc.get("CURDATE", "") or "")[:10],
             "totprice": float(doc.get("TOTPRICE", 0) or 0),
             "statdes": doc.get("STATDES", ""),
+            "codedes": doc.get("CODEDES", "") or "",
+            "details": doc.get("DETAILS", "") or "",
         })
 
     total_amount = sum(d["totprice"] for d in documents)

@@ -68,6 +68,8 @@ export default function ArielUnchargedDeliveryPage() {
                     <th>מס׳ תעודה</th>
                     <th>מס׳ לקוח</th>
                     <th>שם לקוח</th>
+                    <th>שם אתר</th>
+                    <th>פרטים</th>
                     <th>תאריך</th>
                     <th className="ariel-num">סכום</th>
                     <th>סטטוס</th>
@@ -79,6 +81,8 @@ export default function ArielUnchargedDeliveryPage() {
                       <td className="ariel-cell-cust">{doc.docno}</td>
                       <td>{doc.custname}</td>
                       <td>{doc.cdes}</td>
+                      <td>{doc.codedes}</td>
+                      <td>{doc.details}</td>
                       <td>{doc.curdate}</td>
                       <td className="ariel-num">{formatCurrency(doc.totprice)}</td>
                       <td>{doc.statdes}</td>
@@ -90,6 +94,8 @@ export default function ArielUnchargedDeliveryPage() {
                     <td></td>
                     <td></td>
                     <td className="ariel-totals-label">סה״כ</td>
+                    <td></td>
+                    <td></td>
                     <td></td>
                     <td className="ariel-num">{formatCurrency(report.total_amount)}</td>
                     <td></td>
