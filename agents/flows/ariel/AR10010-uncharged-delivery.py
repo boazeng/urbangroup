@@ -70,6 +70,7 @@ def generate_report(filters=None):
 
     min_amount = float(filters.get("min_amount") or 0)
     customer_filter = (filters.get("customer_name") or "").strip().lower()
+    status_filter = (filters.get("status") or "").strip()
 
     documents = []
     for doc in all_docs:
@@ -81,6 +82,8 @@ def generate_report(filters=None):
             custname = (doc.get("CUSTNAME", "") or "").lower()
             if customer_filter not in cdes and customer_filter not in custname:
                 continue
+        if status_filter and (doc.get("STATDES", "") or "") != status_filter:
+            continue
         documents.append({
             "docno": doc.get("DOCNO", ""),
             "custname": doc.get("CUSTNAME", ""),

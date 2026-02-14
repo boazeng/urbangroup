@@ -79,6 +79,8 @@ def _format_filters_line(filters):
         parts.append(f"מתאריך: {filters['date_from']}")
     if filters.get("date_to"):
         parts.append(f"עד תאריך: {filters['date_to']}")
+    if filters.get("status"):
+        parts.append(f"סטטוס: {filters['status']}")
     return " | ".join(parts) if parts else ""
 
 
