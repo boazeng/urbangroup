@@ -12,6 +12,7 @@ import ServiceCallsPage from './pages/ServiceCallsPage'
 import ArielPage from './pages/ArielPage'
 import AgingReportPage from './pages/AgingReportPage'
 import ArielDebtReportPage from './pages/ArielDebtReportPage'
+import ArielUnchargedDeliveryPage from './pages/ArielUnchargedDeliveryPage'
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/ariel" element={<ArielPage />} />
           <Route path="/ariel/aging-report" element={<AgingReportPage />} />
           <Route path="/ariel/debt-report" element={<ArielDebtReportPage />} />
+          <Route path="/ariel/uncharged-delivery" element={<ArielUnchargedDeliveryPage />} />
           <Route path="/app/urban-energy" element={<UrbanEnergyPage />} />
           <Route path="/app/urban-energy/invoices" element={<InvoicesPage />} />
           <Route path="/app/:appId" element={<AppPage />} />

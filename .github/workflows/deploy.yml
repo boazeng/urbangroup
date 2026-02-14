@@ -79,6 +79,7 @@ jobs:
           cp agents/specific-mission-agents/priority-specific-agents/300-service-call/300-service_call_writer.py lambda-backend/agents/specific-mission-agents/priority-specific-agents/300-service-call/
           cp agents/specific-mission-agents/priority-specific-agents/800-reports/aging_report.py lambda-backend/agents/specific-mission-agents/priority-specific-agents/800-reports/
           cp agents/flows/ariel/AR1000-debt-customer-report.py lambda-backend/agents/flows/ariel/
+          cp agents/flows/ariel/AR10010-uncharged-delivery.py lambda-backend/agents/flows/ariel/
           cp agents/smart-agents-and-bots/maintenance/M1000-maintenance-whatsapp-bot/M1000_bot.py lambda-backend/agents/smart-agents-and-bots/maintenance/M1000-maintenance-whatsapp-bot/
           cp agents/LLM/maintenance/MLLM1000-servicecall-identifier/MLLM1000_servicecall_identifier.py lambda-backend/agents/LLM/maintenance/MLLM1000-servicecall-identifier/
           cp database/maintenance/maintenance_db.py lambda-backend/database/maintenance/

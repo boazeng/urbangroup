@@ -78,6 +78,13 @@ ar1000_report = importlib.util.module_from_spec(spec_ar1000)
 sys.modules["ar1000_report"] = ar1000_report
 spec_ar1000.loader.exec_module(ar1000_report)
 
+# Load AR10010 module (Ariel uncharged delivery notes)
+ar10010_path = PROJECT_ROOT / "agents" / "flows" / "ariel" / "AR10010-uncharged-delivery.py"
+spec_ar10010 = importlib.util.spec_from_file_location("ar10010_report", ar10010_path)
+ar10010_report = importlib.util.module_from_spec(spec_ar10010)
+sys.modules["ar10010_report"] = ar10010_report
+spec_ar10010.loader.exec_module(ar10010_report)
+
 # Load agent 5000 module (WhatsApp bot)
 agent_5000_path = PROJECT_ROOT / "agents" / "tools-connection" / "5000-whatsapp" / "5000-whatsapp_bot.py"
 spec_5000 = importlib.util.spec_from_file_location("whatsapp_bot", agent_5000_path)
@@ -127,6 +134,7 @@ def set_priority_env():
     service_call_writer.PRIORITY_URL = url
     aging_report.PRIORITY_URL = url
     ar1000_report.PRIORITY_URL = url
+    ar10010_report.PRIORITY_URL = url
 
 
 @app.route("/api/customers", methods=["GET"])
@@ -485,6 +493,18 @@ def get_ariel_debt_report():
         return jsonify({"ok": True, **report})
     except Exception as e:
         logger.error(f"Error generating Ariel debt report: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/reports/ariel-uncharged-delivery", methods=["GET"])
+def get_ariel_uncharged_delivery():
+    """Generate AR10010 uncharged delivery notes report."""
+    set_priority_env()
+    try:
+        report = ar10010_report.generate_report()
+        return jsonify({"ok": True, **report})
+    except Exception as e:
+        logger.error(f"Error generating uncharged delivery report: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
