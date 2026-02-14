@@ -15,9 +15,9 @@ const BUCKET_LABELS = {
 
 const BRANCH_OPTIONS = [
   { value: '', label: 'כל הסניפים' },
-  { value: '108', label: 'אנרגיה (108)' },
-  { value: '026', label: 'חניה (026)' },
-  { value: '001', label: 'כללי (001)' },
+  { value: '102', label: 'אריאל (102)' },
+  { value: '026', label: 'אחזקה (026)' },
+  { value: '025', label: 'חניה (025)' },
 ]
 
 export default function AgingReportPage() {
@@ -26,14 +26,18 @@ export default function AgingReportPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [branch, setBranch] = useState('')
+  const [customBranch, setCustomBranch] = useState('')
+
+  const activeBranch = branch === 'custom' ? customBranch : branch
 
   useEffect(() => {
+    if (branch === 'custom' && !customBranch) return
     setLoading(true)
     setError(null)
     setReport(null)
     async function fetchReport() {
       try {
-        const branchParam = branch ? `&branch=${branch}` : ''
+        const branchParam = activeBranch ? `&branch=${activeBranch}` : ''
         const res = await fetch(`${API_BASE}/api/reports/aging?env=${env}${branchParam}`)
         const data = await res.json()
         if (data.ok) {
@@ -47,7 +51,7 @@ export default function AgingReportPage() {
       setLoading(false)
     }
     fetchReport()
-  }, [env, branch])
+  }, [env, activeBranch])
 
   function formatCurrency(num) {
     if (!num) return '-'
@@ -73,6 +77,22 @@ export default function AgingReportPage() {
                 {opt.label}
               </button>
             ))}
+            <button
+              className={`ariel-filter-btn ${branch === 'custom' ? 'active' : ''}`}
+              onClick={() => setBranch('custom')}
+            >
+              אחר
+            </button>
+            {branch === 'custom' && (
+              <input
+                className="ariel-filter-input"
+                type="text"
+                placeholder="מס׳ סניף"
+                value={customBranch}
+                onChange={(e) => setCustomBranch(e.target.value.trim())}
+                autoFocus
+              />
+            )}
           </div>
         </div>
 
