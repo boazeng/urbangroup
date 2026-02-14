@@ -202,12 +202,13 @@ def generate_uncharged_report_pdf(report):
 
     # Table
     columns = [
-        {"label": "סטטוס", "w": 32},
-        {"label": "סכום (₪)", "w": 35},
-        {"label": "שם לקוח", "w": 80},
-        {"label": "תאריך", "w": 35},
-        {"label": "מס׳ לקוח", "w": 40},
-        {"label": "ת. משלוח", "w": 45},
+        {"label": "סטטוס", "w": 28},
+        {"label": "סכום (₪)", "w": 33},
+        {"label": "אתר", "w": 45},
+        {"label": "שם לקוח", "w": 60},
+        {"label": "תאריך", "w": 33},
+        {"label": "מס׳ לקוח", "w": 35},
+        {"label": "ת. משלוח", "w": 33},
     ]
 
     _draw_table_header(pdf, columns)
@@ -216,7 +217,8 @@ def generate_uncharged_report_pdf(report):
         values = [
             d["statdes"],
             f'{d["totprice"]:,.0f}',
-            d["cdes"][:35],
+            d.get("codedes", "")[:20],
+            d["cdes"][:25],
             d["curdate"],
             d["custname"],
             d["docno"],
@@ -227,6 +229,7 @@ def generate_uncharged_report_pdf(report):
     _draw_total_row(pdf, columns, [
         "",
         f'{report["total_amount"]:,.0f} ₪',
+        "",
         "סה״כ",
         "",
         "",
