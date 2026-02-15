@@ -1,4 +1,4 @@
-/* Dropzone */
+/* Dropzone - initial large state */
 .sup-dropzone {
   display: flex;
   flex-direction: column;
@@ -30,9 +30,76 @@
   color: var(--color-primary);
 }
 
-.sup-dropzone-hint {
+/* Compact file bar - after upload */
+.sup-file-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  margin-bottom: 12px;
+  background: var(--color-bg-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.sup-file-name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.sup-file-change {
   font-size: calc(var(--font-size-sm) * 0.85);
+  font-weight: 500;
+  color: var(--color-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+}
+
+.sup-file-change:hover {
+  text-decoration: underline;
+}
+
+/* PDF link row */
+.sup-pdf-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.sup-pdf-label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
   color: var(--color-text-light);
+  white-space: nowrap;
+}
+
+.sup-pdf-input {
+  flex: 1;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  outline: none;
+  direction: ltr;
+  text-align: left;
+}
+
+.sup-pdf-input:focus {
+  border-color: var(--color-secondary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.sup-pdf-pages {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-secondary);
+  white-space: nowrap;
 }
 
 /* Table overrides */

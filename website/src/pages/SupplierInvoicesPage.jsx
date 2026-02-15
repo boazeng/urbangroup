@@ -58,7 +58,6 @@ function parseExcel(file) {
 }
 
 function parseRows(raw) {
-  // Find header row containing 'מס'
   let headerIdx = -1
   let colStart = 0
   for (let i = 0; i < Math.min(5, raw.length); i++) {
@@ -80,7 +79,6 @@ function parseRows(raw) {
     const r = raw[i] || []
     const c = (idx) => r[colStart + idx] ?? ''
 
-    // Skip empty rows
     if (!c(0) && !c(5)) continue
 
     const amountWithVat = parseFloat(c(13)) || 0
@@ -117,6 +115,8 @@ export default function SupplierInvoicesPage() {
   const [fileName, setFileName] = useState('')
   const [error, setError] = useState(null)
   const [dragging, setDragging] = useState(false)
+  const [pdfLink, setPdfLink] = useState('')
+  const [pdfPageCount, setPdfPageCount] = useState(null)
   const inputRef = useRef()
 
   async function handleFile(file) {
@@ -150,8 +150,28 @@ export default function SupplierInvoicesPage() {
     setDragging(true)
   }
 
+  async function handlePdfLink(link) {
+    setPdfLink(link)
+    setPdfPageCount(null)
+    if (!link.trim()) return
+
+    try {
+      const res = await fetch(link)
+      const buf = await res.arrayBuffer()
+      // Count pages by searching for /Type /Page pattern in PDF binary
+      const bytes = new Uint8Array(buf)
+      const text = new TextDecoder('latin1').decode(bytes)
+      const matches = text.match(/\/Type\s*\/Page[^s]/g)
+      setPdfPageCount(matches ? matches.length : null)
+    } catch {
+      // Try pdfjsLib if available, otherwise just show link
+      setPdfPageCount(null)
+    }
+  }
+
   const totalNoVat = rows.reduce((s, r) => s + (r.amountNoVat || 0), 0)
   const totalWithVat = rows.reduce((s, r) => s + (r.amountWithVat || 0), 0)
+  const hasFile = rows.length > 0
 
   return (
     <div className="ariel-page">
@@ -160,30 +180,59 @@ export default function SupplierInvoicesPage() {
 
         <h1 className="ariel-title">קליטת חשבוניות ספק</h1>
 
-        <div
-          className={`sup-dropzone${dragging ? ' sup-dropzone-active' : ''}`}
-          onDrop={onDrop}
-          onDragOver={onDragOver}
-          onDragLeave={() => setDragging(false)}
-          onClick={() => inputRef.current?.click()}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".xlsx,.xls"
-            style={{ display: 'none' }}
-            onChange={(e) => handleFile(e.target.files[0])}
-          />
-          <span className="sup-dropzone-icon">📥</span>
-          <span className="sup-dropzone-text">
-            {fileName || 'גרור קובץ אקסל לכאן או לחץ לבחירה'}
-          </span>
-          {fileName && <span className="sup-dropzone-hint">לחץ להחלפת קובץ</span>}
-        </div>
+        {!hasFile ? (
+          <div
+            className={`sup-dropzone${dragging ? ' sup-dropzone-active' : ''}`}
+            onDrop={onDrop}
+            onDragOver={onDragOver}
+            onDragLeave={() => setDragging(false)}
+            onClick={() => inputRef.current?.click()}
+          >
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              style={{ display: 'none' }}
+              onChange={(e) => handleFile(e.target.files[0])}
+            />
+            <span className="sup-dropzone-icon">📥</span>
+            <span className="sup-dropzone-text">גרור קובץ אקסל לכאן או לחץ לבחירה</span>
+          </div>
+        ) : (
+          <div className="sup-file-bar">
+            <span className="sup-file-name">{fileName}</span>
+            <button className="sup-file-change" onClick={() => inputRef.current?.click()}>
+              החלף קובץ
+            </button>
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              style={{ display: 'none' }}
+              onChange={(e) => handleFile(e.target.files[0])}
+            />
+          </div>
+        )}
+
+        {hasFile && (
+          <div className="sup-pdf-row">
+            <label className="sup-pdf-label">קישור ל-PDF:</label>
+            <input
+              className="sup-pdf-input"
+              type="text"
+              placeholder="הדבק קישור לקובץ החשבוניות..."
+              value={pdfLink}
+              onChange={(e) => handlePdfLink(e.target.value)}
+            />
+            {pdfPageCount !== null && (
+              <span className="sup-pdf-pages">{pdfPageCount} עמודים</span>
+            )}
+          </div>
+        )}
 
         {error && <div className="ariel-error">{error}</div>}
 
-        {rows.length > 0 && (
+        {hasFile && (
           <div className="ariel-report">
             <div className="ariel-report-header">
               <span className="ariel-report-meta">
