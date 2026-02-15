@@ -6,6 +6,7 @@ import HomePage from './pages/HomePage'
 import AppPage from './pages/AppPage'
 import InvoicesPage from './pages/InvoicesPage'
 import EnergyPage from './pages/EnergyPage'
+import AppsPage from './pages/AppsPage'
 import MaintenancePage from './pages/MaintenancePage'
 import MessagesPage from './pages/MessagesPage'
 import ServiceCallsPage from './pages/ServiceCallsPage'
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/ariel/invoices" element={<ArielInvoicesPage />} />
           <Route path="/energy" element={<EnergyPage />} />
           <Route path="/energy/invoices" element={<InvoicesPage />} />
+          <Route path="/apps" element={<AppsPage />} />
           <Route path="/app/:appId" element={<AppPage />} />
           <Route path="*" element={<HomePage />} />
         </Routes>

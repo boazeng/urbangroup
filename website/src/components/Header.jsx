@@ -8,7 +8,7 @@ const navItems = [
   { path: '/maintenance', label: 'אחזקה' },
   { path: '/ariel', label: 'אריאל' },
   { path: '/energy', label: 'אנרגיה' },
-  { path: '/reports', label: 'דוחות' },
+  { path: '/apps', label: 'אפליקציות' },
   { path: '/settings', label: 'הגדרות' },
 ]
 
