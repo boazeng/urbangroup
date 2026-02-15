@@ -3,12 +3,13 @@ import './AppCards.css'
 
 const apps = [
   {
-    id: 'urban-energy',
-    title: 'אנרגיה אורבנית',
+    id: 'energy',
+    title: 'אנרגיה',
     description: 'ניהול חשבוניות, לקוחות ודוחות עבור אנרגיה אורבנית',
     icon: '⚡',
     color: '#F5A623',
     ready: true,
+    link: '/energy',
   },
   {
     id: 'customers',
@@ -70,7 +71,7 @@ export default function AppCards() {
           {apps.map((app) => (
             <Link
               key={app.id}
-              to={app.ready ? `/app/${app.id}` : '#'}
+              to={app.ready ? (app.link || `/app/${app.id}`) : '#'}
               className={`app-card ${!app.ready ? 'app-card-disabled' : ''}`}
               onClick={(e) => !app.ready && e.preventDefault()}
             >

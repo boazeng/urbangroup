@@ -315,7 +315,7 @@ export default function InvoicesPage() {
   return (
     <div className="inv-page">
       <div className="container">
-        <Link to="/app/urban-energy" className="inv-back">← חזרה לאנרגיה אורבנית</Link>
+        <Link to="/energy" className="inv-back">← חזרה לאנרגיה</Link>
 
         <div className="inv-header">
           <span className="inv-header-icon">📄</span>
