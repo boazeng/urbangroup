@@ -1,0 +1,44 @@
+/* Dropzone */
+.sup-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px 20px;
+  margin-bottom: 24px;
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-white);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sup-dropzone:hover,
+.sup-dropzone-active {
+  border-color: var(--color-secondary);
+  background: #f0f6ff;
+}
+
+.sup-dropzone-icon {
+  font-size: 36px;
+}
+
+.sup-dropzone-text {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.sup-dropzone-hint {
+  font-size: calc(var(--font-size-sm) * 0.85);
+  color: var(--color-text-light);
+}
+
+/* Table overrides */
+.sup-table td,
+.sup-table th {
+  white-space: nowrap;
+  font-size: calc(var(--font-size-sm) * 0.9);
+  padding: 8px 12px;
+}
