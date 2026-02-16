@@ -134,6 +134,13 @@ m1000_bot = importlib.util.module_from_spec(spec_m1000)
 sys.modules["m1000_bot"] = m1000_bot
 spec_m1000.loader.exec_module(m1000_bot)
 
+# Load agent 420 module (invoice printer / attachment downloader)
+agent_420_path = PROJECT_ROOT / "agents" / "specific-mission-agents" / "priority-specific-agents" / "420-invoice-printer" / "420-invoice_printer.py"
+spec_420 = importlib.util.spec_from_file_location("invoice_printer", agent_420_path)
+invoice_printer = importlib.util.module_from_spec(spec_420)
+sys.modules["invoice_printer"] = invoice_printer
+spec_420.loader.exec_module(invoice_printer)
+
 # Load maintenance database module
 maint_db_path = PROJECT_ROOT / "database" / "maintenance" / "maintenance_db.py"
 spec_maint_db = importlib.util.spec_from_file_location("maintenance_db", maint_db_path)
@@ -171,6 +178,7 @@ def set_priority_env():
     ar1000_report.PRIORITY_URL = url
     ar10010_report.PRIORITY_URL = url
     ar10020_report.PRIORITY_URL = url
+    invoice_printer.PRIORITY_URL = url
 
 
 @app.route("/api/customers", methods=["GET"])
@@ -631,6 +639,35 @@ def get_ariel_invoices():
     except Exception as e:
         logger.error(f"Error generating invoices report: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# ── Invoice Printer ──────────────────────────────────────────
+
+@app.route("/api/invoice-printer/download", methods=["POST"])
+def download_invoice_pdf():
+    """Download invoice PDF attachment from Priority."""
+    set_priority_env()
+    data = request.get_json(silent=True) or {}
+    ivnum = data.get("ivnum", "").strip()
+
+    if not ivnum:
+        return jsonify({"error": "Missing ivnum"}), 400
+
+    try:
+        file_bytes, filename, mime_type = invoice_printer.get_invoice_attachment_bytes(ivnum)
+    except Exception as e:
+        logger.error(f"Error fetching invoice {ivnum}: {e}")
+        return jsonify({"error": f"שגיאה בשליפת חשבונית: {e}"}), 500
+
+    if file_bytes is None:
+        return jsonify({"error": f"לא נמצא נספח לחשבונית {ivnum}"}), 404
+
+    return send_file(
+        io.BytesIO(file_bytes),
+        mimetype=mime_type,
+        as_attachment=True,
+        download_name=filename,
+    )
 
 
 # ── Health ───────────────────────────────────────────────────
