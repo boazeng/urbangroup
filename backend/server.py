@@ -662,6 +662,18 @@ def download_invoice_pdf():
     if file_bytes is None:
         return jsonify({"error": f"לא נמצא נספח לחשבונית {ivnum}"}), 404
 
+    # Save local copy when running locally (not on Lambda)
+    if os.environ.get("IS_LAMBDA") != "true":
+        try:
+            local_dir = Path(r"C:\Users\User\Documents\חשבוניות פריורטי")
+            local_dir.mkdir(parents=True, exist_ok=True)
+            local_path = local_dir / filename
+            with open(local_path, "wb") as f:
+                f.write(file_bytes)
+            logger.info(f"Saved local copy: {local_path}")
+        except Exception as e:
+            logger.warning(f"Could not save local copy: {e}")
+
     return send_file(
         io.BytesIO(file_bytes),
         mimetype=mime_type,
