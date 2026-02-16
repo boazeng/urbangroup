@@ -17,6 +17,7 @@ import AgingReportPage from './pages/AgingReportPage'
 import ArielDebtReportPage from './pages/ArielDebtReportPage'
 import ArielUnchargedDeliveryPage from './pages/ArielUnchargedDeliveryPage'
 import ArielInvoicesPage from './pages/ArielInvoicesPage'
+import PdfToolsPage from './pages/PdfToolsPage'
 
 export default function App() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="/apps" element={<AppsPage />} />
           <Route path="/apps/supplier-invoices" element={<SupplierInvoicesPage />} />
           <Route path="/apps/invoice-printer" element={<InvoicePrinterPage />} />
+          <Route path="/apps/pdf-tools" element={<PdfToolsPage />} />
           <Route path="/app/:appId" element={<AppPage />} />
           <Route path="*" element={<HomePage />} />
         </Routes>

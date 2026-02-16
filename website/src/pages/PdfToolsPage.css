@@ -1,0 +1,169 @@
+/* PDF Tools page styles */
+
+.pdf-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.pdf-page-count {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-light);
+}
+
+.pdf-clear-btn {
+  padding: 8px 16px;
+  border: 1px solid #e53e3e;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-white);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: #e53e3e;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.pdf-clear-btn:hover {
+  background: #e53e3e;
+  color: #fff;
+}
+
+/* Pages grid */
+.pdf-pages-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.pdf-page-card {
+  background: var(--color-bg-white);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  cursor: grab;
+  transition: all 0.2s;
+}
+
+.pdf-page-card:hover {
+  border-color: var(--color-secondary);
+  box-shadow: var(--shadow-lg);
+}
+
+.pdf-page-card:active {
+  cursor: grabbing;
+}
+
+.pdf-page-dragging {
+  opacity: 0.4;
+}
+
+.pdf-page-dragover {
+  border-color: var(--color-secondary);
+  background: #f0f6ff;
+}
+
+.pdf-page-num {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.pdf-page-thumb {
+  width: 100%;
+  max-height: 200px;
+  object-fit: contain;
+  border-radius: 4px;
+  margin-bottom: 6px;
+  background: #f9f9f9;
+}
+
+.pdf-page-info {
+  width: 100%;
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.pdf-page-src {
+  font-size: 11px;
+  color: var(--color-text-light);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  max-width: 140px;
+  margin: 0 auto;
+}
+
+.pdf-page-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.pdf-move-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-white);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-light);
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.pdf-move-btn:hover:not(:disabled) {
+  border-color: var(--color-secondary);
+  color: var(--color-secondary);
+  background: #f0f6ff;
+}
+
+.pdf-move-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.pdf-delete-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #e53e3e;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-white);
+  font-size: 16px;
+  font-weight: 700;
+  color: #e53e3e;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.pdf-delete-btn:hover {
+  background: #e53e3e;
+  color: #fff;
+}
