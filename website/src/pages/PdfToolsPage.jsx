@@ -124,6 +124,16 @@ export default function PdfToolsPage() {
           const arrayBuf = await file.arrayBuffer()
           const pdfBytes = new Uint8Array(arrayBuf)
 
+          // Verify file actually starts with %PDF header
+          const header = String.fromCharCode(...pdfBytes.slice(0, 5))
+          if (!header.startsWith('%PDF')) {
+            const textHeader = new TextDecoder().decode(pdfBytes.slice(0, 50))
+            if (textHeader.includes('<!DOCTYPE') || textHeader.includes('<html')) {
+              throw new Error('הקובץ הוא דף HTML ולא PDF - כנראה ההורדה נכשלה')
+            }
+            throw new Error('הקובץ אינו PDF תקין (חסר header)')
+          }
+
           const loadingTask = pdfjsLib.getDocument({ data: pdfBytes.slice() })
           const pdfDoc = await loadingTask.promise
           const count = pdfDoc.numPages
