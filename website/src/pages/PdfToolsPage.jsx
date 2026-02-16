@@ -8,6 +8,85 @@ import './PdfToolsPage.css'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker
 
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/bmp', 'image/webp', 'image/tiff', 'image/gif']
+const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.bmp', '.webp', '.tiff', '.tif', '.gif']
+
+function isImageFile(file) {
+  if (IMAGE_TYPES.includes(file.type)) return true
+  const name = file.name.toLowerCase()
+  return IMAGE_EXTS.some(ext => name.endsWith(ext))
+}
+
+function isPdfFile(file) {
+  return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+}
+
+// Load image as HTMLImageElement
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img) }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('שגיאה בטעינת תמונה')) }
+    img.src = url
+  })
+}
+
+// Convert image to a single-page PDF (returns Uint8Array)
+async function imageToPdf(file) {
+  const img = await loadImage(file)
+  const pdfDoc = await PDFDocument.create()
+
+  const arrayBuf = await file.arrayBuffer()
+  const bytes = new Uint8Array(arrayBuf)
+  const mime = file.type.toLowerCase()
+
+  let embedded
+  if (mime === 'image/png' || file.name.toLowerCase().endsWith('.png')) {
+    embedded = await pdfDoc.embedPng(bytes)
+  } else {
+    // Convert other formats (bmp, webp, gif, tiff) to PNG via canvas, or embed jpg directly
+    if (mime === 'image/jpeg' || file.name.toLowerCase().match(/\.jpe?g$/)) {
+      embedded = await pdfDoc.embedJpg(bytes)
+    } else {
+      // Convert to PNG via canvas for formats pdf-lib doesn't support natively
+      const canvas = document.createElement('canvas')
+      canvas.width = img.width
+      canvas.height = img.height
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0)
+      const pngBlob = await new Promise(r => canvas.toBlob(r, 'image/png'))
+      const pngBuf = await pngBlob.arrayBuffer()
+      embedded = await pdfDoc.embedPng(new Uint8Array(pngBuf))
+    }
+  }
+
+  const page = pdfDoc.addPage([embedded.width, embedded.height])
+  page.drawImage(embedded, { x: 0, y: 0, width: embedded.width, height: embedded.height })
+
+  return new Uint8Array(await pdfDoc.save())
+}
+
+// Create thumbnail from image file
+function imageThumb(file, maxH = 200) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const scale = Math.min(1, maxH / img.height)
+      const canvas = document.createElement('canvas')
+      canvas.width = img.width * scale
+      canvas.height = img.height * scale
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      resolve(canvas.toDataURL())
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('thumbnail failed')) }
+    img.src = url
+  })
+}
+
 // Render a single PDF page to a canvas data URL using pdfjs
 async function renderPageThumb(pdfDoc, pageIndex, scale = 0.4) {
   const page = await pdfDoc.getPage(pageIndex + 1) // 1-indexed
@@ -39,33 +118,43 @@ export default function PdfToolsPage() {
     const newPages = []
     const errors = []
     for (const file of fileList) {
-      if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-        continue
-      }
       try {
-        const arrayBuf = await file.arrayBuffer()
-        const pdfBytes = new Uint8Array(arrayBuf)
+        if (isPdfFile(file)) {
+          // Handle PDF files
+          const arrayBuf = await file.arrayBuffer()
+          const pdfBytes = new Uint8Array(arrayBuf)
 
-        // Use pdfjs-dist for loading (much more lenient than pdf-lib)
-        const loadingTask = pdfjsLib.getDocument({ data: pdfBytes.slice() })
-        const pdfDoc = await loadingTask.promise
-        const count = pdfDoc.numPages
+          const loadingTask = pdfjsLib.getDocument({ data: pdfBytes.slice() })
+          const pdfDoc = await loadingTask.promise
+          const count = pdfDoc.numPages
 
-        for (let i = 0; i < count; i++) {
-          try {
-            const thumbUrl = await renderPageThumb(pdfDoc, i)
-            newPages.push({
-              id: nextPageId++,
-              thumbUrl,
-              srcFile: file.name,
-              srcIndex: i,
-              pdfBytes,
-            })
-          } catch {
-            // Skip individual pages that fail to render
+          for (let i = 0; i < count; i++) {
+            try {
+              const thumbUrl = await renderPageThumb(pdfDoc, i)
+              newPages.push({
+                id: nextPageId++,
+                thumbUrl,
+                srcFile: file.name,
+                srcIndex: i,
+                pdfBytes,
+              })
+            } catch {
+              // Skip individual pages that fail to render
+            }
           }
+          pdfDoc.destroy()
+        } else if (isImageFile(file)) {
+          // Convert image to single-page PDF
+          const pdfBytes = await imageToPdf(file)
+          const thumbUrl = await imageThumb(file)
+          newPages.push({
+            id: nextPageId++,
+            thumbUrl,
+            srcFile: file.name,
+            srcIndex: 0,
+            pdfBytes,
+          })
         }
-        pdfDoc.destroy()
       } catch (e) {
         errors.push(`${file.name}: ${e.message}`)
       }
@@ -76,10 +165,10 @@ export default function PdfToolsPage() {
     }
     if (errors.length > 0) {
       setError(errors.length === fileList.length
-        ? 'שגיאה בקריאת קבצי PDF: ' + errors.join(', ')
+        ? 'שגיאה בקריאת קבצים: ' + errors.join(', ')
         : `חלק מהקבצים לא נטענו: ${errors.join(', ')}`)
     } else if (newPages.length === 0) {
-      setError('לא נמצאו קבצי PDF תקינים')
+      setError('לא נמצאו קבצים תקינים (PDF או תמונות)')
     }
     setLoading(false)
   }
@@ -184,7 +273,7 @@ export default function PdfToolsPage() {
       <div className="container">
         <Link to="/apps" className="ariel-back">&rarr; חזרה לאפליקציות</Link>
 
-        <h1 className="ariel-title">כלי PDF - איחוד וסידור דפים</h1>
+        <h1 className="ariel-title">כלי PDF - איחוד, המרה וסידור דפים</h1>
 
         {/* Upload area */}
         <div
@@ -196,21 +285,22 @@ export default function PdfToolsPage() {
           <input
             ref={inputRef}
             type="file"
-            accept=".pdf"
+            accept=".pdf,.jpg,.jpeg,.png,.bmp,.webp,.tiff,.tif,.gif"
             multiple
             style={{ display: 'none' }}
             onChange={(e) => handleFiles(Array.from(e.target.files))}
           />
           <span className="sup-dropzone-icon">📄</span>
           <span className="sup-dropzone-text">
-            {hasPages ? 'הוסף עוד קבצי PDF' : 'גרור קבצי PDF או לחץ לבחירה'}
+            {hasPages ? 'הוסף עוד קבצים' : 'גרור קבצי PDF או תמונות, או לחץ לבחירה'}
           </span>
+          <span className="sup-dropzone-hint">PDF, JPG, PNG, BMP, WEBP, TIFF, GIF</span>
         </div>
 
         {loading && (
           <div className="ariel-loading">
             <div className="ariel-spinner" />
-            <span>טוען דפים...</span>
+            <span>טוען קבצים...</span>
           </div>
         )}
 
