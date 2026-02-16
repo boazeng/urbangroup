@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { PDFDocument } from 'pdf-lib'
 import * as pdfjsLib from 'pdfjs-dist'
@@ -10,20 +10,16 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString()
 
-// Render a single PDF page to a canvas data URL
-async function renderPageThumb(pdfBytes, pageIndex, scale = 0.4) {
-  const loadingTask = pdfjsLib.getDocument({ data: pdfBytes })
-  const pdf = await loadingTask.promise
-  const page = await pdf.getPage(pageIndex + 1) // 1-indexed
+// Render a single PDF page to a canvas data URL using pdfjs
+async function renderPageThumb(pdfDoc, pageIndex, scale = 0.4) {
+  const page = await pdfDoc.getPage(pageIndex + 1) // 1-indexed
   const viewport = page.getViewport({ scale })
   const canvas = document.createElement('canvas')
   canvas.width = viewport.width
   canvas.height = viewport.height
   const ctx = canvas.getContext('2d')
   await page.render({ canvasContext: ctx, viewport }).promise
-  const url = canvas.toDataURL()
-  pdf.destroy()
-  return url
+  return canvas.toDataURL()
 }
 
 let nextPageId = 1
@@ -51,12 +47,13 @@ export default function PdfToolsPage() {
         const arrayBuf = await file.arrayBuffer()
         const pdfBytes = new Uint8Array(arrayBuf)
 
-        // Count pages
-        const pdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true })
-        const count = pdfDoc.getPageCount()
+        // Use pdfjs-dist for loading (much more lenient than pdf-lib)
+        const loadingTask = pdfjsLib.getDocument({ data: pdfBytes.slice() })
+        const pdfDoc = await loadingTask.promise
+        const count = pdfDoc.numPages
 
         for (let i = 0; i < count; i++) {
-          const thumbUrl = await renderPageThumb(pdfBytes, i)
+          const thumbUrl = await renderPageThumb(pdfDoc, i)
           newPages.push({
             id: nextPageId++,
             thumbUrl,
@@ -65,6 +62,7 @@ export default function PdfToolsPage() {
             pdfBytes,
           })
         }
+        pdfDoc.destroy()
       }
       if (newPages.length === 0) {
         setError('לא נמצאו קבצי PDF תקינים')
@@ -100,7 +98,6 @@ export default function PdfToolsPage() {
   function onPageDragStart(e, idx) {
     setDragIdx(idx)
     e.dataTransfer.effectAllowed = 'move'
-    // For Firefox
     e.dataTransfer.setData('text/plain', '')
   }
 
@@ -142,8 +139,17 @@ export default function PdfToolsPage() {
     try {
       const merged = await PDFDocument.create()
 
+      // Cache loaded source docs to avoid re-loading the same file
+      const srcCache = new Map()
       for (const page of pages) {
-        const srcDoc = await PDFDocument.load(page.pdfBytes, { ignoreEncryption: true })
+        let srcDoc = srcCache.get(page.pdfBytes)
+        if (!srcDoc) {
+          srcDoc = await PDFDocument.load(page.pdfBytes, {
+            ignoreEncryption: true,
+            updateMetadata: false,
+          })
+          srcCache.set(page.pdfBytes, srcDoc)
+        }
         const [copiedPage] = await merged.copyPages(srcDoc, [page.srcIndex])
         merged.addPage(copiedPage)
       }
