@@ -2,13 +2,11 @@ import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { PDFDocument } from 'pdf-lib'
 import * as pdfjsLib from 'pdfjs-dist'
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import './ArielPage.css'
 import './PdfToolsPage.css'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString()
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker
 
 // Render a single PDF page to a canvas data URL using pdfjs
 async function renderPageThumb(pdfDoc, pageIndex, scale = 0.4) {
@@ -38,12 +36,13 @@ export default function PdfToolsPage() {
     setError(null)
     setLoading(true)
 
-    try {
-      const newPages = []
-      for (const file of fileList) {
-        if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-          continue
-        }
+    const newPages = []
+    const errors = []
+    for (const file of fileList) {
+      if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+        continue
+      }
+      try {
         const arrayBuf = await file.arrayBuffer()
         const pdfBytes = new Uint8Array(arrayBuf)
 
@@ -53,27 +52,36 @@ export default function PdfToolsPage() {
         const count = pdfDoc.numPages
 
         for (let i = 0; i < count; i++) {
-          const thumbUrl = await renderPageThumb(pdfDoc, i)
-          newPages.push({
-            id: nextPageId++,
-            thumbUrl,
-            srcFile: file.name,
-            srcIndex: i,
-            pdfBytes,
-          })
+          try {
+            const thumbUrl = await renderPageThumb(pdfDoc, i)
+            newPages.push({
+              id: nextPageId++,
+              thumbUrl,
+              srcFile: file.name,
+              srcIndex: i,
+              pdfBytes,
+            })
+          } catch {
+            // Skip individual pages that fail to render
+          }
         }
         pdfDoc.destroy()
+      } catch (e) {
+        errors.push(`${file.name}: ${e.message}`)
       }
-      if (newPages.length === 0) {
-        setError('לא נמצאו קבצי PDF תקינים')
-      } else {
-        setPages(prev => [...prev, ...newPages])
-      }
-    } catch (e) {
-      setError('שגיאה בקריאת קובץ PDF: ' + e.message)
-    } finally {
-      setLoading(false)
     }
+
+    if (newPages.length > 0) {
+      setPages(prev => [...prev, ...newPages])
+    }
+    if (errors.length > 0) {
+      setError(errors.length === fileList.length
+        ? 'שגיאה בקריאת קבצי PDF: ' + errors.join(', ')
+        : `חלק מהקבצים לא נטענו: ${errors.join(', ')}`)
+    } else if (newPages.length === 0) {
+      setError('לא נמצאו קבצי PDF תקינים')
+    }
+    setLoading(false)
   }
 
   function onDrop(e) {
