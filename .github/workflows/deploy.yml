@@ -78,6 +78,8 @@ jobs:
           touch lambda-backend/agents/tools-connection/__init__.py
           touch lambda-backend/agents/tools-connection/5000-whatsapp/__init__.py
           touch lambda-backend/agents/tools-connection/5010-whatsapp/__init__.py
+          touch lambda-backend/agents/smart-agents-and-bots/__init__.py
+          touch lambda-backend/agents/smart-agents-and-bots/maintenance/__init__.py
           touch lambda-backend/agents/smart-agents-and-bots/ariel/__init__.py
           touch lambda-backend/agents/smart-agents-and-bots/ariel/A1000-ariel-whatsapp-bot/__init__.py
           touch lambda-backend/agents/LLM/__init__.py
@@ -146,7 +148,7 @@ jobs:
               WhatsAppAccessTokenAriel="${{ secrets.WHATSAPP_ACCESS_TOKEN_ARIEL }}" \
               WhatsAppVerifyTokenAriel="${{ secrets.WHATSAPP_VERIFY_TOKEN_ARIEL }}" \
               "OpenAiApiKey=${{ secrets.OPENAI_API_KEY }}" \
-              "AnthropicApiKey=${{ secrets.ANTHROPIC_API_KEY }}" \
+              "AnthropicApiKey=${{ secrets.ANTHROPIC_API_KEY || 'not-configured' }}" \
               "ClaudeModel=claude-sonnet-4-20250514"
 
       # ── Upload Excel template to S3 ─────────────────────

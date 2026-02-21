@@ -73,7 +73,7 @@ def pdf_pages_to_images(pdf_bytes, dpi=150):
 
 def analyze_invoice_images(images):
     """Send page images to Claude Vision API for analysis."""
-    if not ANTHROPIC_API_KEY:
+    if not ANTHROPIC_API_KEY or ANTHROPIC_API_KEY == "not-configured":
         return None
 
     content = []
