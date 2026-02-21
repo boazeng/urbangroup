@@ -113,6 +113,54 @@ def fetch_equipment_by_phone(phone):
     return devices
 
 
+def fetch_equipment_by_sernum(sernum):
+    """Look up a specific device by serial number in Priority.
+
+    Args:
+        sernum: Device serial number (e.g. '000008')
+
+    Returns:
+        dict with device info, or None if not found.
+    """
+    if not sernum:
+        return None
+
+    url = f"{PRIORITY_URL}/SERNUMBERS('{sernum}')"
+    params = {"$select": EQUIPMENT_FIELDS}
+    headers = {
+        "Accept": "application/json",
+        "OData-Version": "4.0",
+    }
+    auth = HTTPBasicAuth(PRIORITY_USERNAME, PRIORITY_PASSWORD)
+
+    try:
+        response = requests.get(url, params=params, headers=headers, auth=auth, timeout=15)
+        if response.status_code == 404:
+            logger.info(f"[600] Device {sernum} not found in Priority")
+            return None
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        logger.error(f"[600] Priority API error for SERNUM {sernum}: {e}")
+        return None
+
+    rec = response.json()
+    device = {
+        "sernum": rec.get("SERNUM", ""),
+        "partname": rec.get("PARTNAME", ""),
+        "partdes": rec.get("PARTDES", ""),
+        "custname": rec.get("CUSTNAME", ""),
+        "cdes": rec.get("CDES", ""),
+        "phonenum": rec.get("PHONENUM", ""),
+        "statusname": rec.get("STATUSNAME", ""),
+        "familyname": rec.get("FAMILYNAME", ""),
+        "familydes": rec.get("FAMILYDES", ""),
+        "facilityname": rec.get("FACILITYNAME", ""),
+        "facilitydes": rec.get("FACILITYDES", ""),
+    }
+    logger.info(f"[600] Device {sernum} found: customer={device['custname']} ({device['cdes']})")
+    return device
+
+
 def main():
     print("=" * 60)
     print("  600-Equipment Reader - Priority Cloud")

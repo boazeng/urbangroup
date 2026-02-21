@@ -23,6 +23,7 @@ logger = logging.getLogger("urbangroup.M10010")
 _session_db = None
 _maint_db = None
 _scripts_db = None
+_equipment_reader = None
 
 SESSION_TTL_SECONDS = 30 * 60  # 30 minutes
 DEFAULT_SCRIPT_ID = "maintenance-troubleshoot"
@@ -88,6 +89,27 @@ def _get_scripts_db():
     return _scripts_db
 
 
+def _get_equipment_reader():
+    global _equipment_reader
+    if _equipment_reader is None:
+        try:
+            from agents.specific_mission_agents.priority_specific_agents import equipment_reader_600
+            _equipment_reader = equipment_reader_600
+        except ImportError:
+            import importlib.util
+            eq_path = os.path.join(
+                os.path.dirname(__file__), "..", "..", "..",
+                "specific-mission-agents", "priority-specific-agents",
+                "600-equipment", "600-equipment_reader.py",
+            )
+            eq_path = os.path.normpath(eq_path)
+            spec = importlib.util.spec_from_file_location("equipment_reader_600", eq_path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            _equipment_reader = mod
+    return _equipment_reader
+
+
 def _get_technician():
     """Return default technician login based on Priority environment."""
     url = os.environ.get("PRIORITY_URL", "")
@@ -115,6 +137,23 @@ def _lookup_customer(phone):
     except Exception as e:
         logger.error(f"[M10010] Customer lookup failed for {phone}: {e}")
     return {}
+
+
+def _enrich_from_device(session):
+    """When device_number is set but customer info is missing, look up in Priority."""
+    sernum = session.get("device_number", "")
+    if not sernum or session.get("customer_number"):
+        return
+    try:
+        eq = _get_equipment_reader()
+        device = eq.fetch_equipment_by_sernum(sernum)
+        if device:
+            session["customer_number"] = device["custname"]
+            session["customer_name"] = device["cdes"]
+            logger.info(f"[M10010] Enriched from device {sernum}: "
+                        f"customer={device['custname']} ({device['cdes']})")
+    except Exception as e:
+        logger.error(f"[M10010] Device enrichment failed for {sernum}: {e}")
 
 
 # ── Script Loading ────────────────────────────────────────────
@@ -375,6 +414,10 @@ def process_message(phone, text, msg_type="text", caption=""):
     logger.info(f"[M10010] Processing {phone} step={current_step} input={text[:50]}")
 
     next_step = _process_step_input(current_step, script, session, text, msg_type)
+
+    # If device_number was just entered, enrich customer info from Priority
+    if session.get("device_number") and not session.get("customer_number"):
+        _enrich_from_device(session)
 
     if next_step is None:
         # Invalid input - re-send current step prompt with a nudge
