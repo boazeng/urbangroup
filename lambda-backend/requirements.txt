@@ -6,3 +6,4 @@ flask-cors
 boto3
 fpdf2
 python-bidi
+PyMuPDF

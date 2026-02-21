@@ -3,3 +3,4 @@ python-dotenv
 openpyxl
 flask
 flask-cors
+PyMuPDF

@@ -56,6 +56,8 @@ jobs:
           mkdir -p lambda-backend/agents/smart-agents-and-bots/ariel/A1000-ariel-whatsapp-bot
           mkdir -p lambda-backend/agents/LLM/maintenance/MLLM1000-servicecall-identifier
           mkdir -p lambda-backend/agents/LLM/ariel/ALLM1000-command-parser
+          mkdir -p lambda-backend/agents/smart-agents-and-bots/maintenance/M10010-troubleshoot-bot
+          mkdir -p lambda-backend/agents/LLM/LLM2000-invoice-analyzer
           mkdir -p lambda-backend/database/maintenance
           mkdir -p lambda-backend/fonts
 
@@ -83,6 +85,8 @@ jobs:
           touch lambda-backend/agents/LLM/maintenance/MLLM1000-servicecall-identifier/__init__.py
           touch lambda-backend/agents/LLM/ariel/__init__.py
           touch lambda-backend/agents/LLM/ariel/ALLM1000-command-parser/__init__.py
+          touch lambda-backend/agents/smart-agents-and-bots/maintenance/M10010-troubleshoot-bot/__init__.py
+          touch lambda-backend/agents/LLM/LLM2000-invoice-analyzer/__init__.py
           touch lambda-backend/database/__init__.py
           touch lambda-backend/database/maintenance/__init__.py
 
@@ -99,7 +103,10 @@ jobs:
           cp agents/LLM/maintenance/MLLM1000-servicecall-identifier/MLLM1000_servicecall_identifier.py lambda-backend/agents/LLM/maintenance/MLLM1000-servicecall-identifier/
           cp agents/LLM/ariel/ALLM1000-command-parser/ALLM1000_command_parser.py lambda-backend/agents/LLM/ariel/ALLM1000-command-parser/
           cp agents/LLM/ariel/ALLM1000-command-parser/pdf_generator.py lambda-backend/agents/LLM/ariel/ALLM1000-command-parser/
+          cp agents/LLM/LLM2000-invoice-analyzer/LLM2000_invoice_analyzer.py lambda-backend/agents/LLM/LLM2000-invoice-analyzer/
+          cp agents/smart-agents-and-bots/maintenance/M10010-troubleshoot-bot/M10010_bot.py lambda-backend/agents/smart-agents-and-bots/maintenance/M10010-troubleshoot-bot/
           cp database/maintenance/maintenance_db.py lambda-backend/database/maintenance/
+          cp database/maintenance/troubleshoot_sessions_db.py lambda-backend/database/maintenance/
           cp agents/tools-connection/5000-whatsapp/5000-whatsapp_bot.py lambda-backend/agents/tools-connection/5000-whatsapp/
           cp agents/tools-connection/5010-whatsapp/5010-whatsapp_bot.py lambda-backend/agents/tools-connection/5010-whatsapp/
           cp agents/smart-agents-and-bots/ariel/A1000-ariel-whatsapp-bot/A1000_bot.py lambda-backend/agents/smart-agents-and-bots/ariel/A1000-ariel-whatsapp-bot/
@@ -138,7 +145,9 @@ jobs:
               WhatsAppPhoneNumberIdAriel="${{ secrets.WHATSAPP_PHONE_NUMBER_ID_ARIEL }}" \
               WhatsAppAccessTokenAriel="${{ secrets.WHATSAPP_ACCESS_TOKEN_ARIEL }}" \
               WhatsAppVerifyTokenAriel="${{ secrets.WHATSAPP_VERIFY_TOKEN_ARIEL }}" \
-              "OpenAiApiKey=${{ secrets.OPENAI_API_KEY }}"
+              "OpenAiApiKey=${{ secrets.OPENAI_API_KEY }}" \
+              "AnthropicApiKey=${{ secrets.ANTHROPIC_API_KEY }}" \
+              "ClaudeModel=claude-sonnet-4-20250514"
 
       # ── Upload Excel template to S3 ─────────────────────
       - name: Upload template to S3

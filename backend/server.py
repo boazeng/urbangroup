@@ -6,6 +6,7 @@ Proxies Priority ERP API calls, keeping credentials server-side.
 import sys
 import os
 import io
+import json
 import tempfile
 import importlib.util
 import logging
@@ -20,6 +21,8 @@ if not logger.handlers:
     handler.setFormatter(logging.Formatter("%(message)s"))
     logger.addHandler(handler)
 
+import requests as http_requests
+from requests.auth import HTTPBasicAuth
 import openpyxl
 from flask import Flask, jsonify, send_file, request
 from flask_cors import CORS
@@ -134,6 +137,13 @@ m1000_bot = importlib.util.module_from_spec(spec_m1000)
 sys.modules["m1000_bot"] = m1000_bot
 spec_m1000.loader.exec_module(m1000_bot)
 
+# Load M10010 bot (troubleshooting script bot)
+m10010_path = PROJECT_ROOT / "agents" / "smart-agents-and-bots" / "maintenance" / "M10010-troubleshoot-bot" / "M10010_bot.py"
+spec_m10010 = importlib.util.spec_from_file_location("m10010_bot", m10010_path)
+m10010_bot = importlib.util.module_from_spec(spec_m10010)
+sys.modules["m10010_bot"] = m10010_bot
+spec_m10010.loader.exec_module(m10010_bot)
+
 # Load agent 420 module (invoice printer / attachment downloader)
 agent_420_path = PROJECT_ROOT / "agents" / "specific-mission-agents" / "priority-specific-agents" / "420-invoice-printer" / "420-invoice_printer.py"
 spec_420 = importlib.util.spec_from_file_location("invoice_printer", agent_420_path)
@@ -147,6 +157,20 @@ spec_maint_db = importlib.util.spec_from_file_location("maintenance_db", maint_d
 maintenance_db = importlib.util.module_from_spec(spec_maint_db)
 sys.modules["maintenance_db"] = maintenance_db
 spec_maint_db.loader.exec_module(maintenance_db)
+
+# Load troubleshoot sessions database module
+ts_db_path = PROJECT_ROOT / "database" / "maintenance" / "troubleshoot_sessions_db.py"
+spec_ts_db = importlib.util.spec_from_file_location("troubleshoot_sessions_db", ts_db_path)
+troubleshoot_sessions_db = importlib.util.module_from_spec(spec_ts_db)
+sys.modules["troubleshoot_sessions_db"] = troubleshoot_sessions_db
+spec_ts_db.loader.exec_module(troubleshoot_sessions_db)
+
+# Load LLM2000 module (invoice analyzer)
+llm2000_path = PROJECT_ROOT / "agents" / "LLM" / "LLM2000-invoice-analyzer" / "LLM2000_invoice_analyzer.py"
+spec_llm2000 = importlib.util.spec_from_file_location("llm2000_invoice_analyzer", llm2000_path)
+llm2000_analyzer = importlib.util.module_from_spec(spec_llm2000)
+sys.modules["llm2000_invoice_analyzer"] = llm2000_analyzer
+spec_llm2000.loader.exec_module(llm2000_analyzer)
 
 # Ensure stdout is usable (use the latest UTF-8 wrapper or restore original)
 if sys.stdout.closed:
@@ -379,12 +403,28 @@ def whatsapp_incoming():
         if msg.get("message_id"):
             whatsapp_bot.mark_as_read(msg["message_id"])
 
-    # Route messages through M1000 smart bot
     for msg in messages:
-        logger.info(f"From {msg.get('phone')} ({msg.get('name')}): {msg.get('text', '')[:100]}")
+        phone = msg.get("phone", "")
+        logger.info(f"From {phone} ({msg.get('name')}): {msg.get('text', '')[:100]}")
+
         try:
+            # Check if this phone has an active troubleshooting session
+            session = m10010_bot.get_active_session(phone)
+            if session:
+                result = m10010_bot.process_message(
+                    phone=phone,
+                    text=msg.get("text", ""),
+                    msg_type=msg.get("type", "text"),
+                    caption=msg.get("caption", ""),
+                )
+                if result:
+                    _send_bot_response(phone, result)
+                    logger.info(f"M10010 reply sent to {phone}")
+                continue
+
+            # Normal M1000 flow
             response = m1000_bot.process_message(
-                phone=msg.get("phone", ""),
+                phone=phone,
                 name=msg.get("name", ""),
                 text=msg.get("text", ""),
                 msg_type=msg.get("type", "text"),
@@ -392,13 +432,42 @@ def whatsapp_incoming():
                 media_id=msg.get("media_id", ""),
                 caption=msg.get("caption", ""),
             )
-            if response:
-                whatsapp_bot.send_message(msg["phone"], response)
-                logger.info(f"M1000 reply sent to {msg['phone']}")
+
+            if isinstance(response, dict) and response.get("handoff") == "M10010":
+                # M1000 detected service call - start troubleshooting session
+                result = m10010_bot.start_session(
+                    phone=phone,
+                    name=msg.get("name", ""),
+                    llm_result=response.get("llm_result", {}),
+                    parsed_data=response.get("parsed_data", {}),
+                    message_id=msg.get("message_id", ""),
+                    media_id=msg.get("media_id", ""),
+                )
+                if result:
+                    _send_bot_response(phone, result)
+                    logger.info(f"M10010 session started for {phone}")
+            elif response:
+                whatsapp_bot.send_message(phone, response)
+                logger.info(f"M1000 reply sent to {phone}")
+
         except Exception as e:
-            logger.error(f"M1000 bot error: {e}")
+            logger.error(f"Bot error for {phone}: {e}")
 
     return jsonify({"ok": True}), 200
+
+
+def _send_bot_response(phone, result):
+    """Send a bot response - either buttons or plain text."""
+    if result.get("buttons"):
+        whatsapp_bot.send_buttons(
+            phone,
+            result["text"],
+            result["buttons"],
+            header=result.get("header"),
+            footer=result.get("footer"),
+        )
+    else:
+        whatsapp_bot.send_message(phone, result["text"])
 
 
 @app.route("/api/whatsapp/send", methods=["POST"])
@@ -682,6 +751,110 @@ def download_invoice_pdf():
     )
 
 
+# ── Invoice Analyzer (Claude AI) ─────────────────────────────
+
+@app.route("/api/analyze-invoice", methods=["POST"])
+def analyze_invoice_pdf():
+    """Analyze supplier invoice PDF using Claude Vision AI."""
+    if "file" not in request.files:
+        return jsonify({"ok": False, "error": "No file uploaded"}), 400
+
+    uploaded = request.files["file"]
+    pdf_bytes = uploaded.read()
+
+    if not pdf_bytes:
+        return jsonify({"ok": False, "error": "Empty file"}), 400
+
+    result = llm2000_analyzer.analyze_pdf(pdf_bytes)
+
+    if not result.get("ok"):
+        status = 500 if "API error" in result.get("error", "") else 400
+        return jsonify(result), status
+
+    # Enrich invoices with supplier data from cache
+    cache = _load_supplier_cache()
+    for inv in result.get("invoices", []):
+        cid = inv.get("companyId", "")
+        if cid and cid in cache:
+            inv["supplier"] = cache[cid]["supname"]
+            inv["supplierName"] = cache[cid]["supdes"]
+
+    return jsonify(result)
+
+
+# ── Supplier Cache ───────────────────────────────────────────
+# Maps company ID (ח.פ.) → {supname, supdes} for auto-fill.
+# Grows over time as users confirm supplier mappings.
+
+_SUPPLIER_CACHE_PATH = PROJECT_ROOT / "backend" / "supplier_cache.json"
+
+
+def _load_supplier_cache():
+    """Load supplier cache from JSON file."""
+    if _SUPPLIER_CACHE_PATH.exists():
+        try:
+            return json.loads(_SUPPLIER_CACHE_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {}
+
+
+def _save_supplier_cache(cache):
+    """Save supplier cache to JSON file."""
+    _SUPPLIER_CACHE_PATH.write_text(
+        json.dumps(cache, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+@app.route("/api/supplier-mapping", methods=["POST"])
+def save_supplier_mapping():
+    """Save a company ID → supplier mapping for future auto-fill."""
+    data = request.get_json()
+    company_id = data.get("companyId", "").strip()
+    supname = data.get("supname", "").strip()
+    supdes = data.get("supdes", "").strip()
+
+    if not company_id or not supname:
+        return jsonify({"ok": False, "error": "companyId and supname required"}), 400
+
+    cache = _load_supplier_cache()
+    cache[company_id] = {"supname": supname, "supdes": supdes}
+    _save_supplier_cache(cache)
+
+    return jsonify({"ok": True, "saved": {company_id: cache[company_id]}})
+
+
+@app.route("/api/suppliers", methods=["GET"])
+def list_suppliers():
+    """Fetch all unique suppliers from Priority YINVOICES for dropdown."""
+    set_priority_env()
+    url = get_priority_url()
+    auth = HTTPBasicAuth(
+        os.getenv("PRIORITY_USERNAME", ""),
+        os.getenv("PRIORITY_PASSWORD", ""),
+    )
+    headers = {"Accept": "application/json", "OData-Version": "4.0"}
+
+    suppliers = {}
+    next_url = f"{url}/YINVOICES?$select=SUPNAME,CDES&$orderby=SUPNAME"
+    pages = 0
+    while next_url and pages < 30:
+        resp = http_requests.get(next_url, headers=headers, auth=auth)
+        if resp.status_code != 200:
+            break
+        data = resp.json()
+        for row in data.get("value", []):
+            sup = row.get("SUPNAME")
+            if sup and sup not in suppliers:
+                suppliers[sup] = row.get("CDES", "")
+        next_url = data.get("@odata.nextLink")
+        pages += 1
+
+    result = [{"supname": k, "supdes": v} for k, v in sorted(suppliers.items())]
+    return jsonify({"ok": True, "suppliers": result, "count": len(result)})
+
+
 # ── Health ───────────────────────────────────────────────────
 
 @app.route("/api/health", methods=["GET"])
@@ -693,10 +866,10 @@ if __name__ == "__main__":
     print("Urban Group Backend API")
     print(f"Priority Demo: {PRIORITY_URL_DEMO}")
     print(f"Priority Real: {PRIORITY_URL_REAL}")
-    print("Starting on http://localhost:5000")
+    print("Starting on http://localhost:5001")
     app.run(
         host="0.0.0.0",
-        port=5000,
+        port=5001,
         debug=True,
         exclude_patterns=["*/WindowsApps/*", "*/encodings/*"],
     )

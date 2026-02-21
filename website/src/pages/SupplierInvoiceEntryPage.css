@@ -1,0 +1,325 @@
+/* Split layout: PDF left, form right */
+.sie-split {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.sie-pdf-panel {
+  flex: 1;
+  min-width: 0;
+  position: sticky;
+  top: calc(var(--header-height) + 16px);
+}
+
+.sie-pdf-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  margin-bottom: 8px;
+  background: var(--color-bg-white);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.sie-pdf-name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* Canvas-based PDF viewer */
+.sie-canvas-wrap {
+  position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: #e8e8e8;
+  overflow: auto;
+  max-height: calc(100vh - var(--header-height) - 120px);
+}
+
+.sie-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.sie-canvas-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.6);
+}
+
+.sie-pdf-pages {
+  font-size: calc(var(--font-size-sm) * 0.9);
+  color: var(--color-text-light);
+  white-space: nowrap;
+}
+
+.sie-form-panel {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Navigation bar */
+.sie-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.sie-nav-counter {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-primary);
+  min-width: 110px;
+  text-align: center;
+}
+
+.sie-nav-btn {
+  padding: 6px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-white);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.sie-nav-btn:hover:not(:disabled) {
+  background: var(--color-secondary);
+  color: #fff;
+  border-color: var(--color-secondary);
+}
+
+.sie-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sie-nav-add {
+  padding: 6px 14px;
+  border: 1px solid #48bb78;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-white);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: #48bb78;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  margin-right: auto;
+}
+
+.sie-nav-add:hover {
+  background: #48bb78;
+  color: #fff;
+}
+
+.sie-nav-remove {
+  padding: 6px 14px;
+  border: 1px solid #e53e3e;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-white);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: #e53e3e;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.sie-nav-remove:hover {
+  background: #e53e3e;
+  color: #fff;
+}
+
+/* Auto-detected badge */
+.sie-auto-badge {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #48bb78;
+  background: #f0fff4;
+  border: 1px solid #c6f6d5;
+  border-radius: 4px;
+}
+
+/* Header fields grid */
+.sie-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.sie-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sie-field label {
+  font-size: calc(var(--font-size-sm) * 0.9);
+  font-weight: 600;
+  color: var(--color-text-light);
+}
+
+.sie-field input {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.sie-field input:focus {
+  border-color: var(--color-secondary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.sie-field-wide {
+  grid-column: 1 / -1;
+}
+
+/* Items section */
+.sie-items-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.sie-items-header h3 {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-primary);
+  margin: 0;
+}
+
+.sie-add-item {
+  padding: 4px 12px;
+  border: 1px solid var(--color-secondary);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-white);
+  font-size: calc(var(--font-size-sm) * 0.85);
+  font-weight: 600;
+  color: var(--color-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.sie-add-item:hover {
+  background: var(--color-secondary);
+  color: #fff;
+}
+
+/* Table inputs */
+.sie-table input {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: calc(var(--font-size-sm) * 0.9);
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.sie-table input:focus {
+  border-color: var(--color-secondary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
+}
+
+.sie-table td,
+.sie-table th {
+  padding: 8px 6px;
+  white-space: nowrap;
+  font-size: calc(var(--font-size-sm) * 0.9);
+}
+
+.sie-row-num {
+  text-align: center;
+  color: var(--color-text-light);
+  font-weight: 600;
+  width: 30px;
+}
+
+.sie-num-input {
+  direction: ltr;
+  text-align: left;
+}
+
+.sie-remove-item {
+  background: none;
+  border: none;
+  color: #e53e3e;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.sie-remove-item:hover {
+  background: #fff5f5;
+}
+
+/* Supplier name display */
+.sie-supplier-name {
+  font-size: calc(var(--font-size-sm) * 0.85);
+  color: var(--color-secondary);
+  font-weight: 600;
+}
+
+/* AI analysis states */
+.sie-analyzing {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: calc(var(--font-size-sm) * 0.85);
+  font-weight: 600;
+  color: #805ad5;
+}
+
+.sie-ai-error {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: calc(var(--font-size-sm) * 0.85);
+  font-weight: 600;
+  color: #e53e3e;
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
+  border-radius: 4px;
+  cursor: help;
+}
+
+/* Responsive: stack on small screens */
+@media (max-width: 900px) {
+  .sie-split {
+    flex-direction: column;
+  }
+  .sie-pdf-panel {
+    position: static;
+  }
+  .sie-canvas-wrap {
+    max-height: 50vh;
+  }
+  .sie-fields {
+    grid-template-columns: 1fr;
+  }
+}

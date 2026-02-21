@@ -165,78 +165,13 @@ def process_message(phone, name, text, msg_type="text", message_id="", media_id=
                 caption=caption,
             )
             if result and result.get("is_service_call"):
-                # Save service call to DB with full Priority ERP fields
-                try:
-                    db = _get_maint_db()
-
-                    # Merge parsed voice-bot data with LLM result
-                    custname = (
-                        parsed_data.get("מספר מנוי")
-                        or result.get("customer_number")
-                        or "99999"
-                    )
-                    cdes = (
-                        parsed_data.get("שם הלקוח")
-                        or result.get("customer_name")
-                        or name
-                    )
-                    sernum = (
-                        parsed_data.get("מספר מכשיר")
-                        or result.get("device_number")
-                        or ""
-                    )
-                    contact_name = (
-                        parsed_data.get("שם איש קשר")
-                        or result.get("contact_name")
-                        or ""
-                    )
-
-                    # Map branch context to Priority BRANCHNAME code
-                    branch_context = result.get("branch_context", "unknown")
-                    branchname = BRANCH_MAP.get(branch_context, "001")
-
-                    # Build fault text with phone number
-                    description = result.get("description", "")
-                    fault_text = f"{description}\nטלפון: {phone}"
-
-                    # Set breakstart if system is down
-                    breakstart = ""
-                    if result.get("is_system_down"):
-                        breakstart = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
-
-                    db.save_service_call(
-                        phone=phone,
-                        name=name,
-                        issue_type=result.get("issue_type", ""),
-                        description=description,
-                        urgency=result.get("urgency", "medium"),
-                        location=result.get("location", ""),
-                        summary=result.get("summary", ""),
-                        message_id=message_id,
-                        media_id=media_id,
-                        custname=custname,
-                        cdes=cdes,
-                        sernum=sernum,
-                        branchname=branchname,
-                        technicianlogin=_get_technician(),
-                        contact_name=contact_name,
-                        fault_text=fault_text,
-                        breakstart=breakstart,
-                        is_system_down=bool(result.get("is_system_down")),
-                    )
-                    logger.info(f"[M1000] Service call saved: {result.get('issue_type')} ({result.get('urgency')}) branch={branchname}")
-                except Exception as e:
-                    logger.error(f"[M1000] Failed to save service call: {e}")
-
-                summary = result.get("summary", "")
-                urgency_map = {"low": "נמוכה", "medium": "בינונית", "high": "גבוהה", "critical": "קריטית"}
-                urgency_heb = urgency_map.get(result.get("urgency", ""), result.get("urgency", ""))
-                return (
-                    f"זוהתה קריאת שירות:\n"
-                    f"סוג: {result.get('issue_type', 'לא ידוע')}\n"
-                    f"דחיפות: {urgency_heb}\n"
-                    f"{summary}"
-                )
+                # Hand off to M10010 troubleshooting bot for structured interview
+                logger.info(f"[M1000] Service call detected, handing off to M10010")
+                return {
+                    "handoff": "M10010",
+                    "llm_result": result,
+                    "parsed_data": parsed_data,
+                }
 
             elif result:
                 # LLM analyzed but not a service call

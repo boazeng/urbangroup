@@ -17,6 +17,12 @@ export default function AppsPage() {
               <p className="ariel-section-desc">קליטת חשבוניות ספקים למערכת פריוריטי</p>
               <span className="ariel-section-action">פתיחה &larr;</span>
             </Link>
+            <Link to="/apps/supplier-invoice-entry" className="ariel-section-card">
+              <span className="ariel-section-icon">📝</span>
+              <h3 className="ariel-section-title">הזנת חשבוניות ספק</h3>
+              <p className="ariel-section-desc">הזנת חשבוניות ספק ויצירה בפריוריטי</p>
+              <span className="ariel-section-action">פתיחה &larr;</span>
+            </Link>
             <Link to="/apps/invoice-printer" className="ariel-section-card">
               <span className="ariel-section-icon">🖨️</span>
               <h3 className="ariel-section-title">הדפסת חשבוניות מס</h3>

@@ -122,6 +122,65 @@ def send_template(phone, template_name, language="he", parameters=None):
     return result
 
 
+def send_buttons(phone, body_text, buttons, header=None, footer=None):
+    """Send an interactive button message via WhatsApp Cloud API.
+
+    Args:
+        phone: Phone number with country code (e.g. '972501234567')
+        body_text: Main message text
+        buttons: List of dicts [{"id": "btn_id", "title": "Button Title"}]
+                 Max 3 buttons, max 20 chars per title.
+        header: Optional header text (max 60 chars)
+        footer: Optional footer text (max 60 chars)
+
+    Returns:
+        dict with API response
+    """
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_ACCESS_TOKEN}",
+        "Content-Type": "application/json",
+    }
+
+    interactive = {
+        "type": "button",
+        "body": {"text": body_text},
+        "action": {
+            "buttons": [
+                {
+                    "type": "reply",
+                    "reply": {
+                        "id": btn["id"],
+                        "title": btn["title"][:20],
+                    },
+                }
+                for btn in buttons[:3]
+            ]
+        },
+    }
+
+    if header:
+        interactive["header"] = {"type": "text", "text": header[:60]}
+    if footer:
+        interactive["footer"] = {"text": footer[:60]}
+
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": phone,
+        "type": "interactive",
+        "interactive": interactive,
+    }
+
+    print(f"Sending buttons to {phone}: {body_text[:50]}...")
+    resp = requests.post(API_URL, json=payload, headers=headers)
+    resp.raise_for_status()
+
+    result = resp.json()
+    msg_id = result.get("messages", [{}])[0].get("id", "N/A")
+    print(f"Buttons sent → ID: {msg_id}")
+    return result
+
+
 def verify_webhook(mode, token, challenge):
     """Verify webhook subscription from Meta.
 
@@ -182,6 +241,19 @@ def handle_incoming(payload):
                 elif msg_type == "audio":
                     text = "[הודעה קולית]"
                     media_id = msg.get("audio", {}).get("id", "")
+                elif msg_type == "interactive":
+                    interactive = msg.get("interactive", {})
+                    int_type = interactive.get("type", "")
+                    if int_type == "button_reply":
+                        btn = interactive.get("button_reply", {})
+                        text = btn.get("id", "")
+                        caption = btn.get("title", "")
+                    elif int_type == "list_reply":
+                        reply = interactive.get("list_reply", {})
+                        text = reply.get("id", "")
+                        caption = reply.get("title", "")
+                    else:
+                        text = f"[interactive:{int_type}]"
                 elif msg_type == "location":
                     text = "[מיקום]"
                 else:
