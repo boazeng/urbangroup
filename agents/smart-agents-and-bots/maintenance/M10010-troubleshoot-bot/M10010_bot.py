@@ -205,6 +205,9 @@ def _process_step_input(step_id, script, session_data, text, msg_type):
         # Match text against button IDs
         for btn in step.get("buttons", []):
             if text == btn["id"]:
+                # Save value if button has save_to/save_value
+                if btn.get("save_to"):
+                    session_data[btn["save_to"]] = btn.get("save_value", btn["id"])
                 next_step = btn.get("next_step", "")
                 # Check skip_if condition
                 skip_if = btn.get("skip_if")
@@ -290,8 +293,14 @@ def get_active_session(phone):
 
 
 def start_session(phone, name, parsed_data=None, message_id="", media_id="",
-                  original_text="", llm_result=None, script_id=None):
+                  original_text="", llm_result=None, script_id=None,
+                  device_number="", customer_number="", customer_name=""):
     """Start a new troubleshooting session.
+
+    Args:
+        device_number: Device serial number from Priority (via M1000 equipment lookup)
+        customer_number: Customer code from Priority
+        customer_name: Customer name from Priority
 
     Returns:
         dict: {"text": "...", "buttons": [...]} for the greeting question.
@@ -305,9 +314,14 @@ def start_session(phone, name, parsed_data=None, message_id="", media_id="",
     db = _get_session_db()
     now = datetime.utcnow().isoformat() + "Z"
 
-    # Look up customer by phone in service calls history
-    customer_info = _lookup_customer(phone)
-    customer_name = customer_info.get("name", "") or name
+    # Use Priority data from M1000 if provided, otherwise fall back to DynamoDB history
+    if not customer_name and not device_number:
+        customer_info = _lookup_customer(phone)
+        customer_name = customer_info.get("name", "") or name
+        customer_number = customer_info.get("customer_number", "")
+        device_number = customer_info.get("device_number", "")
+    else:
+        customer_name = customer_name or name
 
     first_step = script.get("first_step", "GREETING")
 
@@ -321,8 +335,9 @@ def start_session(phone, name, parsed_data=None, message_id="", media_id="",
         "updated_at": now,
         "expires_at": int(time.time()) + SESSION_TTL_SECONDS,
         "customer_name": customer_name,
-        "customer_number": customer_info.get("customer_number", ""),
-        "device_number": customer_info.get("device_number", ""),
+        "customer_number": customer_number,
+        "device_number": device_number,
+        "is_system_down": "",
         "location": "",
         "description": "",
         "customer_message": "",
@@ -334,7 +349,8 @@ def start_session(phone, name, parsed_data=None, message_id="", media_id="",
     }
 
     db.save_session(session_data)
-    logger.info(f"[M10010] Session started for {phone}, script={sid}, customer={customer_name}")
+    logger.info(f"[M10010] Session started for {phone}, script={sid}, "
+                f"customer={customer_name}, device={device_number}")
 
     return _build_step_message(first_step, script, session_data)
 
@@ -418,18 +434,22 @@ def _save_completed_service_call(session):
     name = session.get("customer_name", "") or session.get("name", "")
     description = session.get("description", "")
 
+    is_system_down = session.get("is_system_down") == "yes"
+
     fault_text = f"{description}\nטלפון: {phone}"
     if session.get("location"):
         fault_text += f"\nמיקום: {session['location']}"
     if session.get("device_number"):
         fault_text += f"\nמכשיר: {session['device_number']}"
+    if is_system_down:
+        fault_text += "\nמערכת מושבתת: כן"
 
     result = maint_db.save_service_call(
         phone=phone,
         name=name,
         issue_type="תקלה",
         description=description,
-        urgency="medium",
+        urgency="high" if is_system_down else "medium",
         location=session.get("location", ""),
         summary=description,
         message_id=session.get("original_message_id", ""),
@@ -440,6 +460,7 @@ def _save_completed_service_call(session):
         branchname="001",
         technicianlogin=_get_technician(),
         fault_text=fault_text,
+        is_system_down=is_system_down,
     )
 
     return result.get("id", "")
@@ -475,7 +496,7 @@ def seed_default_script():
                         "skip_if": {
                             "field": "device_number",
                             "not_empty": True,
-                            "goto": "DESCRIBE_FAULT",
+                            "goto": "ASK_SYSTEM_DOWN",
                         },
                     },
                     {
@@ -506,14 +527,35 @@ def seed_default_script():
                 "type": "text_input",
                 "text": "שלח את מספר המכשיר/המתקן:",
                 "save_to": "device_number",
-                "next_step": "DESCRIBE_FAULT",
+                "next_step": "ASK_SYSTEM_DOWN",
             },
             {
                 "id": "ASK_ADDRESS",
                 "type": "text_input",
                 "text": "באיזה כתובת נמצא המתקן?\n(נשתמש בכתובת כדי לאתר את המכשיר)",
                 "save_to": "location",
-                "next_step": "DESCRIBE_FAULT",
+                "next_step": "ASK_SYSTEM_DOWN",
+            },
+            {
+                "id": "ASK_SYSTEM_DOWN",
+                "type": "buttons",
+                "text": "האם המערכת מושבתת?",
+                "buttons": [
+                    {
+                        "id": "system_down_yes",
+                        "title": "כן, מושבתת",
+                        "next_step": "DESCRIBE_FAULT",
+                        "save_to": "is_system_down",
+                        "save_value": "yes",
+                    },
+                    {
+                        "id": "system_down_no",
+                        "title": "לא, פעילה",
+                        "next_step": "DESCRIBE_FAULT",
+                        "save_to": "is_system_down",
+                        "save_value": "no",
+                    },
+                ],
             },
             {
                 "id": "DESCRIBE_FAULT",

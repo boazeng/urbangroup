@@ -48,6 +48,7 @@ jobs:
           mkdir -p lambda-backend/agents/specific-mission-agents/priority-specific-agents/210-invoice-closer
           mkdir -p lambda-backend/agents/specific-mission-agents/priority-specific-agents/300-service-call
           mkdir -p lambda-backend/agents/specific-mission-agents/priority-specific-agents/420-invoice-printer
+          mkdir -p lambda-backend/agents/specific-mission-agents/priority-specific-agents/600-equipment
           mkdir -p lambda-backend/agents/specific-mission-agents/priority-specific-agents/800-reports
           mkdir -p lambda-backend/agents/flows/ariel
           mkdir -p lambda-backend/agents/smart-agents-and-bots/maintenance/M1000-maintenance-whatsapp-bot
@@ -72,6 +73,7 @@ jobs:
           touch lambda-backend/agents/specific-mission-agents/priority-specific-agents/210-invoice-closer/__init__.py
           touch lambda-backend/agents/specific-mission-agents/priority-specific-agents/300-service-call/__init__.py
           touch lambda-backend/agents/specific-mission-agents/priority-specific-agents/420-invoice-printer/__init__.py
+          touch lambda-backend/agents/specific-mission-agents/priority-specific-agents/600-equipment/__init__.py
           touch lambda-backend/agents/specific-mission-agents/priority-specific-agents/800-reports/__init__.py
           touch lambda-backend/agents/flows/__init__.py
           touch lambda-backend/agents/flows/ariel/__init__.py
@@ -97,6 +99,7 @@ jobs:
           cp agents/specific-mission-agents/priority-specific-agents/210-invoice-closer/210-invoice_closer.py lambda-backend/agents/specific-mission-agents/priority-specific-agents/210-invoice-closer/
           cp agents/specific-mission-agents/priority-specific-agents/300-service-call/300-service_call_writer.py lambda-backend/agents/specific-mission-agents/priority-specific-agents/300-service-call/
           cp agents/specific-mission-agents/priority-specific-agents/420-invoice-printer/420-invoice_printer.py lambda-backend/agents/specific-mission-agents/priority-specific-agents/420-invoice-printer/
+          cp agents/specific-mission-agents/priority-specific-agents/600-equipment/600-equipment_reader.py lambda-backend/agents/specific-mission-agents/priority-specific-agents/600-equipment/
           cp agents/specific-mission-agents/priority-specific-agents/800-reports/aging_report.py lambda-backend/agents/specific-mission-agents/priority-specific-agents/800-reports/
           cp agents/flows/ariel/AR1000-debt-customer-report.py lambda-backend/agents/flows/ariel/
           cp agents/flows/ariel/AR10010-uncharged-delivery.py lambda-backend/agents/flows/ariel/

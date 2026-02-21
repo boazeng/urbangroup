@@ -456,6 +456,9 @@ def whatsapp_incoming():
                     message_id=msg.get("message_id", ""),
                     media_id=msg.get("media_id", ""),
                     original_text=response.get("original_text", msg.get("text", "")),
+                    device_number=response.get("device_number", ""),
+                    customer_number=response.get("customer_number", ""),
+                    customer_name=response.get("customer_name", ""),
                 )
                 if result:
                     _send_bot_response(phone, result)

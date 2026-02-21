@@ -16,6 +16,7 @@ logger = logging.getLogger("urbangroup.M1000")
 # Lazy-load modules to avoid import failures in environments without AWS/deps
 _maint_db = None
 _llm = None
+_equipment_reader = None
 
 
 def _get_llm():
@@ -61,6 +62,27 @@ def _get_maint_db():
             spec.loader.exec_module(mod)
             _maint_db = mod
     return _maint_db
+
+
+def _get_equipment_reader():
+    global _equipment_reader
+    if _equipment_reader is None:
+        try:
+            from agents.specific_mission_agents.priority_specific_agents import equipment_reader_600
+            _equipment_reader = equipment_reader_600
+        except ImportError:
+            import importlib.util
+            eq_path = os.path.join(
+                os.path.dirname(__file__), "..", "..", "..",
+                "specific-mission-agents", "priority-specific-agents",
+                "600-equipment", "600-equipment_reader.py",
+            )
+            eq_path = os.path.normpath(eq_path)
+            spec = importlib.util.spec_from_file_location("equipment_reader_600", eq_path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            _equipment_reader = mod
+    return _equipment_reader
 
 
 # ── Priority ERP field mapping helpers ────────────────────────
@@ -168,6 +190,27 @@ def process_message(phone, name, text, msg_type="text", message_id="", media_id=
         except Exception as e:
             logger.error(f"[M1000] LLM analysis failed: {e}")
 
+    # Look up equipment by phone in Priority before handoff
+    device_number = ""
+    customer_number = ""
+    customer_name = ""
+    equipment_list = []
+    try:
+        eq_reader = _get_equipment_reader()
+        devices = eq_reader.fetch_equipment_by_phone(phone)
+        equipment_list = devices
+        if len(devices) == 1:
+            device_number = devices[0]["sernum"]
+            customer_number = devices[0]["custname"]
+            customer_name = devices[0]["cdes"]
+            logger.info(f"[M1000] Device identified: {device_number} for {customer_name}")
+        elif len(devices) > 1:
+            logger.info(f"[M1000] Multiple devices ({len(devices)}) for phone {phone}")
+        else:
+            logger.info(f"[M1000] No devices found for phone {phone}")
+    except Exception as e:
+        logger.error(f"[M1000] Equipment lookup failed: {e}")
+
     # Always hand off to M10010 for structured conversation
     logger.info(f"[M1000] Handing off to M10010")
     return {
@@ -175,4 +218,8 @@ def process_message(phone, name, text, msg_type="text", message_id="", media_id=
         "llm_result": llm_result,
         "parsed_data": parsed_data,
         "original_text": text,
+        "device_number": device_number,
+        "customer_number": customer_number,
+        "customer_name": customer_name,
+        "equipment_list": equipment_list,
     }
