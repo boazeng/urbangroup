@@ -99,6 +99,11 @@ def create_service_call(service_call_data):
         "STARTDATE": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
+    # Call status (e.g. "מתוכנן", "ממתין לאישור")
+    callstatus = service_call_data.get("callstatuscode", "")
+    if callstatus:
+        body["CALLSTATUSCODE"] = callstatus
+
     # Optional fields — only include if non-empty
     for dynamo_key, priority_key in [
         ("technicianlogin", "TECHNICIANLOGIN"),

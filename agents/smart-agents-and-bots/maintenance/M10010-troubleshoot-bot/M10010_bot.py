@@ -24,6 +24,7 @@ _session_db = None
 _maint_db = None
 _scripts_db = None
 _equipment_reader = None
+_service_call_writer = None
 
 SESSION_TTL_SECONDS = 30 * 60  # 30 minutes
 DEFAULT_SCRIPT_ID = "maintenance-troubleshoot"
@@ -108,6 +109,32 @@ def _get_equipment_reader():
             spec.loader.exec_module(mod)
             _equipment_reader = mod
     return _equipment_reader
+
+
+def _get_service_call_writer():
+    global _service_call_writer
+    if _service_call_writer is None:
+        try:
+            from agents.specific_mission_agents.priority_specific_agents import service_call_writer_300
+            _service_call_writer = service_call_writer_300
+        except ImportError:
+            import importlib.util
+            sc_path = os.path.join(
+                os.path.dirname(__file__), "..", "..", "..",
+                "specific-mission-agents", "priority-specific-agents",
+                "300-service-call", "300-service_call_writer.py",
+            )
+            sc_path = os.path.normpath(sc_path)
+            spec = importlib.util.spec_from_file_location("service_call_writer_300", sc_path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            _service_call_writer = mod
+    return _service_call_writer
+
+
+def _is_demo_env():
+    """Check if running against demo Priority environment."""
+    return "demo" in os.environ.get("PRIORITY_URL", "").lower()
 
 
 def _get_technician():
@@ -491,7 +518,7 @@ def _save_completed_service_call(session):
     if is_system_down:
         fault_text += "\nמערכת מושבתת: כן"
 
-    result = maint_db.save_service_call(
+    call_data = dict(
         phone=phone,
         name=name,
         issue_type="תקלה",
@@ -510,7 +537,22 @@ def _save_completed_service_call(session):
         is_system_down=is_system_down,
     )
 
-    return result.get("id", "")
+    result = maint_db.save_service_call(**call_data)
+    call_id = result.get("id", "")
+
+    # Auto-push to Priority in demo environment
+    if _is_demo_env():
+        try:
+            writer = _get_service_call_writer()
+            call_data["callstatuscode"] = "ממתין לאישור"
+            priority_result = writer.create_service_call(call_data)
+            callno = str(priority_result.get("DOCNO", ""))
+            maint_db.mark_service_call_pushed(call_id, callno=callno)
+            logger.info(f"[M10010] Auto-pushed to Priority: DOCNO={callno}")
+        except Exception as e:
+            logger.error(f"[M10010] Auto-push to Priority failed: {e}")
+
+    return call_id
 
 
 # ── Seed Default Script ───────────────────────────────────────
