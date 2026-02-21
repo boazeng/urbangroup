@@ -46,6 +46,18 @@ def customer_exists(custname):
         return False
 
 
+def sernum_exists(sernum):
+    """Check if a device serial number exists in Priority."""
+    url = f"{PRIORITY_URL}/SERNUMBERS('{sernum}')"
+    headers = {"Accept": "application/json", "OData-Version": "4.0"}
+    auth = HTTPBasicAuth(PRIORITY_USERNAME, PRIORITY_PASSWORD)
+    try:
+        resp = requests.get(url, headers=headers, auth=auth)
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+
 def create_service_call(service_call_data):
     """Create a service call in Priority via OData API.
 
@@ -90,7 +102,6 @@ def create_service_call(service_call_data):
     # Optional fields — only include if non-empty
     for dynamo_key, priority_key in [
         ("technicianlogin", "TECHNICIANLOGIN"),
-        ("sernum", "SERNUM"),
         ("contact_name", "NAME"),
         ("phone", "PHONENUM"),
         ("partname", "PARTNAME"),
@@ -98,6 +109,14 @@ def create_service_call(service_call_data):
         val = service_call_data.get(dynamo_key, "")
         if val:
             body[priority_key] = val
+
+    # Validate SERNUM exists in Priority before including
+    sernum = service_call_data.get("sernum", "")
+    if sernum:
+        if sernum_exists(sernum):
+            body["SERNUM"] = sernum
+        else:
+            logger.info(f"SERNUM '{sernum}' not found in Priority, skipping")
 
     # Facility address in DETAILS
     location = service_call_data.get("location", "")
@@ -124,7 +143,7 @@ def create_service_call(service_call_data):
         except Exception:
             err_msg = response.text[:300]
         logger.error(f"Priority API error {response.status_code}: {err_msg}")
-        response.raise_for_status()
+        raise RuntimeError(err_msg or f"Priority API error {response.status_code}")
 
     result = response.json()
     logger.info(f"Service call created: DOCNO={result.get('DOCNO', 'N/A')}")
