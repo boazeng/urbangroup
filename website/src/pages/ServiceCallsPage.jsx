@@ -194,6 +194,8 @@ export default function ServiceCallsPage() {
                   <th>טלפון</th>
                   <th>שם</th>
                   <th>מס׳ לקוח</th>
+                  <th>שם לקוח</th>
+                  <th>מכשיר</th>
                   <th>סניף</th>
                   <th>סוג תקלה</th>
                   <th>כתובת</th>
@@ -212,6 +214,8 @@ export default function ServiceCallsPage() {
                     <td className="sc-cell-phone" dir="ltr">{call.phone}</td>
                     <td>{call.name || '-'}</td>
                     <td className="sc-cell-cust">{call.custname && call.custname !== '99999' ? call.custname : '-'}</td>
+                    <td>{call.cdes || '-'}</td>
+                    <td className="sc-cell-sernum">{call.sernum || '-'}</td>
                     <td>
                       <span className={`sc-branch-badge sc-branch-${call.branchname || '001'}`}>
                         {BRANCH_LABELS[call.branchname] || call.branchname || '-'}
