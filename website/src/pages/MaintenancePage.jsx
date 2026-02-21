@@ -16,6 +16,13 @@ const sections = [
     icon: '🔧',
     link: '/maintenance/service-calls',
   },
+  {
+    id: 'bot-scripts',
+    title: 'תסריטי בוט',
+    description: 'עריכת תסריטי שיחה של הבוט — שלבים, כפתורים, טקסטים ופעולות סיום',
+    icon: '🤖',
+    link: '/maintenance/bot-scripts',
+  },
 ]
 
 export default function MaintenancePage() {

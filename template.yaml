@@ -110,6 +110,7 @@ Resources:
           ANTHROPIC_API_KEY: !Ref AnthropicApiKey
           CLAUDE_MODEL: !Ref ClaudeModel
           TROUBLESHOOT_SESSIONS_TABLE: !Ref TroubleshootSessionsTable
+          BOT_SCRIPTS_TABLE: !Ref BotScriptsTable
           IS_LAMBDA: "true"
       Policies:
         - S3ReadPolicy:
@@ -124,6 +125,8 @@ Resources:
             TableName: !Ref ArielMessagesTable
         - DynamoDBCrudPolicy:
             TableName: !Ref TroubleshootSessionsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref BotScriptsTable
       Events:
         ApiCatchAll:
           Type: HttpApi
@@ -252,6 +255,19 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: expires_at
         Enabled: true
+
+  # ── DynamoDB Table for Bot Scripts ───────────────────
+  BotScriptsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub urbangroup-bot-scripts-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: script_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: script_id
+          KeyType: HASH
 
   # ── S3 Bucket for Templates ─────────────────────────
   TemplateBucket:

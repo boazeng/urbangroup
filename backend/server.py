@@ -165,6 +165,13 @@ troubleshoot_sessions_db = importlib.util.module_from_spec(spec_ts_db)
 sys.modules["troubleshoot_sessions_db"] = troubleshoot_sessions_db
 spec_ts_db.loader.exec_module(troubleshoot_sessions_db)
 
+# Load bot scripts database module
+bs_db_path = PROJECT_ROOT / "database" / "maintenance" / "bot_scripts_db.py"
+spec_bs_db = importlib.util.spec_from_file_location("bot_scripts_db", bs_db_path)
+bot_scripts_db = importlib.util.module_from_spec(spec_bs_db)
+sys.modules["bot_scripts_db"] = bot_scripts_db
+spec_bs_db.loader.exec_module(bot_scripts_db)
+
 # Load LLM2000 module (invoice analyzer)
 llm2000_path = PROJECT_ROOT / "agents" / "LLM" / "LLM2000-invoice-analyzer" / "LLM2000_invoice_analyzer.py"
 spec_llm2000 = importlib.util.spec_from_file_location("llm2000_invoice_analyzer", llm2000_path)
@@ -178,6 +185,12 @@ if sys.stdout.closed:
 
 app = Flask(__name__)
 CORS(app)
+
+# ── Seed default bot script on startup ───────────────────────
+try:
+    m10010_bot.seed_default_script()
+except Exception as _seed_err:
+    logger.warning(f"Bot script seed skipped: {_seed_err}")
 
 # ── Environment switching (demo / real) ──────────────────────
 # Fallback to PRIORITY_URL for backward compat (e.g. Lambda with old config)
@@ -854,6 +867,57 @@ def list_suppliers():
 
     result = [{"supname": k, "supdes": v} for k, v in sorted(suppliers.items())]
     return jsonify({"ok": True, "suppliers": result, "count": len(result)})
+
+
+# ── Bot Scripts ──────────────────────────────────────────────
+
+@app.route("/api/bot-scripts", methods=["GET"])
+def list_bot_scripts():
+    """List all bot conversation scripts."""
+    try:
+        scripts = bot_scripts_db.list_scripts()
+        return jsonify({"ok": True, "scripts": scripts, "count": len(scripts)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/bot-scripts/<script_id>", methods=["GET"])
+def get_bot_script(script_id):
+    """Get a single bot script by ID."""
+    try:
+        script = bot_scripts_db.get_script(script_id, use_cache=False)
+        if not script:
+            return jsonify({"ok": False, "error": "תסריט לא נמצא"}), 404
+        return jsonify({"ok": True, "script": script})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/bot-scripts", methods=["POST"])
+def create_bot_script():
+    """Create a new bot script."""
+    data = request.get_json(silent=True) or {}
+    if not data.get("script_id") or not data.get("name"):
+        return jsonify({"ok": False, "error": "script_id and name are required"}), 400
+    try:
+        result = bot_scripts_db.save_script(data)
+        return jsonify({"ok": True, **result})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/bot-scripts/<script_id>", methods=["PUT"])
+def update_bot_script(script_id):
+    """Update an existing bot script."""
+    data = request.get_json(silent=True) or {}
+    data["script_id"] = script_id
+    try:
+        result = bot_scripts_db.save_script(data)
+        # Invalidate the M10010 engine cache too
+        bot_scripts_db.invalidate_cache(script_id)
+        return jsonify({"ok": True, **result})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 # ── Health ───────────────────────────────────────────────────

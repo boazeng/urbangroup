@@ -1,15 +1,14 @@
 """
-M10010 - Troubleshooting Script Bot
-Conducts structured WhatsApp conversations with customers.
-Identifies customer by phone, determines intent (report fault / leave message),
-collects device info and fault description, opens service call.
+M10010 - Data-Driven Bot Script Engine
+Executes conversation scripts stored in DynamoDB.
+Scripts define steps, buttons, text templates, skip conditions, and done actions.
+
+The engine is generic - it reads the script JSON and executes it step by step.
+No hardcoded conversation flow - everything comes from the database.
 
 Flow:
   Message arrives → M1000 saves to DB → hands off to M10010
-  M10010 greets customer by name → asks intent:
-    - "להשאיר הודעה" → collect message → done
-    - "לדווח על תקלה" → if device known skip to fault description
-      → else ask device number → if no, ask address → collect fault → open service call
+  M10010 loads script from DB → greets customer → follows step flow → saves result
 """
 
 import os
@@ -23,19 +22,10 @@ logger = logging.getLogger("urbangroup.M10010")
 # Lazy-load DB modules
 _session_db = None
 _maint_db = None
+_scripts_db = None
 
 SESSION_TTL_SECONDS = 30 * 60  # 30 minutes
-
-STEPS = [
-    "GREETING",        # Greet customer, ask intent (fault / message)
-    "GET_MESSAGE",     # Collect free-text message (non-fault track)
-    "ASK_DEVICE",      # "יש לך מספר מכשיר?" buttons: כן/לא
-    "DEVICE_INPUT",    # Collect device number (free text)
-    "ASK_ADDRESS",     # Collect address to find device (free text)
-    "DESCRIBE_FAULT",  # Collect fault description (free text)
-    "DONE_MESSAGE",    # Terminal: message saved
-    "DONE_FAULT",      # Terminal: service call opened
-]
+DEFAULT_SCRIPT_ID = "maintenance-troubleshoot"
 
 
 def _get_session_db():
@@ -78,6 +68,26 @@ def _get_maint_db():
     return _maint_db
 
 
+def _get_scripts_db():
+    global _scripts_db
+    if _scripts_db is None:
+        try:
+            from database.maintenance import bot_scripts_db
+            _scripts_db = bot_scripts_db
+        except ImportError:
+            import importlib.util
+            db_path = os.path.join(
+                os.path.dirname(__file__), "..", "..", "..", "..",
+                "database", "maintenance", "bot_scripts_db.py",
+            )
+            db_path = os.path.normpath(db_path)
+            spec = importlib.util.spec_from_file_location("bot_scripts_db", db_path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            _scripts_db = mod
+    return _scripts_db
+
+
 def _get_technician():
     """Return default technician login based on Priority environment."""
     url = os.environ.get("PRIORITY_URL", "")
@@ -107,116 +117,150 @@ def _lookup_customer(phone):
     return {}
 
 
-# ── Step Message Builders ─────────────────────────────────────
+# ── Script Loading ────────────────────────────────────────────
 
-def _build_step_message(step, data):
-    """Build the message and optional buttons for a given step.
+def _load_script(script_id=None):
+    """Load a bot script from DynamoDB (cached).
+
+    Returns:
+        dict: script data, or None if not found
+    """
+    sid = script_id or DEFAULT_SCRIPT_ID
+    try:
+        db = _get_scripts_db()
+        script = db.get_script(sid)
+        if script:
+            return script
+    except Exception as e:
+        logger.error(f"[M10010] Failed to load script {sid}: {e}")
+    return None
+
+
+def _find_step(script, step_id):
+    """Find a step definition in the script by ID.
+
+    Returns:
+        dict: step config, or None
+    """
+    for step in script.get("steps", []):
+        if step.get("id") == step_id:
+            return step
+    return None
+
+
+# ── Generic Step Message Builder ──────────────────────────────
+
+def _build_step_message(step_id, script, session_data):
+    """Build the message and optional buttons for a step, reading from script config.
 
     Returns:
         dict: {"text": "...", "buttons": [...] or None}
     """
-    if step == "GREETING":
-        name = data.get("customer_name", "")
-        if name:
-            greeting = f"שלום {name}! כאן הבוט החכם של חברת האחזקה."
+    step = _find_step(script, step_id)
+    if not step:
+        return {"text": "שגיאה פנימית", "buttons": None}
+
+    text = step.get("text", "")
+
+    # For the first step, prepend greeting
+    if step_id == script.get("first_step"):
+        customer_name = session_data.get("customer_name", "")
+        if customer_name:
+            greeting = script.get("greeting_known", "שלום {customer_name}!").format(
+                customer_name=customer_name
+            )
         else:
-            greeting = "שלום! כאן הבוט החכם של חברת האחזקה."
+            greeting = script.get("greeting_unknown", "שלום!")
+        text = f"{greeting}\n{text}"
 
-        return {
-            "text": f"{greeting}\nמה תרצה לעשות?",
-            "buttons": [
-                {"id": "intent_fault", "title": "לדווח על תקלה"},
-                {"id": "intent_message", "title": "להשאיר הודעה"},
-            ],
-        }
+    step_type = step.get("type", "text_input")
 
-    if step == "GET_MESSAGE":
-        return {
-            "text": "שלח את ההודעה שלך:",
-            "buttons": None,
-        }
+    if step_type == "buttons":
+        buttons = [
+            {"id": btn["id"], "title": btn["title"]}
+            for btn in step.get("buttons", [])
+        ]
+        return {"text": text, "buttons": buttons if buttons else None}
 
-    if step == "ASK_DEVICE":
-        return {
-            "text": "האם יש לך את מספר המכשיר/המתקן?",
-            "buttons": [
-                {"id": "device_yes", "title": "כן, יש לי"},
-                {"id": "device_no", "title": "לא"},
-            ],
-        }
-
-    if step == "DEVICE_INPUT":
-        return {
-            "text": "שלח את מספר המכשיר/המתקן:",
-            "buttons": None,
-        }
-
-    if step == "ASK_ADDRESS":
-        return {
-            "text": "באיזה כתובת נמצא המתקן?\n(נשתמש בכתובת כדי לאתר את המכשיר)",
-            "buttons": None,
-        }
-
-    if step == "DESCRIBE_FAULT":
-        return {
-            "text": "תאר בקצרה את התקלה:",
-            "buttons": None,
-        }
-
-    return {"text": "שגיאה פנימית", "buttons": None}
+    # text_input type
+    return {"text": text, "buttons": None}
 
 
-# ── Step Input Processing ─────────────────────────────────────
+# ── Generic Step Input Processing ─────────────────────────────
 
-def _process_step_input(step, data, text, msg_type):
-    """Process user input for the current step.
+def _process_step_input(step_id, script, session_data, text, msg_type):
+    """Process user input for a step, reading logic from script config.
 
     Returns:
-        str: next step to advance to, or None if input is invalid.
-    Updates data dict in-place with collected info.
+        str: next step ID to advance to, or None if input is invalid.
+    Updates session_data dict in-place with collected info.
     """
-    if step == "GREETING":
-        if text == "intent_fault":
-            # If device number already known from history, skip device questions
-            if data.get("device_number"):
-                return "DESCRIBE_FAULT"
-            return "ASK_DEVICE"
-        if text == "intent_message":
-            return "GET_MESSAGE"
+    step = _find_step(script, step_id)
+    if not step:
         return None
 
-    if step == "GET_MESSAGE":
+    step_type = step.get("type", "text_input")
+
+    if step_type == "buttons":
+        # Match text against button IDs
+        for btn in step.get("buttons", []):
+            if text == btn["id"]:
+                next_step = btn.get("next_step", "")
+                # Check skip_if condition
+                skip_if = btn.get("skip_if")
+                if skip_if and _check_skip_condition(skip_if, session_data):
+                    return skip_if.get("goto", next_step)
+                return next_step
+        return None  # No button matched
+
+    if step_type == "text_input":
+        # Accept free-text input
         if msg_type in ("text", "interactive") and text and not text.startswith("["):
-            data["customer_message"] = text
-            return "DONE_MESSAGE"
-        return None
-
-    if step == "ASK_DEVICE":
-        if text == "device_yes":
-            return "DEVICE_INPUT"
-        if text == "device_no":
-            return "ASK_ADDRESS"
-        return None
-
-    if step == "DEVICE_INPUT":
-        if msg_type in ("text", "interactive") and text and not text.startswith("["):
-            data["device_number"] = text
-            return "DESCRIBE_FAULT"
-        return None
-
-    if step == "ASK_ADDRESS":
-        if msg_type in ("text", "interactive") and text and not text.startswith("["):
-            data["location"] = text
-            return "DESCRIBE_FAULT"
-        return None
-
-    if step == "DESCRIBE_FAULT":
-        if msg_type in ("text", "interactive") and text and not text.startswith("["):
-            data["description"] = text
-            return "DONE_FAULT"
+            save_to = step.get("save_to")
+            if save_to:
+                session_data[save_to] = text
+            return step.get("next_step", "")
         return None
 
     return None
+
+
+def _check_skip_condition(skip_if, session_data):
+    """Evaluate a skip_if condition against session data.
+
+    Supports:
+        {"field": "device_number", "not_empty": true}
+    """
+    field = skip_if.get("field", "")
+    if skip_if.get("not_empty"):
+        return bool(session_data.get(field))
+    return False
+
+
+def _is_done_step(step_id, script):
+    """Check if a step ID is a terminal (done) step."""
+    done_actions = script.get("done_actions", {})
+    return step_id in done_actions
+
+
+# ── Done Actions ──────────────────────────────────────────────
+
+def _handle_done(done_id, script, session):
+    """Execute the done action and return the completion message.
+
+    Returns:
+        dict: {"text": "..."} completion message
+    """
+    done_actions = script.get("done_actions", {})
+    done_config = done_actions.get(done_id, {})
+
+    action = done_config.get("action", "")
+    if action == "save_message":
+        _save_customer_message(session)
+    elif action == "save_service_call":
+        _save_completed_service_call(session)
+
+    return {"text": done_config.get("text", "תודה!")}
 
 
 # ── Public API ────────────────────────────────────────────────
@@ -229,32 +273,50 @@ def get_active_session(phone):
     """
     db = _get_session_db()
     session = db.get_session(phone)
-    if session and session.get("step") not in ("DONE_MESSAGE", "DONE_FAULT", None):
-        if session.get("expires_at", 0) > time.time():
-            return session
+    if not session:
+        return None
+
+    step = session.get("step")
+    # Check if step is a done step
+    script = _load_script(session.get("script_id"))
+    if script and _is_done_step(step, script):
+        return None
+    if step is None:
+        return None
+
+    if session.get("expires_at", 0) > time.time():
+        return session
     return None
 
 
 def start_session(phone, name, parsed_data=None, message_id="", media_id="",
-                  original_text="", llm_result=None):
+                  original_text="", llm_result=None, script_id=None):
     """Start a new troubleshooting session.
 
     Returns:
         dict: {"text": "...", "buttons": [...]} for the greeting question.
     """
+    sid = script_id or DEFAULT_SCRIPT_ID
+    script = _load_script(sid)
+    if not script:
+        logger.error(f"[M10010] Script {sid} not found")
+        return {"text": "שגיאה: תסריט לא נמצא", "buttons": None}
+
     db = _get_session_db()
     now = datetime.utcnow().isoformat() + "Z"
 
     # Look up customer by phone in service calls history
     customer_info = _lookup_customer(phone)
-
     customer_name = customer_info.get("name", "") or name
+
+    first_step = script.get("first_step", "GREETING")
 
     session_data = {
         "phone": phone,
         "session_id": str(uuid.uuid4()),
+        "script_id": sid,
         "name": name,
-        "step": "GREETING",
+        "step": first_step,
         "created_at": now,
         "updated_at": now,
         "expires_at": int(time.time()) + SESSION_TTL_SECONDS,
@@ -272,9 +334,9 @@ def start_session(phone, name, parsed_data=None, message_id="", media_id="",
     }
 
     db.save_session(session_data)
-    logger.info(f"[M10010] Session started for {phone}, customer={customer_name}")
+    logger.info(f"[M10010] Session started for {phone}, script={sid}, customer={customer_name}")
 
-    return _build_step_message("GREETING", session_data)
+    return _build_step_message(first_step, script, session_data)
 
 
 def process_message(phone, text, msg_type="text", caption=""):
@@ -289,29 +351,27 @@ def process_message(phone, text, msg_type="text", caption=""):
     if not session:
         return None
 
-    current_step = session.get("step", "GREETING")
+    script = _load_script(session.get("script_id"))
+    if not script:
+        return {"text": "שגיאה: תסריט לא נמצא", "buttons": None}
+
+    current_step = session.get("step", "")
     logger.info(f"[M10010] Processing {phone} step={current_step} input={text[:50]}")
 
-    next_step = _process_step_input(current_step, session, text, msg_type)
+    next_step = _process_step_input(current_step, script, session, text, msg_type)
 
     if next_step is None:
         # Invalid input - re-send current step prompt with a nudge
-        msg = _build_step_message(current_step, session)
+        msg = _build_step_message(current_step, script, session)
         if msg.get("buttons"):
             msg["text"] = "אנא בחר אחת מהאפשרויות:\n\n" + msg["text"]
         return msg
 
-    if next_step == "DONE_MESSAGE":
-        _save_customer_message(session)
-        db.update_session_step(phone, "DONE_MESSAGE")
-        logger.info(f"[M10010] Message collected from {phone}")
-        return {"text": "ההודעה התקבלה, תודה! נחזור אליך בהקדם."}
-
-    if next_step == "DONE_FAULT":
-        service_call_id = _save_completed_service_call(session)
-        db.update_session_step(phone, "DONE_FAULT")
-        logger.info(f"[M10010] Service call opened for {phone}, id={service_call_id}")
-        return {"text": "נפתחה קריאת שירות! ניצור איתך קשר בהקדם. תודה!"}
+    if _is_done_step(next_step, script):
+        result = _handle_done(next_step, script, session)
+        db.update_session_step(phone, next_step)
+        logger.info(f"[M10010] Done: {phone} → {next_step}")
+        return result
 
     # Advance to next step
     session["step"] = next_step
@@ -319,8 +379,10 @@ def process_message(phone, text, msg_type="text", caption=""):
     session["expires_at"] = int(time.time()) + SESSION_TTL_SECONDS
     db.update_session(phone, session)
 
-    return _build_step_message(next_step, session)
+    return _build_step_message(next_step, script, session)
 
+
+# ── Done Action Implementations ───────────────────────────────
 
 def _save_customer_message(session):
     """Save a non-fault customer message to DynamoDB as a service call record."""
@@ -381,3 +443,98 @@ def _save_completed_service_call(session):
     )
 
     return result.get("id", "")
+
+
+# ── Seed Default Script ───────────────────────────────────────
+
+def seed_default_script():
+    """Write the default maintenance-troubleshoot script to DynamoDB if it doesn't exist."""
+    db = _get_scripts_db()
+    existing = db.get_script(DEFAULT_SCRIPT_ID, use_cache=False)
+    if existing:
+        logger.info(f"[M10010] Default script already exists, skipping seed")
+        return existing
+
+    script = {
+        "script_id": DEFAULT_SCRIPT_ID,
+        "name": "תסריט אבחון תקלות",
+        "active": True,
+        "greeting_known": "שלום {customer_name}! כאן הבוט החכם של חברת האחזקה.",
+        "greeting_unknown": "שלום! כאן הבוט החכם של חברת האחזקה.",
+        "first_step": "GREETING",
+        "steps": [
+            {
+                "id": "GREETING",
+                "type": "buttons",
+                "text": "מה תרצה לעשות?",
+                "buttons": [
+                    {
+                        "id": "intent_fault",
+                        "title": "לדווח על תקלה",
+                        "next_step": "ASK_DEVICE",
+                        "skip_if": {
+                            "field": "device_number",
+                            "not_empty": True,
+                            "goto": "DESCRIBE_FAULT",
+                        },
+                    },
+                    {
+                        "id": "intent_message",
+                        "title": "להשאיר הודעה",
+                        "next_step": "GET_MESSAGE",
+                    },
+                ],
+            },
+            {
+                "id": "GET_MESSAGE",
+                "type": "text_input",
+                "text": "שלח את ההודעה שלך:",
+                "save_to": "customer_message",
+                "next_step": "DONE_MESSAGE",
+            },
+            {
+                "id": "ASK_DEVICE",
+                "type": "buttons",
+                "text": "האם יש לך את מספר המכשיר/המתקן?",
+                "buttons": [
+                    {"id": "device_yes", "title": "כן, יש לי", "next_step": "DEVICE_INPUT"},
+                    {"id": "device_no", "title": "לא", "next_step": "ASK_ADDRESS"},
+                ],
+            },
+            {
+                "id": "DEVICE_INPUT",
+                "type": "text_input",
+                "text": "שלח את מספר המכשיר/המתקן:",
+                "save_to": "device_number",
+                "next_step": "DESCRIBE_FAULT",
+            },
+            {
+                "id": "ASK_ADDRESS",
+                "type": "text_input",
+                "text": "באיזה כתובת נמצא המתקן?\n(נשתמש בכתובת כדי לאתר את המכשיר)",
+                "save_to": "location",
+                "next_step": "DESCRIBE_FAULT",
+            },
+            {
+                "id": "DESCRIBE_FAULT",
+                "type": "text_input",
+                "text": "תאר בקצרה את התקלה:",
+                "save_to": "description",
+                "next_step": "DONE_FAULT",
+            },
+        ],
+        "done_actions": {
+            "DONE_MESSAGE": {
+                "text": "ההודעה התקבלה, תודה! נחזור אליך בהקדם.",
+                "action": "save_message",
+            },
+            "DONE_FAULT": {
+                "text": "נפתחה קריאת שירות! ניצור איתך קשר בהקדם. תודה!",
+                "action": "save_service_call",
+            },
+        },
+    }
+
+    db.save_script(script)
+    logger.info(f"[M10010] Default script seeded: {DEFAULT_SCRIPT_ID}")
+    return script

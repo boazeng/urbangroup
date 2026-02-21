@@ -19,6 +19,7 @@ import ArielUnchargedDeliveryPage from './pages/ArielUnchargedDeliveryPage'
 import ArielInvoicesPage from './pages/ArielInvoicesPage'
 import PdfToolsPage from './pages/PdfToolsPage'
 import SupplierInvoiceEntryPage from './pages/SupplierInvoiceEntryPage'
+import BotScriptsPage from './pages/BotScriptsPage'
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/maintenance" element={<MaintenancePage />} />
           <Route path="/maintenance/messages" element={<MessagesPage />} />
           <Route path="/maintenance/service-calls" element={<ServiceCallsPage />} />
+          <Route path="/maintenance/bot-scripts" element={<BotScriptsPage />} />
           <Route path="/ariel" element={<ArielPage />} />
           <Route path="/ariel/aging-report" element={<AgingReportPage />} />
           <Route path="/ariel/debt-report" element={<ArielDebtReportPage />} />
