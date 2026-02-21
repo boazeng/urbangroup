@@ -154,38 +154,25 @@ def process_message(phone, name, text, msg_type="text", message_id="", media_id=
     except Exception as e:
         logger.error(f"[M1000] Failed to save to DB: {e}")
 
-    # Send to LLM for service call identification (images and text)
+    # Try LLM analysis for text/image (enrichment data for M10010)
+    llm_result = {}
     if msg_type in ("image", "text") and (media_id or text):
         try:
             llm = _get_llm()
-            result = llm.process(
+            llm_result = llm.process(
                 msg_type=msg_type,
                 text=text,
                 media_id=media_id,
                 caption=caption,
-            )
-            if result and result.get("is_service_call"):
-                # Hand off to M10010 troubleshooting bot for structured interview
-                logger.info(f"[M1000] Service call detected, handing off to M10010")
-                return {
-                    "handoff": "M10010",
-                    "llm_result": result,
-                    "parsed_data": parsed_data,
-                }
-
-            elif result:
-                # LLM analyzed but not a service call
-                summary = result.get("summary", "")
-                if summary:
-                    return summary
-
+            ) or {}
         except Exception as e:
             logger.error(f"[M1000] LLM analysis failed: {e}")
 
-        if msg_type == "image":
-            return "קיבלנו את התמונה. לא זוהתה תקלה."
-
-    if msg_type != "text" or not text:
-        return "קיבלתי את ההודעה, לא נדרשת פעולה מצידי."
-
-    return f"[M1000] קיבלנו את ההודעה שלך:\n{text[:200]}"
+    # Always hand off to M10010 for structured conversation
+    logger.info(f"[M1000] Handing off to M10010")
+    return {
+        "handoff": "M10010",
+        "llm_result": llm_result,
+        "parsed_data": parsed_data,
+        "original_text": text,
+    }

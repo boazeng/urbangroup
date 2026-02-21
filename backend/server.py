@@ -434,7 +434,7 @@ def whatsapp_incoming():
             )
 
             if isinstance(response, dict) and response.get("handoff") == "M10010":
-                # M1000 detected service call - start troubleshooting session
+                # M1000 hands off - start troubleshooting session
                 result = m10010_bot.start_session(
                     phone=phone,
                     name=msg.get("name", ""),
@@ -442,6 +442,7 @@ def whatsapp_incoming():
                     parsed_data=response.get("parsed_data", {}),
                     message_id=msg.get("message_id", ""),
                     media_id=msg.get("media_id", ""),
+                    original_text=response.get("original_text", msg.get("text", "")),
                 )
                 if result:
                     _send_bot_response(phone, result)

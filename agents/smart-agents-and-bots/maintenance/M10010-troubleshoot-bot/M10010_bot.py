@@ -1,10 +1,15 @@
 """
 M10010 - Troubleshooting Script Bot
-Conducts structured WhatsApp conversations to collect service call details.
-Uses interactive buttons for structured questions and free-text for details.
+Conducts structured WhatsApp conversations with customers.
+Identifies customer by phone, determines intent (report fault / leave message),
+collects device info and fault description, opens service call.
 
-Flow: M1000 detects service call → hands off to M10010 → M10010 asks questions
-     → collects data → saves enriched service call to DynamoDB.
+Flow:
+  Message arrives → M1000 saves to DB → hands off to M10010
+  M10010 greets customer by name → asks intent:
+    - "להשאיר הודעה" → collect message → done
+    - "לדווח על תקלה" → if device known skip to fault description
+      → else ask device number → if no, ask address → collect fault → open service call
 """
 
 import os
@@ -21,38 +26,16 @@ _maint_db = None
 
 SESSION_TTL_SECONDS = 30 * 60  # 30 minutes
 
-# ── Step Definitions ──────────────────────────────────────────
-
 STEPS = [
-    "CONFIRM_ISSUE",
-    "LOCATION_TYPE",
-    "LOCATION_DETAIL",
-    "DEVICE_ID",
-    "DEVICE_ID_INPUT",
-    "PROBLEM_DETAIL",
-    "URGENCY",
-    "SUMMARY",
-    "DONE",
+    "GREETING",        # Greet customer, ask intent (fault / message)
+    "GET_MESSAGE",     # Collect free-text message (non-fault track)
+    "ASK_DEVICE",      # "יש לך מספר מכשיר?" buttons: כן/לא
+    "DEVICE_INPUT",    # Collect device number (free text)
+    "ASK_ADDRESS",     # Collect address to find device (free text)
+    "DESCRIBE_FAULT",  # Collect fault description (free text)
+    "DONE_MESSAGE",    # Terminal: message saved
+    "DONE_FAULT",      # Terminal: service call opened
 ]
-
-BRANCH_MAP = {
-    "energy": "108",
-    "parking": "026",
-    "unknown": "001",
-}
-
-URGENCY_MAP = {
-    "low": "נמוכה",
-    "medium": "בינונית",
-    "high": "גבוהה",
-    "critical": "קריטית",
-}
-
-BRANCH_DISPLAY = {
-    "energy": "מתקן טעינה",
-    "parking": "מתקן חניה",
-    "unknown": "אחר",
-}
 
 
 def _get_session_db():
@@ -103,38 +86,25 @@ def _get_technician():
     return "יוסי"
 
 
-# ── Skip Logic ────────────────────────────────────────────────
+def _lookup_customer(phone):
+    """Look up customer by phone number in DynamoDB service calls history.
 
-def _should_skip_step(step, data):
-    """Determine if a step can be skipped based on existing data."""
-    if step == "LOCATION_TYPE":
-        return data.get("branch_context", "unknown") != "unknown"
-    if step == "LOCATION_DETAIL":
-        return bool(data.get("location"))
-    if step == "DEVICE_ID":
-        return bool(data.get("device_number"))
-    if step == "PROBLEM_DETAIL":
-        return len(data.get("description", "")) > 20
-    if step == "URGENCY":
-        return data.get("urgency") == "critical"
-    return False
-
-
-def _get_next_step(current_step, data):
-    """Get the next step, skipping any that have sufficient data."""
-    idx = STEPS.index(current_step)
-    for next_step in STEPS[idx + 1:]:
-        if next_step == "DEVICE_ID_INPUT":
-            continue  # Only reached via DEVICE_ID button
-        if next_step == "DONE":
-            return "SUMMARY"
-        if not _should_skip_step(next_step, data):
-            return next_step
-        skipped = data.get("skipped_steps", [])
-        if next_step not in skipped:
-            skipped.append(next_step)
-            data["skipped_steps"] = skipped
-    return "SUMMARY"
+    Returns:
+        dict: {"name": "...", "customer_number": "...", "device_number": "..."} or empty dict
+    """
+    try:
+        db = _get_maint_db()
+        calls = db.get_service_calls(phone=phone, limit=5)
+        if calls:
+            latest = calls[0]
+            return {
+                "name": latest.get("cdes") or latest.get("name", ""),
+                "customer_number": latest.get("custname", ""),
+                "device_number": latest.get("sernum", ""),
+            }
+    except Exception as e:
+        logger.error(f"[M10010] Customer lookup failed for {phone}: {e}")
+    return {}
 
 
 # ── Step Message Builders ─────────────────────────────────────
@@ -143,92 +113,54 @@ def _build_step_message(step, data):
     """Build the message and optional buttons for a given step.
 
     Returns:
-        dict: {"text": "...", "buttons": [...] or None, "header": "..."}
+        dict: {"text": "...", "buttons": [...] or None}
     """
-    if step == "CONFIRM_ISSUE":
-        issue = data.get("issue_type", "לא ידוע")
+    if step == "GREETING":
+        name = data.get("customer_name", "")
+        if name:
+            greeting = f"שלום {name}! כאן הבוט החכם של חברת האחזקה."
+        else:
+            greeting = "שלום! כאן הבוט החכם של חברת האחזקה."
+
         return {
-            "text": f"שלום! זיהינו שיש לך תקלה.\nסוג התקלה: {issue}\n\nהאם זה מתאר נכון את הבעיה?",
-            "header": "אבחון תקלה",
+            "text": f"{greeting}\nמה תרצה לעשות?",
             "buttons": [
-                {"id": "confirm_yes", "title": "כן, נכון"},
-                {"id": "confirm_no", "title": "לא, אחר"},
-                {"id": "cancel", "title": "ביטול"},
+                {"id": "intent_fault", "title": "לדווח על תקלה"},
+                {"id": "intent_message", "title": "להשאיר הודעה"},
             ],
         }
 
-    if step == "LOCATION_TYPE":
+    if step == "GET_MESSAGE":
         return {
-            "text": "היכן ממוקם המתקן/המכשיר?",
-            "buttons": [
-                {"id": "loc_parking", "title": "מתקן חניה"},
-                {"id": "loc_energy", "title": "מתקן טעינה"},
-                {"id": "loc_other", "title": "אחר"},
-            ],
-        }
-
-    if step == "LOCATION_DETAIL":
-        return {
-            "text": "באיזה כתובת/מיקום נמצא המתקן?\n(שלח הודעת טקסט עם הכתובת)",
+            "text": "שלח את ההודעה שלך:",
             "buttons": None,
         }
 
-    if step == "DEVICE_ID":
+    if step == "ASK_DEVICE":
         return {
-            "text": "האם יש לך מספר מכשיר/מתקן?",
+            "text": "האם יש לך את מספר המכשיר/המתקן?",
             "buttons": [
-                {"id": "device_yes", "title": "כן, יש"},
-                {"id": "device_no", "title": "לא יודע"},
-                {"id": "device_none", "title": "אין מספר"},
+                {"id": "device_yes", "title": "כן, יש לי"},
+                {"id": "device_no", "title": "לא"},
             ],
         }
 
-    if step == "DEVICE_ID_INPUT":
+    if step == "DEVICE_INPUT":
         return {
-            "text": "שלח את מספר המכשיר/מתקן:",
+            "text": "שלח את מספר המכשיר/המתקן:",
             "buttons": None,
         }
 
-    if step == "PROBLEM_DETAIL":
+    if step == "ASK_ADDRESS":
         return {
-            "text": "תאר בקצרה את הבעיה:\n(לדוגמה: \"לא נדלק\", \"יש רעש\", \"נזילת מים\")",
+            "text": "באיזה כתובת נמצא המתקן?\n(נשתמש בכתובת כדי לאתר את המכשיר)",
             "buttons": None,
         }
 
-    if step == "URGENCY":
+    if step == "DESCRIBE_FAULT":
         return {
-            "text": "מה רמת הדחיפות?",
-            "buttons": [
-                {"id": "urgency_low", "title": "לא דחוף"},
-                {"id": "urgency_high", "title": "דחוף"},
-                {"id": "urgency_critical", "title": "מערכת מושבתת"},
-            ],
-        }
-
-    if step == "SUMMARY":
-        issue = data.get("issue_type", "לא ידוע")
-        branch = BRANCH_DISPLAY.get(data.get("branch_context", "unknown"), "לא ידוע")
-        location = data.get("location", "") or "לא צוין"
-        device = data.get("device_number", "") or "לא צוין"
-        description = data.get("description", "") or "לא צוין"
-        urgency = URGENCY_MAP.get(data.get("urgency", "medium"), "בינונית")
-
-        summary = (
-            f"סיכום קריאת השירות:\n\n"
-            f"סוג: {issue}\n"
-            f"מיקום: {branch} - {location}\n"
-            f"מכשיר: {device}\n"
-            f"תיאור: {description}\n"
-            f"דחיפות: {urgency}\n\n"
-            f"לאשר פתיחת קריאת שירות?"
-        )
-        return {
-            "text": summary,
-            "buttons": [
-                {"id": "summary_confirm", "title": "אישור ושליחה"},
-                {"id": "summary_cancel", "title": "ביטול"},
-                {"id": "summary_edit", "title": "תיקון פרט"},
-            ],
+            "text": "תאר בקצרה את התקלה:",
+            "buttons": None,
         }
 
     return {"text": "שגיאה פנימית", "buttons": None}
@@ -243,72 +175,45 @@ def _process_step_input(step, data, text, msg_type):
         str: next step to advance to, or None if input is invalid.
     Updates data dict in-place with collected info.
     """
-    if step == "CONFIRM_ISSUE":
-        if text == "confirm_yes":
-            return _get_next_step(step, data)
-        if text == "confirm_no":
-            data["issue_type"] = ""
-            return "PROBLEM_DETAIL"
-        if text == "cancel":
-            return "CANCELLED"
+    if step == "GREETING":
+        if text == "intent_fault":
+            # If device number already known from history, skip device questions
+            if data.get("device_number"):
+                return "DESCRIBE_FAULT"
+            return "ASK_DEVICE"
+        if text == "intent_message":
+            return "GET_MESSAGE"
         return None
 
-    if step == "LOCATION_TYPE":
-        mapping = {
-            "loc_parking": "parking",
-            "loc_energy": "energy",
-            "loc_other": "unknown",
-        }
-        if text in mapping:
-            data["branch_context"] = mapping[text]
-            return _get_next_step(step, data)
-        return None
-
-    if step == "LOCATION_DETAIL":
+    if step == "GET_MESSAGE":
         if msg_type in ("text", "interactive") and text and not text.startswith("["):
-            data["location"] = text
-            return _get_next_step(step, data)
+            data["customer_message"] = text
+            return "DONE_MESSAGE"
         return None
 
-    if step == "DEVICE_ID":
+    if step == "ASK_DEVICE":
         if text == "device_yes":
-            return "DEVICE_ID_INPUT"
-        if text in ("device_no", "device_none"):
-            return _get_next_step(step, data)
+            return "DEVICE_INPUT"
+        if text == "device_no":
+            return "ASK_ADDRESS"
         return None
 
-    if step == "DEVICE_ID_INPUT":
+    if step == "DEVICE_INPUT":
         if msg_type in ("text", "interactive") and text and not text.startswith("["):
             data["device_number"] = text
-            return _get_next_step("DEVICE_ID", data)
+            return "DESCRIBE_FAULT"
         return None
 
-    if step == "PROBLEM_DETAIL":
+    if step == "ASK_ADDRESS":
+        if msg_type in ("text", "interactive") and text and not text.startswith("["):
+            data["location"] = text
+            return "DESCRIBE_FAULT"
+        return None
+
+    if step == "DESCRIBE_FAULT":
         if msg_type in ("text", "interactive") and text and not text.startswith("["):
             data["description"] = text
-            return _get_next_step(step, data)
-        return None
-
-    if step == "URGENCY":
-        mapping = {
-            "urgency_low": "low",
-            "urgency_high": "high",
-            "urgency_critical": "critical",
-        }
-        if text in mapping:
-            data["urgency"] = mapping[text]
-            if text == "urgency_critical":
-                data["is_system_down"] = True
-            return _get_next_step(step, data)
-        return None
-
-    if step == "SUMMARY":
-        if text == "summary_confirm":
-            return "DONE"
-        if text == "summary_cancel":
-            return "CANCELLED"
-        if text == "summary_edit":
-            return "LOCATION_TYPE"
+            return "DONE_FAULT"
         return None
 
     return None
@@ -324,62 +229,52 @@ def get_active_session(phone):
     """
     db = _get_session_db()
     session = db.get_session(phone)
-    if session and session.get("step") not in ("DONE", None):
+    if session and session.get("step") not in ("DONE_MESSAGE", "DONE_FAULT", None):
         if session.get("expires_at", 0) > time.time():
             return session
     return None
 
 
-def start_session(phone, name, llm_result, parsed_data, message_id="", media_id=""):
+def start_session(phone, name, parsed_data=None, message_id="", media_id="",
+                  original_text="", llm_result=None):
     """Start a new troubleshooting session.
 
     Returns:
-        dict: {"text": "...", "buttons": [...]} for the first question.
+        dict: {"text": "...", "buttons": [...]} for the greeting question.
     """
     db = _get_session_db()
     now = datetime.utcnow().isoformat() + "Z"
+
+    # Look up customer by phone in service calls history
+    customer_info = _lookup_customer(phone)
+
+    customer_name = customer_info.get("name", "") or name
 
     session_data = {
         "phone": phone,
         "session_id": str(uuid.uuid4()),
         "name": name,
-        "step": "CONFIRM_ISSUE",
+        "step": "GREETING",
         "created_at": now,
         "updated_at": now,
         "expires_at": int(time.time()) + SESSION_TTL_SECONDS,
-        "issue_type": llm_result.get("issue_type", ""),
-        "branch_context": llm_result.get("branch_context", "unknown"),
-        "location": llm_result.get("location", ""),
-        "device_number": (
-            llm_result.get("device_number", "")
-            or parsed_data.get("מספר מכשיר", "")
-        ),
-        "description": llm_result.get("description", ""),
-        "urgency": llm_result.get("urgency", "medium"),
-        "customer_number": (
-            parsed_data.get("מספר מנוי", "")
-            or llm_result.get("customer_number", "")
-        ),
-        "customer_name": (
-            parsed_data.get("שם הלקוח", "")
-            or llm_result.get("customer_name", "")
-        ),
-        "contact_name": (
-            parsed_data.get("שם איש קשר", "")
-            or llm_result.get("contact_name", "")
-        ),
-        "is_system_down": bool(llm_result.get("is_system_down")),
-        "llm_result": llm_result,
-        "parsed_data": parsed_data,
-        "skipped_steps": [],
+        "customer_name": customer_name,
+        "customer_number": customer_info.get("customer_number", ""),
+        "device_number": customer_info.get("device_number", ""),
+        "location": "",
+        "description": "",
+        "customer_message": "",
+        "original_text": original_text,
         "original_message_id": message_id,
         "original_media_id": media_id,
+        "parsed_data": parsed_data or {},
+        "llm_result": llm_result or {},
     }
 
     db.save_session(session_data)
-    logger.info(f"[M10010] Session started for {phone}, issue={session_data['issue_type']}")
+    logger.info(f"[M10010] Session started for {phone}, customer={customer_name}")
 
-    return _build_step_message("CONFIRM_ISSUE", session_data)
+    return _build_step_message("GREETING", session_data)
 
 
 def process_message(phone, text, msg_type="text", caption=""):
@@ -394,7 +289,7 @@ def process_message(phone, text, msg_type="text", caption=""):
     if not session:
         return None
 
-    current_step = session.get("step", "CONFIRM_ISSUE")
+    current_step = session.get("step", "GREETING")
     logger.info(f"[M10010] Processing {phone} step={current_step} input={text[:50]}")
 
     next_step = _process_step_input(current_step, session, text, msg_type)
@@ -406,16 +301,17 @@ def process_message(phone, text, msg_type="text", caption=""):
             msg["text"] = "אנא בחר אחת מהאפשרויות:\n\n" + msg["text"]
         return msg
 
-    if next_step == "CANCELLED":
-        db.delete_session(phone)
-        logger.info(f"[M10010] Session cancelled by {phone}")
-        return {"text": "הפנייה בוטלה. אם תרצה לפתוח קריאת שירות, שלח הודעה חדשה."}
+    if next_step == "DONE_MESSAGE":
+        _save_customer_message(session)
+        db.update_session_step(phone, "DONE_MESSAGE")
+        logger.info(f"[M10010] Message collected from {phone}")
+        return {"text": "ההודעה התקבלה, תודה! נחזור אליך בהקדם."}
 
-    if next_step == "DONE":
+    if next_step == "DONE_FAULT":
         service_call_id = _save_completed_service_call(session)
-        db.update_session_step(phone, "DONE")
-        logger.info(f"[M10010] Session completed for {phone}, service_call={service_call_id}")
-        return {"text": "קריאת השירות נפתחה בהצלחה!\nניצור איתך קשר בהקדם. תודה!"}
+        db.update_session_step(phone, "DONE_FAULT")
+        logger.info(f"[M10010] Service call opened for {phone}, id={service_call_id}")
+        return {"text": "נפתחה קריאת שירות! ניצור איתך קשר בהקדם. תודה!"}
 
     # Advance to next step
     session["step"] = next_step
@@ -426,8 +322,30 @@ def process_message(phone, text, msg_type="text", caption=""):
     return _build_step_message(next_step, session)
 
 
+def _save_customer_message(session):
+    """Save a non-fault customer message to DynamoDB as a service call record."""
+    maint_db = _get_maint_db()
+    phone = session.get("phone", "")
+    name = session.get("customer_name", "") or session.get("name", "")
+    message = session.get("customer_message", "")
+
+    maint_db.save_service_call(
+        phone=phone,
+        name=name,
+        issue_type="הודעה",
+        description=message,
+        urgency="low",
+        location="",
+        summary=message,
+        message_id=session.get("original_message_id", ""),
+        custname=session.get("customer_number", "") or "99999",
+        cdes=name,
+        technicianlogin=_get_technician(),
+    )
+
+
 def _save_completed_service_call(session):
-    """Save completed troubleshooting data as a service call in DynamoDB.
+    """Save completed fault report as a service call in DynamoDB.
 
     Returns:
         str: service call ID
@@ -435,38 +353,31 @@ def _save_completed_service_call(session):
     maint_db = _get_maint_db()
 
     phone = session.get("phone", "")
-    name = session.get("name", "")
+    name = session.get("customer_name", "") or session.get("name", "")
     description = session.get("description", "")
-    branch_context = session.get("branch_context", "unknown")
-    branchname = BRANCH_MAP.get(branch_context, "001")
 
     fault_text = f"{description}\nטלפון: {phone}"
     if session.get("location"):
         fault_text += f"\nמיקום: {session['location']}"
-
-    breakstart = ""
-    if session.get("is_system_down"):
-        breakstart = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
+    if session.get("device_number"):
+        fault_text += f"\nמכשיר: {session['device_number']}"
 
     result = maint_db.save_service_call(
         phone=phone,
         name=name,
-        issue_type=session.get("issue_type", ""),
+        issue_type="תקלה",
         description=description,
-        urgency=session.get("urgency", "medium"),
+        urgency="medium",
         location=session.get("location", ""),
-        summary=session.get("description", ""),
+        summary=description,
         message_id=session.get("original_message_id", ""),
         media_id=session.get("original_media_id", ""),
         custname=session.get("customer_number", "") or "99999",
-        cdes=session.get("customer_name", "") or name,
+        cdes=name,
         sernum=session.get("device_number", ""),
-        branchname=branchname,
+        branchname="001",
         technicianlogin=_get_technician(),
-        contact_name=session.get("contact_name", ""),
         fault_text=fault_text,
-        breakstart=breakstart,
-        is_system_down=bool(session.get("is_system_down")),
     )
 
     return result.get("id", "")
