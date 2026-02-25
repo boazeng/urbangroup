@@ -339,6 +339,57 @@
   width: 140px;
 }
 
+/* ── Step Skip-If ──────────────────────── */
+
+.bs-step-skip {
+  margin-bottom: 10px;
+}
+
+.bs-step-skip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: #FFFBEB;
+  border: 1px dashed #F6AD55;
+  border-radius: var(--radius-sm);
+}
+
+.bs-step-skip-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #C05621;
+  white-space: nowrap;
+}
+
+.bs-skip-cond {
+  width: 120px;
+  font-size: 13px;
+}
+
+.bs-skip-val {
+  width: 100px;
+  font-size: 13px;
+}
+
+.bs-add-skip-btn {
+  background: none;
+  border: 1px dashed #E2E8F0;
+  color: var(--color-text-muted);
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.bs-add-skip-btn:hover {
+  border-color: #F6AD55;
+  color: #C05621;
+  background: #FFFBEB;
+}
+
 /* ── Buttons Section ────────────────────── */
 
 .bs-buttons-section {

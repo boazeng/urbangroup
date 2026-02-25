@@ -111,6 +111,23 @@ export default function BotScriptsPage() {
     })
   }
 
+  function updateStepSkipIf(stepIdx, field, value) {
+    setEditing(prev => {
+      const next = structuredClone(prev)
+      if (!next.steps[stepIdx].skip_if) next.steps[stepIdx].skip_if = {}
+      next.steps[stepIdx].skip_if[field] = value
+      return next
+    })
+  }
+
+  function removeStepSkipIf(stepIdx) {
+    setEditing(prev => {
+      const next = structuredClone(prev)
+      delete next.steps[stepIdx].skip_if
+      return next
+    })
+  }
+
   function addStep() {
     setEditing(prev => {
       const next = structuredClone(prev)
@@ -276,6 +293,67 @@ export default function BotScriptsPage() {
                     {STEP_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                   <button className="bs-remove-btn" onClick={() => removeStep(si)}>✕</button>
+                </div>
+
+                {/* Step-level skip_if */}
+                <div className="bs-step-skip">
+                  {step.skip_if ? (
+                    <div className="bs-step-skip-row">
+                      <span className="bs-step-skip-label">דלג אוטומטית אם</span>
+                      <input
+                        value={step.skip_if.field || ''}
+                        onChange={e => updateStepSkipIf(si, 'field', e.target.value)}
+                        className="bs-input bs-skip-field"
+                        placeholder="שדה"
+                      />
+                      <select
+                        value={step.skip_if.not_empty ? 'not_empty' : step.skip_if.empty ? 'empty' : step.skip_if.equals !== undefined ? 'equals' : ''}
+                        onChange={e => {
+                          const cond = e.target.value
+                          const updated = { field: step.skip_if.field || '', goto: step.skip_if.goto || '' }
+                          if (cond === 'not_empty') updated.not_empty = true
+                          else if (cond === 'empty') updated.empty = true
+                          else if (cond === 'equals') { updated.equals = step.skip_if.equals || '' }
+                          setEditing(prev => {
+                            const next = structuredClone(prev)
+                            next.steps[si].skip_if = updated
+                            return next
+                          })
+                        }}
+                        className="bs-select bs-skip-cond"
+                      >
+                        <option value="">תנאי...</option>
+                        <option value="not_empty">לא ריק</option>
+                        <option value="empty">ריק</option>
+                        <option value="equals">שווה ל...</option>
+                      </select>
+                      {step.skip_if.equals !== undefined && (
+                        <input
+                          value={step.skip_if.equals || ''}
+                          onChange={e => updateStepSkipIf(si, 'equals', e.target.value)}
+                          className="bs-input bs-skip-val"
+                          placeholder="ערך"
+                        />
+                      )}
+                      <span className="bs-skip-arrow">→</span>
+                      <select
+                        value={step.skip_if.goto || ''}
+                        onChange={e => updateStepSkipIf(si, 'goto', e.target.value)}
+                        className="bs-select bs-skip-goto"
+                      >
+                        <option value="">דלג ל...</option>
+                        {targets.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                      <button className="bs-remove-btn bs-small" onClick={() => removeStepSkipIf(si)}>✕</button>
+                    </div>
+                  ) : (
+                    <button
+                      className="bs-add-skip-btn"
+                      onClick={() => updateStepSkipIf(si, 'field', '')}
+                    >
+                      + הוסף תנאי דילוג
+                    </button>
+                  )}
                 </div>
 
                 <div className="bs-field">

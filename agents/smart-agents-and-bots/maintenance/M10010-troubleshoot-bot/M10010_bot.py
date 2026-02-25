@@ -303,11 +303,53 @@ def _check_skip_condition(skip_if, session_data):
 
     Supports:
         {"field": "device_number", "not_empty": true}
+        {"field": "device_number", "empty": true}
+        {"field": "is_system_down", "equals": "yes"}
     """
     field = skip_if.get("field", "")
+    value = session_data.get(field, "")
     if skip_if.get("not_empty"):
-        return bool(session_data.get(field))
+        return bool(value)
+    if skip_if.get("empty"):
+        return not bool(value)
+    if "equals" in skip_if:
+        return str(value) == str(skip_if["equals"])
     return False
+
+
+def _resolve_skip_chain(step_id, script, session_data, max_depth=10):
+    """Resolve step-level skip_if conditions, following the chain until a non-skipped step.
+
+    When the engine reaches a step that has a skip_if condition and the condition is true,
+    it jumps to the goto step automatically — without showing anything to the customer.
+    This chains: if the target step also has a skip_if that matches, it keeps jumping.
+
+    Args:
+        step_id: Starting step ID
+        script: Full script dict
+        session_data: Current session data (fields to check against)
+        max_depth: Safety limit to prevent infinite loops
+
+    Returns:
+        str: Final step ID after resolving all skips
+    """
+    current = step_id
+    for _ in range(max_depth):
+        if _is_done_step(current, script):
+            break
+        step = _find_step(script, current)
+        if not step:
+            break
+        skip_if = step.get("skip_if")
+        if skip_if and _check_skip_condition(skip_if, session_data):
+            target = skip_if.get("goto", "")
+            if target and target != current:
+                logger.info(f"[M10010] Step skip: {current} → {target} "
+                            f"(field={skip_if.get('field')} matched)")
+                current = target
+                continue
+        break
+    return current
 
 
 def _is_done_step(step_id, script):
@@ -418,9 +460,17 @@ def start_session(phone, name, parsed_data=None, message_id="", media_id="",
         "llm_result": llm_result or {},
     }
 
+    # Resolve step-level skip_if on first step
+    first_step = _resolve_skip_chain(first_step, script, session_data)
+    session_data["step"] = first_step
+
     db.save_session(session_data)
     logger.info(f"[M10010] Session started for {phone}, script={sid}, "
                 f"customer={customer_name}, device={device_number}")
+
+    # Check if skip chain landed on a done step
+    if _is_done_step(first_step, script):
+        return _handle_done(first_step, script, session_data)
 
     return _build_step_message(first_step, script, session_data)
 
@@ -461,6 +511,16 @@ def process_message(phone, text, msg_type="text", caption=""):
         result = _handle_done(next_step, script, session)
         db.update_session_step(phone, next_step)
         logger.info(f"[M10010] Done: {phone} → {next_step}")
+        return result
+
+    # Resolve step-level skip_if chain
+    next_step = _resolve_skip_chain(next_step, script, session)
+
+    # Check if skip chain landed on a done step
+    if _is_done_step(next_step, script):
+        result = _handle_done(next_step, script, session)
+        db.update_session_step(phone, next_step)
+        logger.info(f"[M10010] Done (after skip): {phone} → {next_step}")
         return result
 
     # Advance to next step
