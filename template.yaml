@@ -111,6 +111,8 @@ Resources:
           CLAUDE_MODEL: !Ref ClaudeModel
           TROUBLESHOOT_SESSIONS_TABLE: !Ref TroubleshootSessionsTable
           BOT_SCRIPTS_TABLE: !Ref BotScriptsTable
+          BOT_PROMPTS_TABLE: !Ref BotPromptsTable
+          KNOWLEDGE_TABLE: !Ref KnowledgeTable
           IS_LAMBDA: "true"
       Policies:
         - S3ReadPolicy:
@@ -127,6 +129,10 @@ Resources:
             TableName: !Ref TroubleshootSessionsTable
         - DynamoDBCrudPolicy:
             TableName: !Ref BotScriptsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref BotPromptsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref KnowledgeTable
       Events:
         ApiCatchAll:
           Type: HttpApi
@@ -267,6 +273,32 @@ Resources:
           AttributeType: S
       KeySchema:
         - AttributeName: script_id
+          KeyType: HASH
+
+  # ── DynamoDB Table for Bot Prompts ────────────────────
+  BotPromptsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub urbangroup-bot-prompts-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: prompt_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: prompt_id
+          KeyType: HASH
+
+  # ── DynamoDB Table for Knowledge Base (RAG) ───────────
+  KnowledgeTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub urbangroup-knowledge-${Stage}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
           KeyType: HASH
 
   # ── S3 Bucket for Templates ─────────────────────────

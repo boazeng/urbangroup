@@ -172,6 +172,27 @@ bot_scripts_db = importlib.util.module_from_spec(spec_bs_db)
 sys.modules["bot_scripts_db"] = bot_scripts_db
 spec_bs_db.loader.exec_module(bot_scripts_db)
 
+# Load bot prompts database module
+bp_db_path = PROJECT_ROOT / "database" / "maintenance" / "bot_prompts_db.py"
+spec_bp_db = importlib.util.spec_from_file_location("bot_prompts_db", bp_db_path)
+bot_prompts_db = importlib.util.module_from_spec(spec_bp_db)
+sys.modules["bot_prompts_db"] = bot_prompts_db
+spec_bp_db.loader.exec_module(bot_prompts_db)
+
+# Load knowledge database module
+kn_db_path = PROJECT_ROOT / "database" / "maintenance" / "knowledge_db.py"
+spec_kn_db = importlib.util.spec_from_file_location("knowledge_db", kn_db_path)
+knowledge_db = importlib.util.module_from_spec(spec_kn_db)
+sys.modules["knowledge_db"] = knowledge_db
+spec_kn_db.loader.exec_module(knowledge_db)
+
+# Load RAG retrieval module
+rag_path = PROJECT_ROOT / "agents" / "LLM" / "maintenance" / "rag_retrieval.py"
+spec_rag = importlib.util.spec_from_file_location("rag_retrieval", rag_path)
+rag_retrieval = importlib.util.module_from_spec(spec_rag)
+sys.modules["rag_retrieval"] = rag_retrieval
+spec_rag.loader.exec_module(rag_retrieval)
+
 # Load LLM2000 module (invoice analyzer)
 llm2000_path = PROJECT_ROOT / "agents" / "LLM" / "LLM2000-invoice-analyzer" / "LLM2000_invoice_analyzer.py"
 spec_llm2000 = importlib.util.spec_from_file_location("llm2000_invoice_analyzer", llm2000_path)
@@ -191,6 +212,25 @@ try:
     m10010_bot.seed_default_script()
 except Exception as _seed_err:
     logger.warning(f"Bot script seed skipped: {_seed_err}")
+
+# ── Seed default LLM prompt on startup ───────────────────
+try:
+    existing_prompt = bot_prompts_db.get_active_prompt(use_cache=False)
+    if not existing_prompt:
+        # Import the hardcoded prompt from MLLM1000
+        _mllm_path = PROJECT_ROOT / "agents" / "LLM" / "maintenance" / "MLLM1000-servicecall-identifier" / "MLLM1000_servicecall_identifier.py"
+        _spec_mllm = importlib.util.spec_from_file_location("_mllm_seed", _mllm_path)
+        _mllm_mod = importlib.util.module_from_spec(_spec_mllm)
+        _spec_mllm.loader.exec_module(_mllm_mod)
+        bot_prompts_db.save_prompt({
+            "prompt_id": "servicecall-identifier-v1",
+            "name": "Service Call Identifier - Default",
+            "content": _mllm_mod.SYSTEM_PROMPT,
+            "active": True,
+        })
+        logger.info("Seeded default LLM prompt from MLLM1000")
+except Exception as _prompt_seed_err:
+    logger.warning(f"Bot prompt seed skipped: {_prompt_seed_err}")
 
 # ── Environment switching (demo / real) ──────────────────────
 # Fallback to PRIORITY_URL for backward compat (e.g. Lambda with old config)
@@ -919,6 +959,207 @@ def update_bot_script(script_id):
         # Invalidate the M10010 engine cache too
         bot_scripts_db.invalidate_cache(script_id)
         return jsonify({"ok": True, **result})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# ── Bot Prompts (LLM Training) ───────────────────────────────
+
+@app.route("/api/bot-prompts", methods=["GET"])
+def list_bot_prompts():
+    """List all LLM prompts."""
+    try:
+        prompts = bot_prompts_db.list_prompts()
+        return jsonify({"ok": True, "prompts": prompts, "count": len(prompts)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/bot-prompts/active", methods=["GET"])
+def get_active_bot_prompt():
+    """Get the currently active LLM prompt."""
+    try:
+        prompt = bot_prompts_db.get_active_prompt(use_cache=False)
+        if not prompt:
+            return jsonify({"ok": False, "error": "No active prompt found"}), 404
+        return jsonify({"ok": True, "prompt": prompt})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/bot-prompts", methods=["POST"])
+def create_bot_prompt():
+    """Create a new LLM prompt."""
+    data = request.get_json(silent=True) or {}
+    if not data.get("prompt_id") or not data.get("content"):
+        return jsonify({"ok": False, "error": "prompt_id and content are required"}), 400
+    try:
+        result = bot_prompts_db.save_prompt(data)
+        return jsonify({"ok": True, **result})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/bot-prompts/<prompt_id>", methods=["PUT"])
+def update_bot_prompt(prompt_id):
+    """Update an existing LLM prompt."""
+    data = request.get_json(silent=True) or {}
+    data["prompt_id"] = prompt_id
+    try:
+        result = bot_prompts_db.save_prompt(data)
+        bot_prompts_db.invalidate_cache(prompt_id)
+        return jsonify({"ok": True, **result})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# ── Conversation History ─────────────────────────────────────
+
+@app.route("/api/conversations", methods=["GET"])
+def get_conversations():
+    """Get conversation history (service calls)."""
+    try:
+        status = request.args.get("status")
+        phone = request.args.get("phone")
+        limit = int(request.args.get("limit", 50))
+        calls = maint_db.get_service_calls(status=status, phone=phone, limit=limit)
+        return jsonify({"ok": True, "conversations": calls, "count": len(calls)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/conversations/<call_id>", methods=["GET"])
+def get_conversation_detail(call_id):
+    """Get full detail of a single conversation/service call."""
+    try:
+        call = maint_db.get_service_call(call_id)
+        if not call:
+            return jsonify({"ok": False, "error": "Conversation not found"}), 404
+        return jsonify({"ok": True, "conversation": call})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# ── Knowledge Base (RAG) ─────────────────────────────────────
+
+@app.route("/api/knowledge", methods=["GET"])
+def list_knowledge():
+    """List all active knowledge items."""
+    try:
+        item_type = request.args.get("type")
+        items = knowledge_db.list_items(item_type=item_type)
+        return jsonify({"ok": True, "items": items, "count": len(items)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/knowledge/<item_id>", methods=["GET"])
+def get_knowledge_item(item_id):
+    """Get a single knowledge item."""
+    try:
+        item = knowledge_db.get_item(item_id)
+        if not item:
+            return jsonify({"ok": False, "error": "פריט ידע לא נמצא"}), 404
+        # Strip embedding from response
+        item.pop("embedding", None)
+        return jsonify({"ok": True, "item": item})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/knowledge", methods=["POST"])
+def create_knowledge_item():
+    """Create a new knowledge item with auto-embedding."""
+    data = request.get_json(silent=True) or {}
+    if not data.get("title") or not data.get("content"):
+        return jsonify({"ok": False, "error": "title and content are required"}), 400
+    try:
+        # Generate embedding
+        embedding = rag_retrieval.generate_embedding(data["content"])
+        if embedding:
+            data["embedding"] = embedding
+        else:
+            logger.warning("Failed to generate embedding, saving without it")
+
+        result = knowledge_db.save_item(data)
+        return jsonify({"ok": True, **result, "has_embedding": embedding is not None})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/knowledge/<item_id>", methods=["PUT"])
+def update_knowledge_item(item_id):
+    """Update a knowledge item (re-embeds if content changed)."""
+    data = request.get_json(silent=True) or {}
+    data["id"] = item_id
+    try:
+        # Re-generate embedding if content provided
+        if data.get("content"):
+            embedding = rag_retrieval.generate_embedding(data["content"])
+            if embedding:
+                data["embedding"] = embedding
+
+        result = knowledge_db.save_item(data)
+        return jsonify({"ok": True, **result})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/knowledge/<item_id>", methods=["DELETE"])
+def delete_knowledge_item(item_id):
+    """Deactivate a knowledge item."""
+    try:
+        knowledge_db.delete_item(item_id)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/knowledge/from-call", methods=["POST"])
+def create_knowledge_from_call():
+    """Create a knowledge item from an existing service call conversation."""
+    data = request.get_json(silent=True) or {}
+    call_id = data.get("call_id")
+    notes = data.get("notes", "")
+    if not call_id:
+        return jsonify({"ok": False, "error": "call_id is required"}), 400
+    try:
+        # Load the service call
+        call = maint_db.get_service_call(call_id)
+        if not call:
+            return jsonify({"ok": False, "error": "קריאת שירות לא נמצאה"}), 404
+
+        # Build knowledge content from call data + operator notes
+        parts = []
+        if call.get("issue_type"):
+            parts.append(f"סוג תקלה: {call['issue_type']}")
+        if call.get("description"):
+            parts.append(f"תיאור: {call['description']}")
+        if call.get("summary"):
+            parts.append(f"תמצית: {call['summary']}")
+        if call.get("location"):
+            parts.append(f"מיקום: {call['location']}")
+        if notes:
+            parts.append(f"הערות מפעיל: {notes}")
+
+        content = "\n".join(parts)
+        title = f"{call.get('issue_type', 'שיחה')} - {call.get('cdes', call.get('name', 'לקוח'))}"
+
+        item_data = {
+            "type": "feedback",
+            "title": title,
+            "content": content,
+            "source_call_id": call_id,
+            "tags": [call.get("urgency", ""), call.get("branchname", "")],
+        }
+
+        # Generate embedding
+        embedding = rag_retrieval.generate_embedding(content)
+        if embedding:
+            item_data["embedding"] = embedding
+
+        result = knowledge_db.save_item(item_data)
+        return jsonify({"ok": True, **result, "title": title})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 

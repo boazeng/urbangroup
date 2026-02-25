@@ -11,9 +11,11 @@ Returns structured service call data:
 """
 
 import os
+import sys
 import json
 import base64
 import logging
+import importlib.util
 from pathlib import Path
 
 import requests
@@ -60,6 +62,90 @@ SYSTEM_PROMPT = """אתה מנתח קריאות שירות של חברת Urban G
 - contact_name: חפש שם איש קשר בהודעה
 - is_system_down: שים לב היטב לשדה הזה! קרא את ההודעה בעיון וחפש כל רמז שהמערכת לא עובדת. סמן true אם הלקוח מדווח (במפורש או בין השורות) שהמערכת מושבתת, לא עובדת, תקועה, לא מגיבה, הפסיקה לעבוד, אין חשמל, אין שירות, המתקן/מכשיר/מטען לא פועל, או כל ניסוח אחר שמשמעותו שהמערכת אינה פעילה
 - החזר JSON תקין בלבד, בלי markdown ובלי backticks"""
+
+# Lazy-loaded bot_prompts_db module
+_prompts_db = None
+
+
+def _get_prompts_db():
+    """Lazy-load bot_prompts_db module."""
+    global _prompts_db
+    if _prompts_db is None:
+        try:
+            if "bot_prompts_db" in sys.modules:
+                _prompts_db = sys.modules["bot_prompts_db"]
+            else:
+                db_path = Path(__file__).resolve().parent.parent.parent.parent.parent / "database" / "maintenance" / "bot_prompts_db.py"
+                spec = importlib.util.spec_from_file_location("bot_prompts_db", db_path)
+                _prompts_db = importlib.util.module_from_spec(spec)
+                sys.modules["bot_prompts_db"] = _prompts_db
+                spec.loader.exec_module(_prompts_db)
+        except Exception as e:
+            logger.warning(f"Failed to load bot_prompts_db: {e}")
+            return None
+    return _prompts_db
+
+
+def _get_system_prompt():
+    """Get the system prompt from DB, falling back to hardcoded constant."""
+    try:
+        db = _get_prompts_db()
+        if db:
+            prompt = db.get_active_prompt()
+            if prompt and prompt.get("content"):
+                return prompt["content"]
+    except Exception as e:
+        logger.warning(f"Failed to load prompt from DB, using default: {e}")
+    return SYSTEM_PROMPT
+
+
+# Lazy-loaded rag_retrieval module
+_rag_module = None
+
+
+def _get_rag_retrieval():
+    """Lazy-load rag_retrieval module."""
+    global _rag_module
+    if _rag_module is None:
+        try:
+            if "rag_retrieval" in sys.modules:
+                _rag_module = sys.modules["rag_retrieval"]
+            else:
+                rag_path = Path(__file__).resolve().parent.parent / "rag_retrieval.py"
+                spec = importlib.util.spec_from_file_location("rag_retrieval", rag_path)
+                _rag_module = importlib.util.module_from_spec(spec)
+                sys.modules["rag_retrieval"] = _rag_module
+                spec.loader.exec_module(_rag_module)
+        except Exception as e:
+            logger.warning(f"Failed to load rag_retrieval: {e}")
+            return None
+    return _rag_module
+
+
+def _enrich_prompt_with_rag(base_prompt, query_text):
+    """Inject relevant knowledge context into the system prompt.
+
+    Args:
+        base_prompt: The base system prompt
+        query_text: The user's message text (for similarity search)
+
+    Returns:
+        str: Prompt with RAG context appended, or original prompt if no matches
+    """
+    try:
+        rag = _get_rag_retrieval()
+        if not rag:
+            return base_prompt
+        matches = rag.search_knowledge(query_text, top_k=3)
+        if not matches:
+            return base_prompt
+        context = rag.format_rag_context(matches)
+        if context:
+            logger.info(f"RAG: Injecting {len(matches)} knowledge items into prompt")
+            return base_prompt + context
+    except Exception as e:
+        logger.warning(f"RAG enrichment failed, using base prompt: {e}")
+    return base_prompt
 
 
 def download_whatsapp_media(media_id):
@@ -167,8 +253,11 @@ def analyze_image(image_bytes, mime_type="image/jpeg", caption=""):
         },
     })
 
+    prompt = _get_system_prompt()
+    # RAG: enrich prompt with relevant knowledge (use caption as query)
+    prompt = _enrich_prompt_with_rag(prompt, caption or "image analysis")
     raw = _call_openai([
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": prompt},
         {"role": "user", "content": user_content},
     ])
     return _parse_llm_response(raw)
@@ -180,8 +269,11 @@ def analyze_text(text):
     Returns:
         dict: Structured service call data
     """
+    prompt = _get_system_prompt()
+    # RAG: enrich prompt with relevant knowledge
+    prompt = _enrich_prompt_with_rag(prompt, text)
     raw = _call_openai([
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": prompt},
         {"role": "user", "content": text},
     ])
     return _parse_llm_response(raw)

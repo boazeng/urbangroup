@@ -23,6 +23,13 @@ const sections = [
     icon: '🤖',
     link: '/maintenance/bot-scripts',
   },
+  {
+    id: 'bot-training',
+    title: 'אימון הבוט',
+    description: 'עריכת Prompt של ה-AI וצפייה בהיסטוריית שיחות לשיפור הבוט',
+    icon: '🎓',
+    link: '/maintenance/bot-training',
+  },
 ]
 
 export default function MaintenancePage() {
