@@ -230,6 +230,29 @@
   padding: 0 8px;
 }
 
+.fc-title-input {
+  flex: 1;
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: var(--color-primary);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 2px 8px;
+  outline: none;
+  min-width: 0;
+  transition: border-color 0.15s;
+}
+.fc-title-input:focus {
+  border-bottom-color: var(--color-primary);
+  background: #fff;
+  border-radius: 4px 4px 0 0;
+}
+.fc-title-input::placeholder {
+  font-weight: 400;
+  color: #A0AEC0;
+}
+
 .fc-toolbar-right {
   display: flex;
   align-items: center;

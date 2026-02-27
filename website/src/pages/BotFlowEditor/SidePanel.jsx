@@ -221,20 +221,30 @@ export default function SidePanel({ node, onUpdate, onDelete, onClose }) {
             </div>
             <div className="fsp-field">
               <label>פעולה בסיום</label>
-              <div className="fsp-toggle">
-                <button
-                  className={data.action === 'save_service_call' ? 'active' : ''}
-                  onClick={() => set('action', 'save_service_call')}
-                >
-                  📋 קריאת שירות
-                </button>
-                <button
-                  className={data.action === 'save_message' ? 'active' : ''}
-                  onClick={() => set('action', 'save_message')}
-                >
-                  💬 שמור הודעה
-                </button>
-              </div>
+              <select
+                className="fsp-input"
+                value={['save_service_call', 'save_message', 'notify_only', 'escalate'].includes(data.action) ? data.action : '__custom__'}
+                onChange={e => {
+                  if (e.target.value !== '__custom__') set('action', e.target.value)
+                  else set('action', '')
+                }}
+              >
+                <option value="save_service_call">📋 קריאת שירות</option>
+                <option value="save_message">💬 שמור הודעה</option>
+                <option value="notify_only">📢 הודע בלבד</option>
+                <option value="escalate">🚨 הסלמה דחופה</option>
+                <option value="__custom__">✏️ מותאם אישית...</option>
+              </select>
+              {!['save_service_call', 'save_message', 'notify_only', 'escalate'].includes(data.action) && (
+                <input
+                  className="fsp-input"
+                  style={{ marginTop: 6 }}
+                  value={data.action || ''}
+                  onChange={e => set('action', e.target.value)}
+                  placeholder="הכנס קוד פעולה מותאם..."
+                />
+              )}
+              <span className="fsp-hint">הבוט יבצע פעולה זו בסיום השיחה</span>
             </div>
           </>
         )}

@@ -432,6 +432,15 @@ def _handle_done(done_id, script, session):
         _save_customer_message(session, script)
     elif action == "save_service_call":
         _save_completed_service_call(session, script)
+    elif action == "escalate":
+        _save_completed_service_call(session, script)
+        logger.info(f"[M10010] Escalation done: {done_id}")
+    elif action == "notify_only":
+        logger.info(f"[M10010] Notify-only done: {done_id}, no record saved")
+    elif action:
+        # Unknown/custom action — log it, save as generic message
+        logger.info(f"[M10010] Custom action '{action}' for done={done_id}, saving as message")
+        _save_customer_message(session, script)
 
     return {"text": done_config.get("text", "תודה!")}
 

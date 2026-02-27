@@ -51,6 +51,14 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
     setSelectedNode(prev => prev?.id === id ? { ...prev, data: newData } : prev)
   }
 
+  // Edit script name directly from toolbar (synced to Start Node data)
+  function handleNameChange(value) {
+    setNodes(nds => nds.map(n =>
+      n.id === '__start__' ? { ...n, data: { ...n.data, name: value } } : n
+    ))
+  }
+  const scriptName = nodes.find(n => n.id === '__start__')?.data?.name || ''
+
   // Delete a node + its edges
   function deleteNode(id) {
     setNodes(nds => nds.filter(n => n.id !== id))
@@ -149,9 +157,12 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
       {/* Top toolbar */}
       <div className="fc-toolbar">
         <button className="fc-back-btn" onClick={onBack}>→ חזרה לרשימה</button>
-        <div className="fc-toolbar-title">
-          {originalScript?.name || 'תסריט חדש'}
-        </div>
+        <input
+          className="fc-title-input"
+          value={scriptName}
+          onChange={e => handleNameChange(e.target.value)}
+          placeholder="שם התסריט..."
+        />
         <div className="fc-toolbar-right">
           <button className="fc-add-btn" onClick={addStepNode}>+ שאלה פתוחה</button>
           <button className="fc-add-btn" onClick={addButtonsNode}>+ שאלת בחירה</button>
