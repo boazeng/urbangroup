@@ -252,6 +252,12 @@ def _build_step_message(step_id, script, session_data):
         ]
         return {"text": text, "buttons": buttons if buttons else None}
 
+    if step_type == "action":
+        # Action steps are auto-executed and should not be sent to the user
+        logger.warning(f"[M10010] _build_step_message called on action step {step_id} — "
+                       "should have been resolved by _resolve_skip_chain")
+        return {"text": "מתבצעת בדיקה...", "buttons": None}
+
     # text_input type
     return {"text": text, "buttons": None}
 
@@ -295,6 +301,10 @@ def _process_step_input(step_id, script, session_data, text, msg_type):
             return step.get("next_step", "")
         return None
 
+    if step_type == "action":
+        # Action steps are auto-executed, not driven by user input
+        return _execute_action_step(step, session_data)
+
     return None
 
 
@@ -317,12 +327,48 @@ def _check_skip_condition(skip_if, session_data):
     return False
 
 
+def _execute_action_step(step, session_data):
+    """Execute an action step and return the next step ID based on result.
+
+    Currently supported action_types:
+        check_equipment — looks up device by field value in Priority.
+            on_success: step to go to if device found (also enriches customer info)
+            on_failure: step to go to if device not found or field is empty
+    """
+    action_type = step.get("action_type", "")
+
+    if action_type == "check_equipment":
+        field = step.get("field", "device_number")
+        value = session_data.get(field, "")
+        if not value:
+            logger.info(f"[M10010] Action check_equipment: field '{field}' is empty → failure")
+            return step.get("on_failure", "")
+        try:
+            eq = _get_equipment_reader()
+            device = eq.fetch_equipment_by_sernum(value)
+            if device:
+                session_data["customer_number"] = device.get("custname", "")
+                session_data["customer_name"] = device.get("cdes", "")
+                logger.info(f"[M10010] Action check_equipment: {value} found "
+                            f"→ customer={device.get('custname')} ({device.get('cdes')})")
+                return step.get("on_success", "")
+            else:
+                logger.info(f"[M10010] Action check_equipment: {value} not found → failure")
+                return step.get("on_failure", "")
+        except Exception as e:
+            logger.error(f"[M10010] Action check_equipment failed for {value}: {e}")
+            return step.get("on_failure", "")
+
+    logger.warning(f"[M10010] Unknown action_type: {action_type}")
+    return None
+
+
 def _resolve_skip_chain(step_id, script, session_data, max_depth=10):
-    """Resolve step-level skip_if conditions, following the chain until a non-skipped step.
+    """Resolve automatic steps (skip_if and action) without waiting for user input.
 
     When the engine reaches a step that has a skip_if condition and the condition is true,
-    it jumps to the goto step automatically — without showing anything to the customer.
-    This chains: if the target step also has a skip_if that matches, it keeps jumping.
+    or a step of type 'action', it executes/jumps automatically.
+    This chains until a step that requires user input (text_input or buttons).
 
     Args:
         step_id: Starting step ID
@@ -331,7 +377,7 @@ def _resolve_skip_chain(step_id, script, session_data, max_depth=10):
         max_depth: Safety limit to prevent infinite loops
 
     Returns:
-        str: Final step ID after resolving all skips
+        str: Final step ID after resolving all auto steps
     """
     current = step_id
     for _ in range(max_depth):
@@ -340,6 +386,18 @@ def _resolve_skip_chain(step_id, script, session_data, max_depth=10):
         step = _find_step(script, current)
         if not step:
             break
+
+        # Auto-execute action steps (no user input needed)
+        if step.get("type") == "action":
+            target = _execute_action_step(step, session_data)
+            if target and target != current:
+                logger.info(f"[M10010] Action step: {current} → {target} "
+                            f"(action_type={step.get('action_type')})")
+                current = target
+                continue
+            break
+
+        # Resolve step-level skip_if conditions
         skip_if = step.get("skip_if")
         if skip_if and _check_skip_condition(skip_if, session_data):
             target = skip_if.get("goto", "")

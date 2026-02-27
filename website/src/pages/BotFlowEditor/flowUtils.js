@@ -33,9 +33,11 @@ export function scriptToFlow(script) {
   // Step nodes
   ;(script.steps || []).forEach((step) => {
     const isButtons = step.type === 'buttons'
+    const isAction = step.type === 'action'
+
     nodes.push({
       id: step.id,
-      type: isButtons ? 'buttonsNode' : 'stepNode',
+      type: isButtons ? 'buttonsNode' : isAction ? 'actionNode' : 'stepNode',
       position: { x: xCenter - NODE_W / 2, y },
       data: { ...step },
     })
@@ -56,6 +58,33 @@ export function scriptToFlow(script) {
         }
       })
       y += 30 * Math.max((step.buttons || []).length - 1, 0)
+    } else if (isAction) {
+      if (step.on_success) {
+        edges.push({
+          id: `${step.id}-success->${step.on_success}`,
+          source: step.id,
+          sourceHandle: 'success',
+          target: step.on_success,
+          label: '✓ הצלחה',
+          type: 'smoothstep',
+          style: { stroke: '#48BB78' },
+          labelStyle: { fontSize: 11, fill: '#276749' },
+          labelBgStyle: { fill: '#F0FFF4', fillOpacity: 0.9 },
+        })
+      }
+      if (step.on_failure) {
+        edges.push({
+          id: `${step.id}-failure->${step.on_failure}`,
+          source: step.id,
+          sourceHandle: 'failure',
+          target: step.on_failure,
+          label: '✕ כישלון',
+          type: 'smoothstep',
+          style: { stroke: '#FC8181' },
+          labelStyle: { fontSize: 11, fill: '#C53030' },
+          labelBgStyle: { fill: '#FFF5F5', fillOpacity: 0.9 },
+        })
+      }
     } else {
       if (step.next_step) {
         edges.push({
@@ -104,18 +133,24 @@ export function scriptToFlow(script) {
 
 export function flowToScript(nodes, edges, originalScript) {
   const startNode = nodes.find(n => n.type === 'startNode')
-  const stepNodes = nodes.filter(n => n.type === 'stepNode' || n.type === 'buttonsNode')
+  const stepNodes = nodes.filter(n =>
+    n.type === 'stepNode' || n.type === 'buttonsNode' || n.type === 'actionNode'
+  )
   const doneNodes = nodes.filter(n => n.type === 'doneNode')
 
   // Build edge maps
   const simpleNext = {}       // sourceId → targetId
   const buttonNext = {}       // sourceId → { 'btn-0': targetId, ... }
+  const actionNext = {}       // sourceId → { success: targetId, failure: targetId }
 
   edges.forEach(edge => {
     if (edge.source === '__start__') return
     if (edge.sourceHandle?.startsWith('btn-')) {
       if (!buttonNext[edge.source]) buttonNext[edge.source] = {}
       buttonNext[edge.source][edge.sourceHandle] = edge.target
+    } else if (edge.sourceHandle === 'success' || edge.sourceHandle === 'failure') {
+      if (!actionNext[edge.source]) actionNext[edge.source] = {}
+      actionNext[edge.source][edge.sourceHandle] = edge.target
     } else {
       simpleNext[edge.source] = edge.target
     }
@@ -147,6 +182,16 @@ export function flowToScript(nodes, edges, originalScript) {
           ...btn,
           next_step: btnMap[`btn-${bi}`] || btn.next_step || '',
         })),
+      }
+    } else if (node.type === 'actionNode') {
+      const aMap = actionNext[node.id] || {}
+      return {
+        id: node.id,
+        type: 'action',
+        action_type: node.data.action_type || 'check_equipment',
+        field: node.data.field || '',
+        on_success: aMap['success'] || node.data.on_success || '',
+        on_failure: aMap['failure'] || node.data.on_failure || '',
       }
     } else {
       return {

@@ -31,6 +31,7 @@ export default function SidePanel({ node, onUpdate, onDelete, onClose }) {
   const isStart = type === 'startNode'
   const isStep = type === 'stepNode'
   const isButtons = type === 'buttonsNode'
+  const isAction = type === 'actionNode'
   const isDone = type === 'doneNode'
 
   return (
@@ -40,6 +41,7 @@ export default function SidePanel({ node, onUpdate, onDelete, onClose }) {
           {isStart && '🚀 פתיחת שיחה'}
           {isStep && '✏️ שאלה פתוחה'}
           {isButtons && '🔘 שאלת בחירה'}
+          {isAction && '⚡ פעולה אוטומטית'}
           {isDone && '✓ סיום שיחה'}
         </span>
         <button className="fsp-close" onClick={onClose}>✕</button>
@@ -151,6 +153,40 @@ export default function SidePanel({ node, onUpdate, onDelete, onClose }) {
             )}
             <div className="fsp-hint fsp-connect-hint">
               גרור קו מכל כפתור לשלב הבא שלו
+            </div>
+          </>
+        )}
+
+        {/* ── Action Node ── */}
+        {isAction && (
+          <>
+            <div className="fsp-field">
+              <label>מזהה</label>
+              <input className="fsp-input fsp-disabled" value={id} disabled />
+            </div>
+            <div className="fsp-field">
+              <label>סוג פעולה</label>
+              <select
+                className="fsp-input"
+                value={data.action_type || 'check_equipment'}
+                onChange={e => set('action_type', e.target.value)}
+              >
+                <option value="check_equipment">🔍 בדיקת ציוד (לפי מספר מכשיר)</option>
+              </select>
+            </div>
+            <div className="fsp-field">
+              <label>שדה לבדיקה</label>
+              <input
+                className="fsp-input"
+                value={data.field || ''}
+                onChange={e => set('field', e.target.value)}
+                placeholder="device_number"
+              />
+              <span className="fsp-hint">שם השדה בסשן שמכיל את הערך לבדיקה</span>
+            </div>
+            <div className="fsp-hint fsp-connect-hint">
+              גרור קו מ-<strong>הצלחה</strong> (שמאל) לשלב הבא בהצלחה<br />
+              גרור קו מ-<strong>כישלון</strong> (ימין) לשלב החלופי
             </div>
           </>
         )}

@@ -96,6 +96,11 @@ export default function BotFlowEditorPage() {
             </div>
             <div className="bfe-exp-arrow">→</div>
             <div className="bfe-exp-item">
+              <span className="bfe-exp-icon" style={{ background: '#FFFAF0', color: '#C05621' }}>⚡</span>
+              <span>בדיקה אוטומטית — ענפים להצלחה/כישלון</span>
+            </div>
+            <div className="bfe-exp-arrow">→</div>
+            <div className="bfe-exp-item">
               <span className="bfe-exp-icon" style={{ background: '#F0FFF4', color: '#276749' }}>✓</span>
               <span>סיום — פעולה וסגירת שיחה</span>
             </div>

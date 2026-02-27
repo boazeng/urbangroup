@@ -251,6 +251,8 @@
 }
 
 .fc-add-btn:hover { background: #BEE3F8; }
+.fc-add-action { background: #FFFAF0; border-color: #DD6B20; color: #C05621; }
+.fc-add-action:hover { background: #FEEBC8; }
 
 .fc-save-btn {
   background: var(--color-primary);
@@ -348,6 +350,47 @@
 .fn-buttons { border-color: #9F7AEA; background: linear-gradient(135deg, #FAF5FF, white); }
 .fn-buttons.fn-selected { border-color: #805AD5; box-shadow: 0 0 0 3px rgba(128, 90, 213, 0.3); }
 
+/* Action node */
+.fn-action {
+  border-color: #DD6B20;
+  background: linear-gradient(135deg, #FFFAF0, white);
+}
+.fn-action.fn-selected { border-color: #C05621; box-shadow: 0 0 0 3px rgba(221, 107, 32, 0.3); }
+
+.fn-badge-action { background: #FEEBC8; color: #C05621; }
+
+.fn-action-type {
+  font-size: 13px;
+  font-weight: 600;
+  color: #C05621;
+  margin-bottom: 4px;
+}
+
+.fn-action-outputs {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding: 6px 0 2px;
+}
+
+.fn-out-success {
+  font-size: 11px;
+  font-weight: 700;
+  color: #276749;
+  background: #C6F6D5;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.fn-out-failure {
+  font-size: 11px;
+  font-weight: 700;
+  color: #C53030;
+  background: #FED7D7;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
 /* Done node */
 .fn-done {
   border-color: #48BB78;
@@ -443,6 +486,20 @@
   width: 10px !important;
   height: 10px !important;
   border-color: #9F7AEA !important;
+}
+
+.fn-handle-success {
+  width: 12px !important;
+  height: 12px !important;
+  border-color: #48BB78 !important;
+  background: #C6F6D5 !important;
+}
+
+.fn-handle-failure {
+  width: 12px !important;
+  height: 12px !important;
+  border-color: #FC8181 !important;
+  background: #FED7D7 !important;
 }
 
 /* ── Side Panel ─────────────────────────────────────────────── */
