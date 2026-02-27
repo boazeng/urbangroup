@@ -252,6 +252,13 @@ def _build_step_message(step_id, script, session_data):
 
     text = step.get("text", "")
 
+    # Interpolate session variables in step text (e.g. {device_number}, {customer_name})
+    try:
+        import collections as _col
+        text = text.format_map(_col.defaultdict(str, session_data))
+    except (ValueError, KeyError):
+        pass
+
     # For the first step, prepend greeting
     if step_id == script.get("first_step"):
         customer_name = session_data.get("customer_name", "")
