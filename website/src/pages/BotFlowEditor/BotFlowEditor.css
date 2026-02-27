@@ -266,6 +266,25 @@
   color: #A0AEC0;
 }
 
+.fc-script-id-btn {
+  font-size: 11px;
+  font-family: monospace;
+  background: #EDF2F7;
+  border: 1px solid #CBD5E0;
+  border-radius: 6px;
+  padding: 3px 10px;
+  color: #4A5568;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.fc-script-id-btn:hover {
+  background: #BEE3F8;
+  border-color: #90CDF4;
+  color: #2B6CB0;
+}
+
 .fc-toolbar-right {
   display: flex;
   align-items: center;

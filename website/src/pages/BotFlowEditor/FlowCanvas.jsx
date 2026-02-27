@@ -164,6 +164,15 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
     [selectedNode, nodes]
   )
 
+  const [copied, setCopied] = useState(false)
+  const currentScriptId = originalScript?.script_id || ''
+  function copyScriptId() {
+    navigator.clipboard.writeText(currentScriptId).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+
   return (
     <div className="fc-wrapper">
       {/* Top toolbar */}
@@ -175,6 +184,11 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
           onChange={e => handleNameChange(e.target.value)}
           placeholder="שם התסריט..."
         />
+        {currentScriptId && (
+          <button className="fc-script-id-btn" onClick={copyScriptId} title="לחץ להעתקת מזהה התסריט">
+            🔑 {currentScriptId} {copied ? '✓' : ''}
+          </button>
+        )}
         <div className="fc-toolbar-right">
           <button className="fc-add-btn" onClick={addStepNode}>+ שאלה פתוחה</button>
           <button className="fc-add-btn" onClick={addButtonsNode}>+ שאלת בחירה</button>
