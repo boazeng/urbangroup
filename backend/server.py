@@ -499,6 +499,7 @@ def whatsapp_incoming():
                     device_number=response.get("device_number", ""),
                     customer_number=response.get("customer_number", ""),
                     customer_name=response.get("customer_name", ""),
+                    script_id=response.get("script_id"),
                 )
                 if result:
                     _send_bot_response(phone, result)

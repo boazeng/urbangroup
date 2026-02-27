@@ -214,6 +214,7 @@ export function flowToScript(nodes, edges, originalScript) {
     done_actions[node.id] = {
       text: node.data.text || '',
       action: node.data.action || 'save_service_call',
+      ...(node.data.target_script_id ? { target_script_id: node.data.target_script_id } : {}),
     }
   })
 

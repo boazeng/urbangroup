@@ -416,6 +416,36 @@ def _is_done_step(step_id, script):
     return step_id in done_actions
 
 
+def _switch_to_script(phone, target_script_id, session, db):
+    """Switch the active session to a different script (without losing session data).
+
+    Used by the switch_script done_action to transition from a routing script
+    to a fault-reporting script in one seamless session.
+
+    Returns:
+        dict: first step message of the new script
+    """
+    new_script = _load_script(target_script_id)
+    if not new_script:
+        logger.error(f"[M10010] switch_script: target '{target_script_id}' not found")
+        return {"text": f"שגיאה: תסריט {target_script_id} לא נמצא", "buttons": None}
+
+    first_step = new_script.get("first_step", "")
+    first_step = _resolve_skip_chain(first_step, new_script, session)
+
+    session["script_id"] = target_script_id
+    session["step"] = first_step
+    session["expires_at"] = int(time.time()) + SESSION_TTL_SECONDS
+    db.update_session(phone, session)
+
+    logger.info(f"[M10010] Switched script: {target_script_id}, first_step={first_step}")
+
+    if _is_done_step(first_step, new_script):
+        return _handle_done(first_step, new_script, session)
+
+    return _build_step_message(first_step, new_script, session)
+
+
 # ── Done Actions ──────────────────────────────────────────────
 
 def _handle_done(done_id, script, session):
@@ -579,6 +609,10 @@ def process_message(phone, text, msg_type="text", caption=""):
         return msg
 
     if _is_done_step(next_step, script):
+        done_cfg = script.get("done_actions", {}).get(next_step, {})
+        if done_cfg.get("action") == "switch_script":
+            logger.info(f"[M10010] switch_script: {phone} → {done_cfg.get('target_script_id')}")
+            return _switch_to_script(phone, done_cfg.get("target_script_id", ""), session, db)
         result = _handle_done(next_step, script, session)
         db.update_session_step(phone, next_step)
         logger.info(f"[M10010] Done: {phone} → {next_step}")
@@ -589,6 +623,10 @@ def process_message(phone, text, msg_type="text", caption=""):
 
     # Check if skip chain landed on a done step
     if _is_done_step(next_step, script):
+        done_cfg = script.get("done_actions", {}).get(next_step, {})
+        if done_cfg.get("action") == "switch_script":
+            logger.info(f"[M10010] switch_script (after skip): {phone} → {done_cfg.get('target_script_id')}")
+            return _switch_to_script(phone, done_cfg.get("target_script_id", ""), session, db)
         result = _handle_done(next_step, script, session)
         db.update_session_step(phone, next_step)
         logger.info(f"[M10010] Done (after skip): {phone} → {next_step}")

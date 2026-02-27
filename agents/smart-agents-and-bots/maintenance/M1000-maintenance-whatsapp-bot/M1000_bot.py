@@ -13,6 +13,10 @@ from datetime import datetime
 
 logger = logging.getLogger("urbangroup.M1000")
 
+# The script_id that M10010 will run for new sessions.
+# Set ROUTING_SCRIPT_ID env var to override (e.g. your custom routing script).
+ROUTING_SCRIPT_ID = os.environ.get("ROUTING_SCRIPT_ID", "maintenance-troubleshoot")
+
 # Lazy-load modules to avoid import failures in environments without AWS/deps
 _maint_db = None
 _llm = None
@@ -212,9 +216,10 @@ def process_message(phone, name, text, msg_type="text", message_id="", media_id=
         logger.error(f"[M1000] Equipment lookup failed: {e}")
 
     # Always hand off to M10010 for structured conversation
-    logger.info(f"[M1000] Handing off to M10010")
+    logger.info(f"[M1000] Handing off to M10010 with script_id={ROUTING_SCRIPT_ID}")
     return {
         "handoff": "M10010",
+        "script_id": ROUTING_SCRIPT_ID,
         "llm_result": llm_result,
         "parsed_data": parsed_data,
         "original_text": text,

@@ -223,7 +223,7 @@ export default function SidePanel({ node, onUpdate, onDelete, onClose }) {
               <label>פעולה בסיום</label>
               <select
                 className="fsp-input"
-                value={['save_service_call', 'save_message', 'notify_only', 'escalate'].includes(data.action) ? data.action : '__custom__'}
+                value={['save_service_call', 'save_message', 'notify_only', 'escalate', 'switch_script'].includes(data.action) ? data.action : '__custom__'}
                 onChange={e => {
                   if (e.target.value !== '__custom__') set('action', e.target.value)
                   else set('action', '')
@@ -231,11 +231,21 @@ export default function SidePanel({ node, onUpdate, onDelete, onClose }) {
               >
                 <option value="save_service_call">📋 קריאת שירות</option>
                 <option value="save_message">💬 שמור הודעה</option>
+                <option value="switch_script">🔀 עבור לתסריט אחר</option>
                 <option value="notify_only">📢 הודע בלבד</option>
                 <option value="escalate">🚨 הסלמה דחופה</option>
                 <option value="__custom__">✏️ מותאם אישית...</option>
               </select>
-              {!['save_service_call', 'save_message', 'notify_only', 'escalate'].includes(data.action) && (
+              {data.action === 'switch_script' && (
+                <input
+                  className="fsp-input"
+                  style={{ marginTop: 6 }}
+                  value={data.target_script_id || ''}
+                  onChange={e => set('target_script_id', e.target.value)}
+                  placeholder="מזהה התסריט להמשך (script_id)..."
+                />
+              )}
+              {!['save_service_call', 'save_message', 'notify_only', 'escalate', 'switch_script'].includes(data.action) && (
                 <input
                   className="fsp-input"
                   style={{ marginTop: 6 }}
