@@ -683,14 +683,8 @@ def start_session(phone, name, parsed_data=None, message_id="", media_id="",
     db = _get_session_db()
     now = datetime.utcnow().isoformat() + "Z"
 
-    # Use Priority data from M1000 if provided, otherwise fall back to DynamoDB history
-    if not customer_name and not device_number:
-        customer_info = _lookup_customer(phone)
-        customer_name = customer_info.get("name", "") or name
-        customer_number = customer_info.get("customer_number", "")
-        device_number = customer_info.get("device_number", "")
-    else:
-        customer_name = customer_name or name
+    # Use only Priority data from M1000 — no DynamoDB history fallback
+    customer_name = customer_name or name
 
     first_step = script.get("first_step", "GREETING")
 
