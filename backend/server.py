@@ -461,9 +461,16 @@ def whatsapp_incoming():
         logger.info(f"From {phone} ({msg.get('name')}): {msg.get('text', '')[:100]}")
 
         try:
+            # Reset keywords — clear session and start fresh
+            RESET_KEYWORDS = {"התחל", "התחל מחדש", "חזור", "תפריט", "0", "reset", "restart", "menu"}
+            text_stripped = (msg.get("text", "") or "").strip()
+            if text_stripped in RESET_KEYWORDS:
+                m10010_bot.reset_session(phone)
+                logger.info(f"Session reset by keyword for {phone}")
+                # Fall through to normal M1000 flow below
+
             # Check if this phone has an active troubleshooting session
-            session = m10010_bot.get_active_session(phone)
-            if session:
+            elif m10010_bot.get_active_session(phone):
                 result = m10010_bot.process_message(
                     phone=phone,
                     text=msg.get("text", ""),

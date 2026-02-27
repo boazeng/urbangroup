@@ -577,6 +577,13 @@ def _handle_done(done_id, script, session):
 
 # ── Public API ────────────────────────────────────────────────
 
+def reset_session(phone):
+    """Delete the active session for a phone number (force restart)."""
+    db = _get_session_db()
+    db.delete_session(phone)
+    logger.info(f"[M10010] Session reset for {phone}")
+
+
 def get_active_session(phone):
     """Check if phone has an active (non-expired) troubleshooting session.
 
