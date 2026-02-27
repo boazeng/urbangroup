@@ -50,6 +50,9 @@ Parameters:
   ClaudeModel:
     Type: String
     Default: "claude-sonnet-4-20250514"
+  RoutingScriptId:
+    Type: String
+    Default: "flow_1772177781916"
 
 Globals:
   Function:
@@ -114,6 +117,7 @@ Resources:
           BOT_PROMPTS_TABLE: !Ref BotPromptsTable
           KNOWLEDGE_TABLE: !Ref KnowledgeTable
           IS_LAMBDA: "true"
+          ROUTING_SCRIPT_ID: !Ref RoutingScriptId
       Policies:
         - S3ReadPolicy:
             BucketName: !Sub urbangroup-templates-${Stage}

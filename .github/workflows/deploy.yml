@@ -156,7 +156,8 @@ jobs:
               WhatsAppVerifyTokenAriel="${{ secrets.WHATSAPP_VERIFY_TOKEN_ARIEL }}" \
               "OpenAiApiKey=${{ secrets.OPENAI_API_KEY }}" \
               "AnthropicApiKey=${{ secrets.ANTHROPIC_API_KEY || 'not-configured' }}" \
-              "ClaudeModel=claude-sonnet-4-20250514"
+              "ClaudeModel=claude-sonnet-4-20250514" \
+              "RoutingScriptId=flow_1772177781916"
 
       # ── Upload Excel template to S3 ─────────────────────
       - name: Upload template to S3
