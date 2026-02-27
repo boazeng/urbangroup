@@ -159,8 +159,11 @@ def _get_technician():
 def _lookup_customer(phone):
     """Look up customer by phone number in DynamoDB service calls history.
 
+    Returns name and customer_number only — device_number is intentionally
+    excluded because the customer may be calling about a different device.
+
     Returns:
-        dict: {"name": "...", "customer_number": "...", "device_number": "..."} or empty dict
+        dict: {"name": "...", "customer_number": "..."} or empty dict
     """
     try:
         db = _get_maint_db()
@@ -170,7 +173,6 @@ def _lookup_customer(phone):
             return {
                 "name": latest.get("cdes") or latest.get("name", ""),
                 "customer_number": latest.get("custname", ""),
-                "device_number": latest.get("sernum", ""),
             }
     except Exception as e:
         logger.error(f"[M10010] Customer lookup failed for {phone}: {e}")
