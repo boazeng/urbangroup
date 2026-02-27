@@ -429,9 +429,9 @@ def _handle_done(done_id, script, session):
 
     action = done_config.get("action", "")
     if action == "save_message":
-        _save_customer_message(session)
+        _save_customer_message(session, script)
     elif action == "save_service_call":
-        _save_completed_service_call(session)
+        _save_completed_service_call(session, script)
 
     return {"text": done_config.get("text", "תודה!")}
 
@@ -507,16 +507,20 @@ def start_session(phone, name, parsed_data=None, message_id="", media_id="",
         "customer_name": customer_name,
         "customer_number": customer_number,
         "device_number": device_number,
-        "is_system_down": "",
-        "location": "",
-        "description": "",
-        "customer_message": "",
         "original_text": original_text,
         "original_message_id": message_id,
         "original_media_id": media_id,
         "parsed_data": parsed_data or {},
         "llm_result": llm_result or {},
     }
+
+    # Pre-initialize all save_to fields defined in the script (text steps and buttons)
+    for step in script.get("steps", []):
+        if step.get("save_to") and step["save_to"] not in session_data:
+            session_data[step["save_to"]] = ""
+        for btn in step.get("buttons", []):
+            if btn.get("save_to") and btn["save_to"] not in session_data:
+                session_data[btn["save_to"]] = ""
 
     # Resolve step-level skip_if on first step
     first_step = _resolve_skip_chain(first_step, script, session_data)
@@ -592,12 +596,20 @@ def process_message(phone, text, msg_type="text", caption=""):
 
 # ── Done Action Implementations ───────────────────────────────
 
-def _save_customer_message(session):
+def _save_customer_message(session, script=None):
     """Save a non-fault customer message to DynamoDB as a service call record."""
     maint_db = _get_maint_db()
     phone = session.get("phone", "")
     name = session.get("customer_name", "") or session.get("name", "")
+
+    # Find message field: prefer "customer_message", fallback to first text save_to in script
     message = session.get("customer_message", "")
+    if not message and script:
+        for step in script.get("steps", []):
+            save_to = step.get("save_to", "")
+            if save_to and session.get(save_to):
+                message = session[save_to]
+                break
 
     maint_db.save_service_call(
         phone=phone,
@@ -614,8 +626,12 @@ def _save_customer_message(session):
     )
 
 
-def _save_completed_service_call(session):
+def _save_completed_service_call(session, script=None):
     """Save completed fault report as a service call in DynamoDB.
+
+    Dynamically collects all save_to fields from the script steps.
+    Known fields (description, location, device_number, is_system_down) are mapped
+    to specific service call attributes; all other fields are appended as extra text.
 
     Returns:
         str: service call ID
@@ -624,17 +640,58 @@ def _save_completed_service_call(session):
 
     phone = session.get("phone", "")
     name = session.get("customer_name", "") or session.get("name", "")
+
+    # Collect all save_to fields from the script
+    SYSTEM_FIELDS = {
+        "phone", "session_id", "script_id", "name", "step",
+        "created_at", "updated_at", "expires_at",
+        "customer_name", "customer_number", "device_number",
+        "original_text", "original_message_id", "original_media_id",
+        "parsed_data", "llm_result",
+    }
+    script_fields = []  # ordered list of (field, value) as defined in script steps
+    seen = set()
+    if script:
+        for step in script.get("steps", []):
+            save_to = step.get("save_to", "")
+            if save_to and save_to not in SYSTEM_FIELDS and save_to not in seen:
+                seen.add(save_to)
+                if session.get(save_to):
+                    script_fields.append((save_to, session[save_to]))
+            for btn in step.get("buttons", []):
+                bsave = btn.get("save_to", "")
+                if bsave and bsave not in SYSTEM_FIELDS and bsave not in seen:
+                    seen.add(bsave)
+                    if session.get(bsave):
+                        script_fields.append((bsave, session[bsave]))
+
+    # Known field aliases that map to specific service call attributes
     description = session.get("description", "")
+    # Fallback: use first collected script field as description if none named "description"
+    if not description and script_fields:
+        description = script_fields[0][1]
+    location = session.get("location", "")
+    is_system_down = session.get("is_system_down", "") == "yes"
 
-    is_system_down = session.get("is_system_down") == "yes"
-
-    fault_text = f"{description}\nטלפון: {phone}"
-    if session.get("location"):
-        fault_text += f"\nמיקום: {session['location']}"
+    # Build fault text
+    fault_lines = []
+    if description:
+        fault_lines.append(description)
+    fault_lines.append(f"טלפון: {phone}")
+    if location:
+        fault_lines.append(f"מיקום: {location}")
     if session.get("device_number"):
-        fault_text += f"\nמכשיר: {session['device_number']}"
+        fault_lines.append(f"מכשיר: {session['device_number']}")
     if is_system_down:
-        fault_text += "\nמערכת מושבתת: כן"
+        fault_lines.append("מערכת מושבתת: כן")
+
+    # Append any extra script fields not already included
+    KNOWN_MAPPED = {"description", "location", "is_system_down"}
+    for field, value in script_fields:
+        if field not in KNOWN_MAPPED:
+            fault_lines.append(f"{field}: {value}")
+
+    fault_text = "\n".join(fault_lines)
 
     call_data = dict(
         phone=phone,
