@@ -37,6 +37,13 @@ const sections = [
     icon: '🗺️',
     link: '/maintenance/bot-flow',
   },
+  {
+    id: 'bot-diagnostics',
+    title: 'אבחון בוט',
+    description: 'מעקב אחר פעילות הבוט — צפייה בלוג שיחות, שלבים, החלטות ופעולות בזמן אמת',
+    icon: '🔍',
+    link: '/maintenance/bot-diagnostics',
+  },
 ]
 
 export default function MaintenancePage() {

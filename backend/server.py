@@ -1012,6 +1012,31 @@ Rules:
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/api/bot-sessions", methods=["GET"])
+def api_bot_sessions():
+    """List recent bot sessions with their activity logs (for diagnostics)."""
+    try:
+        sessions = troubleshoot_sessions_db.list_sessions(limit=50)
+        sessions.sort(key=lambda s: s.get("created_at", ""), reverse=True)
+        light = []
+        for s in sessions:
+            light.append({
+                "phone": s.get("phone"),
+                "name": s.get("name"),
+                "customer_name": s.get("customer_name"),
+                "device_number": s.get("device_number"),
+                "script_id": s.get("script_id"),
+                "step": s.get("step"),
+                "status": s.get("status", "active"),
+                "created_at": s.get("created_at"),
+                "updated_at": s.get("updated_at"),
+                "session_log": s.get("session_log", []),
+            })
+        return jsonify({"ok": True, "sessions": light})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/bot-scripts", methods=["GET"])
 def list_bot_scripts():
     """List all bot conversation scripts."""

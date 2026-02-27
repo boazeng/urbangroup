@@ -22,6 +22,7 @@ import SupplierInvoiceEntryPage from './pages/SupplierInvoiceEntryPage'
 import BotScriptsPage from './pages/BotScriptsPage'
 import BotTrainingPage from './pages/BotTrainingPage'
 import BotFlowEditorPage from './pages/BotFlowEditor/BotFlowEditorPage'
+import BotDiagnosticsPage from './pages/BotDiagnosticsPage'
 
 export default function App() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="/maintenance/bot-scripts" element={<BotScriptsPage />} />
           <Route path="/maintenance/bot-training" element={<BotTrainingPage />} />
           <Route path="/maintenance/bot-flow" element={<BotFlowEditorPage />} />
+          <Route path="/maintenance/bot-diagnostics" element={<BotDiagnosticsPage />} />
           <Route path="/ariel" element={<ArielPage />} />
           <Route path="/ariel/aging-report" element={<AgingReportPage />} />
           <Route path="/ariel/debt-report" element={<ArielDebtReportPage />} />

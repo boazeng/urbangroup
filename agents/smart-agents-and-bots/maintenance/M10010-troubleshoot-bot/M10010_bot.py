@@ -134,6 +134,15 @@ def _get_service_call_writer():
     return _service_call_writer
 
 
+def _append_log(session, event, **kwargs):
+    """Append a diagnostic event to the session log."""
+    if "session_log" not in session:
+        session["session_log"] = []
+    entry = {"ts": datetime.utcnow().isoformat() + "Z", "event": event}
+    entry.update(kwargs)
+    session["session_log"].append(entry)
+
+
 def _is_demo_env():
     """Check if running against demo Priority environment."""
     return "demo" in os.environ.get("PRIORITY_URL", "").lower()
@@ -263,6 +272,7 @@ def _build_step_message(step_id, script, session_data):
             {"id": btn["id"], "title": btn["title"]}
             for btn in step.get("buttons", [])
         ]
+        _append_log(session_data, "step_shown", step=step_id, step_type="buttons", text=text[:120])
         return {"text": text, "buttons": buttons if buttons else None}
 
     if step_type == "action":
@@ -272,6 +282,7 @@ def _build_step_message(step_id, script, session_data):
         return {"text": "מתבצעת בדיקה...", "buttons": None}
 
     # text_input type
+    _append_log(session_data, "step_shown", step=step_id, step_type="text_input", text=text[:120])
     return {"text": text, "buttons": None}
 
 
@@ -301,7 +312,14 @@ def _process_step_input(step_id, script, session_data, text, msg_type):
                 # Check skip_if condition
                 skip_if = btn.get("skip_if")
                 if skip_if and _check_skip_condition(skip_if, session_data):
-                    return skip_if.get("goto", next_step)
+                    target = skip_if.get("goto", next_step)
+                    _append_log(session_data, "button_matched",
+                                step=step_id, button_id=btn["id"],
+                                button_title=btn.get("title", ""), next_step=target)
+                    return target
+                _append_log(session_data, "button_matched",
+                            step=step_id, button_id=btn["id"],
+                            button_title=btn.get("title", ""), next_step=next_step)
                 return next_step
         return None  # No button matched
 
@@ -311,6 +329,9 @@ def _process_step_input(step_id, script, session_data, text, msg_type):
             save_to = step.get("save_to")
             if save_to:
                 session_data[save_to] = text
+            _append_log(session_data, "user_input",
+                        step=step_id, input=text[:80], msg_type=msg_type,
+                        save_to=save_to or "")
             return step.get("next_step", "")
         return None
 
@@ -475,22 +496,37 @@ def _resolve_skip_chain(step_id, script, session_data, max_depth=10):
                 # LLM decides which exit to take
                 target = _llm_route_exits(step, session_data)
                 if target and target != current:
+                    # Find chosen exit title for log
+                    chosen_title = next(
+                        (e.get("title", "") for e in exits if e.get("next_step") == target), ""
+                    )
+                    _append_log(session_data, "llm_route",
+                                step=current, chosen_exit_title=chosen_title, target=target)
                     current = target
                     continue
             else:
                 logger.info(f"[M10010] Instructions step {current}: {instr_text[:100]}")
                 target = step.get("next_step", "")
                 if target and target != current:
+                    _append_log(session_data, "instructions_auto", step=current, target=target)
                     current = target
                     continue
             break
 
         # Auto-execute action steps (no user input needed)
         if step.get("type") == "action":
+            action_type = step.get("action_type", "")
+            field = step.get("field", "")
+            value = session_data.get(field, "")
             target = _execute_action_step(step, session_data)
             if target and target != current:
+                result = "success" if target == step.get("on_success") else "failure"
                 logger.info(f"[M10010] Action step: {current} → {target} "
-                            f"(action_type={step.get('action_type')})")
+                            f"(action_type={action_type})")
+                _append_log(session_data, "action_executed",
+                            step=current, action_type=action_type,
+                            field=field, value=str(value)[:40],
+                            result=result, target=target)
                 current = target
                 continue
             break
@@ -502,6 +538,8 @@ def _resolve_skip_chain(step_id, script, session_data, max_depth=10):
             if target and target != current:
                 logger.info(f"[M10010] Step skip: {current} → {target} "
                             f"(field={skip_if.get('field')} matched)")
+                _append_log(session_data, "skip_if_triggered",
+                            step=current, field=skip_if.get("field", ""), target=target)
                 current = target
                 continue
         break
@@ -528,7 +566,10 @@ def _switch_to_script(phone, target_script_id, session, db):
         logger.error(f"[M10010] switch_script: target '{target_script_id}' not found")
         return {"text": f"שגיאה: תסריט {target_script_id} לא נמצא", "buttons": None}
 
+    from_script = session.get("script_id", "")
     first_step = new_script.get("first_step", "")
+    _append_log(session, "switch_script", from_script=from_script, to_script=target_script_id)
+
     first_step = _resolve_skip_chain(first_step, new_script, session)
 
     session["script_id"] = target_script_id
@@ -571,6 +612,16 @@ def _handle_done(done_id, script, session):
         # Unknown/custom action — log it, save as generic message
         logger.info(f"[M10010] Custom action '{action}' for done={done_id}, saving as message")
         _save_customer_message(session, script)
+
+    # Log done event + extend TTL to 7 days so diagnostics can review completed sessions
+    _append_log(session, "session_done", done_id=done_id, action=action)
+    session["status"] = "done"
+    session["expires_at"] = int(time.time()) + 7 * 86400
+    try:
+        db = _get_session_db()
+        db.update_session(session.get("phone", ""), session)
+    except Exception as e:
+        logger.error(f"[M10010] Failed to persist done log for {session.get('phone')}: {e}")
 
     return {"text": done_config.get("text", "תודה!")}
 
@@ -672,6 +723,11 @@ def start_session(phone, name, parsed_data=None, message_id="", media_id="",
         for btn in step.get("buttons", []):
             if btn.get("save_to") and btn["save_to"] not in session_data:
                 session_data[btn["save_to"]] = ""
+
+    # Log session start
+    _append_log(session_data, "session_start",
+                script_id=sid, first_step=first_step,
+                customer_name=customer_name, device_number=device_number)
 
     # Resolve step-level skip_if on first step
     first_step = _resolve_skip_chain(first_step, script, session_data)

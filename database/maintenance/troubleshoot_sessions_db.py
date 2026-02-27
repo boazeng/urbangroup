@@ -9,6 +9,7 @@ Table: urbangroup-troubleshoot-sessions-{stage}
 import os
 import json
 import logging
+import time
 from datetime import datetime
 from decimal import Decimal
 
@@ -22,7 +23,7 @@ TABLE_NAME = os.environ.get("TROUBLESHOOT_SESSIONS_TABLE", "urbangroup-troublesh
 _table = _dynamodb.Table(TABLE_NAME)
 
 # Fields that contain nested JSON objects/arrays
-_JSON_FIELDS = ("llm_result", "parsed_data", "skipped_steps")
+_JSON_FIELDS = ("llm_result", "parsed_data", "skipped_steps", "session_log")
 
 
 def save_session(session_data):
@@ -64,6 +65,25 @@ def delete_session(phone):
     """Delete a session (used on cancel)."""
     _table.delete_item(Key={"phone": phone})
     logger.info(f"Session deleted for {phone}")
+
+
+def list_sessions(limit=50):
+    """List recent sessions (scan). Returns list sorted by created_at descending."""
+    resp = _table.scan()
+    items = resp.get("Items", [])
+    sessions = [_deserialize_item(item) for item in items]
+    sessions.sort(key=lambda s: s.get("created_at", ""), reverse=True)
+    return sessions[:limit]
+
+
+def extend_session_ttl(phone, days=7):
+    """Extend the session TTL (e.g. after completion so log stays visible)."""
+    new_ttl = int(time.time()) + days * 86400
+    _table.update_item(
+        Key={"phone": phone},
+        UpdateExpression="SET expires_at = :ttl",
+        ExpressionAttributeValues={":ttl": new_ttl},
+    )
 
 
 def _prepare_item(data):
