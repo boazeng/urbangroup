@@ -110,17 +110,14 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
     }])
   }
 
-  // Save — convert flow to script and call API
+  // Save — always PUT (server does upsert); avoids POST name-required validation
   async function handleSave() {
     setSaving(true)
     setSaveMsg('')
     try {
       const script = flowToScript(nodes, edges, originalScript)
-      const isNew = !originalScript?.script_id || originalScript.script_id.startsWith('flow_new_')
-      const method = isNew ? 'POST' : 'PUT'
-      const url = isNew ? '/api/bot-scripts' : `/api/bot-scripts/${script.script_id}`
-      const res = await fetch(url, {
-        method,
+      const res = await fetch(`/api/bot-scripts/${script.script_id}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(script),
       })

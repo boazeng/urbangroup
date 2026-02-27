@@ -184,6 +184,17 @@ export default function SidePanel({ node, onUpdate, onDelete, onClose }) {
               />
               <span className="fsp-hint">שם השדה בסשן שמכיל את הערך לבדיקה</span>
             </div>
+            <div className="fsp-field">
+              <label>תיאור הבדיקה</label>
+              <textarea
+                className="fsp-textarea"
+                rows={2}
+                value={data.description || ''}
+                onChange={e => set('description', e.target.value)}
+                placeholder="לדוגמה: בדוק שמספר המכשיר קיים במערכת Priority"
+              />
+              <span className="fsp-hint">תיאור חופשי שיעזור להבין מה הבדיקה עושה</span>
+            </div>
             <div className="fsp-hint fsp-connect-hint">
               גרור קו מ-<strong>הצלחה</strong> (שמאל) לשלב הבא בהצלחה<br />
               גרור קו מ-<strong>כישלון</strong> (ימין) לשלב החלופי

@@ -34,6 +34,13 @@ export const StepNode = memo(({ data, selected }) => (
 ))
 StepNode.displayName = 'StepNode'
 
+// Colors per button index — chip and handle share the same palette
+const BTN_COLORS = [
+  { bg: '#EBF8FF', border: '#90CDF4', text: '#2B6CB0', handle: '#4299E1' }, // blue
+  { bg: '#F0FFF4', border: '#9AE6B4', text: '#276749', handle: '#48BB78' }, // green
+  { bg: '#FFFAF0', border: '#F6AD55', text: '#C05621', handle: '#ED8936' }, // orange
+]
+
 // ── Buttons Node ──────────────────────────────────────────────
 
 export const ButtonsNode = memo(({ data, selected }) => {
@@ -47,23 +54,37 @@ export const ButtonsNode = memo(({ data, selected }) => {
         {data.text || <span className="fn-placeholder">הגדר שאלה...</span>}
       </div>
       <div className="fn-buttons-list">
-        {buttons.map((btn, i) => (
-          <div key={i} className="fn-btn-chip">
-            <span>{btn.title || `כפתור ${i + 1}`}</span>
-          </div>
-        ))}
+        {buttons.map((btn, i) => {
+          const c = BTN_COLORS[i] || BTN_COLORS[0]
+          return (
+            <div
+              key={i}
+              className="fn-btn-chip"
+              style={{ background: c.bg, borderColor: c.border, color: c.text }}
+            >
+              <span>{btn.title || `כפתור ${i + 1}`}</span>
+            </div>
+          )
+        })}
       </div>
       {/* Handles placed at node root, distributed at bottom — NOT inside chips */}
-      {buttons.map((btn, i) => (
-        <Handle
-          key={i}
-          type="source"
-          position={Position.Bottom}
-          id={`btn-${i}`}
-          className="fn-handle fn-handle-btn"
-          style={{ left: `${((i + 1) * 100) / (buttons.length + 1)}%` }}
-        />
-      ))}
+      {buttons.map((btn, i) => {
+        const c = BTN_COLORS[i] || BTN_COLORS[0]
+        return (
+          <Handle
+            key={i}
+            type="source"
+            position={Position.Bottom}
+            id={`btn-${i}`}
+            className="fn-handle fn-handle-btn"
+            style={{
+              left: `${((i + 1) * 100) / (buttons.length + 1)}%`,
+              borderColor: c.handle,
+              background: c.bg,
+            }}
+          />
+        )
+      })}
     </div>
   )
 })
@@ -79,6 +100,9 @@ export const ActionNode = memo(({ data, selected }) => (
     <div className="fn-action-type">
       {data.action_type === 'check_equipment' ? '🔍 בדיקת ציוד' : data.action_type || 'בחר סוג פעולה'}
     </div>
+    {data.description && (
+      <div className="fn-text" style={{ fontSize: 12, marginBottom: 2 }}>{data.description}</div>
+    )}
     {data.field && (
       <div className="fn-meta">שדה: <code>{data.field}</code></div>
     )}

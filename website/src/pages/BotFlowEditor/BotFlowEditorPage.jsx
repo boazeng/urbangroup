@@ -48,7 +48,7 @@ export default function BotFlowEditorPage() {
     setFlowNodes(nodes)
     setFlowEdges(edges)
     setOriginalScript({
-      script_id: `flow_new_${Date.now()}`,
+      script_id: `flow_${Date.now()}`,
       name: '',
       steps: [],
       done_actions: {},

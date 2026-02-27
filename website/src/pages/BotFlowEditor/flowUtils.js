@@ -190,6 +190,7 @@ export function flowToScript(nodes, edges, originalScript) {
         type: 'action',
         action_type: node.data.action_type || 'check_equipment',
         field: node.data.field || '',
+        description: node.data.description || '',
         on_success: aMap['success'] || node.data.on_success || '',
         on_failure: aMap['failure'] || node.data.on_failure || '',
       }
@@ -213,9 +214,13 @@ export function flowToScript(nodes, edges, originalScript) {
     }
   })
 
+  const scriptId = originalScript?.script_id || `flow_${Date.now()}`
+  const scriptName = startNode?.data?.name || originalScript?.name ||
+    `תסריט ${new Date().toLocaleDateString('he-IL')}`
+
   return {
-    script_id: originalScript?.script_id || `flow_${Date.now()}`,
-    name: startNode?.data?.name || originalScript?.name || '',
+    script_id: scriptId,
+    name: scriptName,
     greeting_known: startNode?.data?.greeting_known || '',
     greeting_unknown: startNode?.data?.greeting_unknown || '',
     first_step: firstStep,
