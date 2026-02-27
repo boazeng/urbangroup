@@ -485,8 +485,12 @@
 .fn-handle-btn {
   width: 10px !important;
   height: 10px !important;
-  border-color: #9F7AEA !important;
 }
+
+/* Per-button colors — must come after .fn-handle and .fn-handle-btn to win */
+.fn-handle-btn-0 { border-color: #4299E1 !important; background: #EBF8FF !important; }
+.fn-handle-btn-1 { border-color: #48BB78 !important; background: #F0FFF4 !important; }
+.fn-handle-btn-2 { border-color: #ED8936 !important; background: #FFFAF0 !important; }
 
 .fn-handle-success {
   width: 12px !important;

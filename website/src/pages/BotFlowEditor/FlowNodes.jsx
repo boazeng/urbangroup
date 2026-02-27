@@ -68,23 +68,16 @@ export const ButtonsNode = memo(({ data, selected }) => {
         })}
       </div>
       {/* Handles placed at node root, distributed at bottom — NOT inside chips */}
-      {buttons.map((btn, i) => {
-        const c = BTN_COLORS[i] || BTN_COLORS[0]
-        return (
-          <Handle
-            key={i}
-            type="source"
-            position={Position.Bottom}
-            id={`btn-${i}`}
-            className="fn-handle fn-handle-btn"
-            style={{
-              left: `${((i + 1) * 100) / (buttons.length + 1)}%`,
-              borderColor: c.handle,
-              background: c.bg,
-            }}
-          />
-        )
-      })}
+      {buttons.map((btn, i) => (
+        <Handle
+          key={i}
+          type="source"
+          position={Position.Bottom}
+          id={`btn-${i}`}
+          className={`fn-handle fn-handle-btn fn-handle-btn-${i}`}
+          style={{ left: `${((i + 1) * 100) / (buttons.length + 1)}%` }}
+        />
+      ))}
     </div>
   )
 })
@@ -106,23 +99,25 @@ export const ActionNode = memo(({ data, selected }) => (
     {data.field && (
       <div className="fn-meta">שדה: <code>{data.field}</code></div>
     )}
+    {/* RTL layout: first item→right, second item→left. Handles: success=70%(right), failure=30%(left) */}
     <div className="fn-action-outputs">
-      <span className="fn-out-success">✓ הצלחה</span>
       <span className="fn-out-failure">✕ כישלון</span>
+      <span className="fn-out-success">✓ הצלחה</span>
     </div>
+    {/* RTL: הצלחה label is on the right side → success handle at 70% (right) */}
     <Handle
       type="source"
       position={Position.Bottom}
       id="success"
       className="fn-handle fn-handle-success"
-      style={{ left: '30%' }}
+      style={{ left: '70%' }}
     />
     <Handle
       type="source"
       position={Position.Bottom}
       id="failure"
       className="fn-handle fn-handle-failure"
-      style={{ left: '70%' }}
+      style={{ left: '30%' }}
     />
   </div>
 ))
