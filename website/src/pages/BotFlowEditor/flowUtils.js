@@ -38,10 +38,11 @@ export function scriptToFlow(script) {
   ;(script.steps || []).forEach((step) => {
     const isButtons = step.type === 'buttons'
     const isAction = step.type === 'action'
+    const isInstructions = step.type === 'instructions'
 
     nodes.push({
       id: step.id,
-      type: isButtons ? 'buttonsNode' : isAction ? 'actionNode' : 'stepNode',
+      type: isButtons ? 'buttonsNode' : isAction ? 'actionNode' : isInstructions ? 'instructionsNode' : 'stepNode',
       position: savedPos[step.id] || { x: xCenter - NODE_W / 2, y },
       data: { ...step },
     })
@@ -138,7 +139,7 @@ export function scriptToFlow(script) {
 export function flowToScript(nodes, edges, originalScript) {
   const startNode = nodes.find(n => n.type === 'startNode')
   const stepNodes = nodes.filter(n =>
-    n.type === 'stepNode' || n.type === 'buttonsNode' || n.type === 'actionNode'
+    n.type === 'stepNode' || n.type === 'buttonsNode' || n.type === 'actionNode' || n.type === 'instructionsNode'
   )
   const doneNodes = nodes.filter(n => n.type === 'doneNode')
 
@@ -197,6 +198,13 @@ export function flowToScript(nodes, edges, originalScript) {
         description: node.data.description || '',
         on_success: aMap['success'] || node.data.on_success || '',
         on_failure: aMap['failure'] || node.data.on_failure || '',
+      }
+    } else if (node.type === 'instructionsNode') {
+      return {
+        id: node.id,
+        type: 'instructions',
+        text: node.data.text || '',
+        next_step: simpleNext[node.id] || '',
       }
     } else {
       return {

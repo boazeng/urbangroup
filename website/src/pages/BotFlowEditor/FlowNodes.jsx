@@ -127,6 +127,21 @@ export const ActionNode = memo(({ data, selected }) => (
 ))
 ActionNode.displayName = 'ActionNode'
 
+// ── Instructions Node ─────────────────────────────────────────
+
+export const InstructionsNode = memo(({ data, selected }) => (
+  <div className={`fn-node fn-instructions${selected ? ' fn-selected' : ''}`}>
+    <Handle type="target" position={Position.Top} className="fn-handle fn-handle-in" />
+    <div className="fn-badge fn-badge-instr">📝 הוראות לבוט</div>
+    <div className="fn-node-id">{data.id}</div>
+    <div className="fn-text">
+      {data.text || <span className="fn-placeholder">הוסף הוראות לבוט...</span>}
+    </div>
+    <Handle type="source" position={Position.Bottom} className="fn-handle fn-handle-out" />
+  </div>
+))
+InstructionsNode.displayName = 'InstructionsNode'
+
 // ── Done Node ─────────────────────────────────────────────────
 
 export const DoneNode = memo(({ data, selected }) => (

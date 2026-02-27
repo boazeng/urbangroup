@@ -398,6 +398,17 @@ def _resolve_skip_chain(step_id, script, session_data, max_depth=10):
         if not step:
             break
 
+        # Auto-execute instructions steps (store in session, advance to next)
+        if step.get("type") == "instructions":
+            instr_text = step.get("text", "")
+            session_data["bot_instructions_step"] = instr_text
+            logger.info(f"[M10010] Instructions step {current}: {instr_text[:100]}")
+            target = step.get("next_step", "")
+            if target and target != current:
+                current = target
+                continue
+            break
+
         # Auto-execute action steps (no user input needed)
         if step.get("type") == "action":
             target = _execute_action_step(step, session_data)

@@ -11,7 +11,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
-import { StartNode, StepNode, ButtonsNode, ActionNode, DoneNode } from './FlowNodes'
+import { StartNode, StepNode, ButtonsNode, ActionNode, InstructionsNode, DoneNode } from './FlowNodes'
 import SidePanel from './SidePanel'
 import { flowToScript } from './flowUtils'
 
@@ -20,6 +20,7 @@ const nodeTypes = {
   stepNode: StepNode,
   buttonsNode: ButtonsNode,
   actionNode: ActionNode,
+  instructionsNode: InstructionsNode,
   doneNode: DoneNode,
 }
 
@@ -96,6 +97,17 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
     }])
   }
 
+  // Add new instructions node
+  function addInstructionsNode() {
+    const id = `INSTR_${Date.now()}`
+    setNodes(nds => [...nds, {
+      id,
+      type: 'instructionsNode',
+      position: { x: 170, y: 250 + nds.length * 30 },
+      data: { id, text: '' },
+    }])
+  }
+
   // Add new action node
   function addActionNode() {
     const id = `ACTION_${Date.now()}`
@@ -167,6 +179,7 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
           <button className="fc-add-btn" onClick={addStepNode}>+ שאלה פתוחה</button>
           <button className="fc-add-btn" onClick={addButtonsNode}>+ שאלת בחירה</button>
           <button className="fc-add-btn fc-add-action" onClick={addActionNode}>+ בדיקה</button>
+          <button className="fc-add-btn fc-add-instr" onClick={addInstructionsNode}>+ הוראות לבוט</button>
           <button className="fc-add-btn" onClick={addDoneNode}>+ סיום</button>
           {saveMsg && (
             <span className={`fc-save-msg ${saveMsg.includes('שגיאה') ? 'fc-error' : 'fc-success'}`}>
@@ -204,6 +217,7 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
               if (n.type === 'doneNode') return '#48BB78'
               if (n.type === 'buttonsNode') return '#805AD5'
               if (n.type === 'actionNode') return '#DD6B20'
+              if (n.type === 'instructionsNode') return '#6B46C1'
               return '#718096'
             }}
           />
