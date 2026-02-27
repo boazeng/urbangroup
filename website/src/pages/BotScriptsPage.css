@@ -496,3 +496,247 @@
   justify-content: flex-end;
   padding-top: 16px;
 }
+
+/* ── Header Actions ─────────────────────── */
+
+.bs-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bs-advanced-link {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.2s;
+}
+
+.bs-advanced-link:hover {
+  color: var(--color-secondary);
+}
+
+.bs-back-simple {
+  display: block;
+  margin-top: 6px;
+}
+
+/* ── AI Section ─────────────────────────── */
+
+.bs-ai-section {
+  margin-bottom: 20px;
+}
+
+.bs-ai-toggle {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.bs-ai-toggle:hover {
+  opacity: 0.9;
+}
+
+.bs-ai-box {
+  margin-top: 12px;
+  background: white;
+  border: 1px solid #C3DAFE;
+  border-radius: var(--radius-md);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.bs-ai-hint {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  margin: 0 0 10px;
+}
+
+.bs-ai-textarea {
+  margin-bottom: 12px;
+}
+
+.bs-ai-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.bs-ai-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.bs-ai-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Simple Step Card ───────────────────── */
+
+.bs-simple-step {
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin-bottom: 4px;
+  background: #FAFBFC;
+}
+
+.bs-simple-step-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.bs-simple-question {
+  width: 100%;
+  margin-bottom: 10px;
+  box-sizing: border-box;
+}
+
+/* ── Type Toggle ────────────────────────── */
+
+.bs-type-toggle {
+  display: flex;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  flex: 1;
+}
+
+.bs-type-btn {
+  flex: 1;
+  padding: 7px 12px;
+  background: white;
+  border: none;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.bs-type-btn + .bs-type-btn {
+  border-right: 1px solid #E2E8F0;
+}
+
+.bs-type-btn.active {
+  background: var(--color-primary);
+  color: white;
+  font-weight: 600;
+}
+
+.bs-type-btn:not(.active):hover {
+  background: #F7FAFC;
+}
+
+/* ── Step Controls ──────────────────────── */
+
+.bs-step-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.bs-move-btn {
+  background: none;
+  border: 1px solid #E2E8F0;
+  color: var(--color-text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.bs-move-btn:hover {
+  background: #EBF5FF;
+  border-color: var(--color-secondary);
+  color: var(--color-secondary);
+}
+
+/* ── Simple Buttons Input ───────────────── */
+
+.bs-simple-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.bs-btn-chip-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ── Step Connector ─────────────────────── */
+
+.bs-step-connector {
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 20px;
+  padding: 6px 0;
+  line-height: 1;
+}
+
+/* ── Add Step Button ────────────────────── */
+
+.bs-add-step-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px;
+  background: #F7FAFC;
+  border: 2px dashed #CBD5E0;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.bs-add-step-btn:hover {
+  background: #EBF5FF;
+  border-color: var(--color-secondary);
+  color: var(--color-secondary);
+}
+
+/* ── Done Section ───────────────────────── */
+
+.bs-done-section {
+  border: 2px solid #C6F6D5;
+  background: #F0FFF4;
+}
+
+.bs-action-toggle {
+  display: flex;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  max-width: 400px;
+}

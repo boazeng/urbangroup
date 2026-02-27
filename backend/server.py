@@ -914,6 +914,96 @@ def list_suppliers():
 
 # ── Bot Scripts ──────────────────────────────────────────────
 
+@app.route("/api/bot-scripts/generate", methods=["POST"])
+def generate_bot_script():
+    """Use Claude AI to generate a bot script from a plain-language description."""
+    import re
+    data = request.get_json(silent=True) or {}
+    description = data.get("description", "").strip()
+    if not description:
+        return jsonify({"ok": False, "error": "description required"}), 400
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return jsonify({"ok": False, "error": "ANTHROPIC_API_KEY not configured"}), 500
+
+    model = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-6")
+
+    prompt = f"""You are building a WhatsApp bot conversation script for a Hebrew-speaking maintenance company.
+Generate a bot script in JSON format based on this description:
+
+{description}
+
+The JSON must follow this EXACT schema:
+{{
+  "name": "Script name in Hebrew",
+  "greeting_known": "Opening message, may use {{{{customer_name}}}} placeholder",
+  "greeting_unknown": "Opening message for unknown customers",
+  "first_step": "STEP_1",
+  "steps": [
+    {{
+      "id": "STEP_1",
+      "type": "text_input",
+      "text": "Question text in Hebrew",
+      "save_to": "field_name_in_english",
+      "next_step": "STEP_2"
+    }},
+    {{
+      "id": "STEP_2",
+      "type": "buttons",
+      "text": "Question text in Hebrew",
+      "buttons": [
+        {{"id": "btn_2_1", "title": "Button text (max 20 chars)", "next_step": "DONE_1"}},
+        {{"id": "btn_2_2", "title": "Button text (max 20 chars)", "next_step": "DONE_1"}}
+      ]
+    }}
+  ],
+  "done_actions": {{
+    "DONE_1": {{
+      "text": "Closing message in Hebrew",
+      "action": "save_service_call"
+    }}
+  }}
+}}
+
+Rules:
+- All questions and messages must be in Hebrew
+- Button titles: max 20 characters, max 3 buttons per step
+- save_to field names in English (e.g. description, location, category, urgency, phone, name)
+- action must be: save_service_call OR save_message
+- Steps connect linearly: STEP_1 → STEP_2 → ... → DONE_1
+- Return ONLY the raw JSON object, no markdown, no explanation"""
+
+    try:
+        resp = http_requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            json={
+                "model": model,
+                "max_tokens": 2000,
+                "messages": [{"role": "user", "content": prompt}],
+            },
+            timeout=30,
+        )
+        if resp.status_code != 200:
+            return jsonify({"ok": False, "error": f"AI error: {resp.status_code}"}), 500
+
+        text = resp.json()["content"][0]["text"].strip()
+        # Strip markdown code fences if present
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
+        script_data = json.loads(text)
+        return jsonify({"ok": True, "script": script_data})
+    except json.JSONDecodeError as e:
+        return jsonify({"ok": False, "error": f"AI returned invalid JSON: {e}"}), 500
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/bot-scripts", methods=["GET"])
 def list_bot_scripts():
     """List all bot conversation scripts."""
