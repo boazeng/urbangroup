@@ -149,20 +149,21 @@
 }
 
 .bfe-card-meta {
+  display: block;
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }
 
 .bfe-card-id {
-  display: inline-block;
-  margin-top: 3px;
+  display: block;
+  margin-top: 4px;
   font-size: 11px;
   font-family: monospace;
-  color: var(--color-text-muted);
-  background: var(--color-bg-secondary, #f4f4f5);
+  color: #555;
+  background: #eef0f3;
   border-radius: 4px;
-  padding: 1px 6px;
-  opacity: 0.7;
+  padding: 2px 7px;
+  width: fit-content;
 }
 
 .bfe-card-right {
