@@ -116,8 +116,11 @@ def fetch_equipment_by_phone(phone):
 def fetch_equipment_by_sernum(sernum):
     """Look up a specific device by serial number in Priority.
 
+    Uses $filter instead of OData key lookup to handle leading zeros correctly.
+    e.g. SERNUM='00008' works via filter but may fail as a URL key.
+
     Args:
-        sernum: Device serial number (e.g. '000008')
+        sernum: Device serial number (e.g. '00008')
 
     Returns:
         dict with device info, or None if not found.
@@ -125,8 +128,11 @@ def fetch_equipment_by_sernum(sernum):
     if not sernum:
         return None
 
-    url = f"{PRIORITY_URL}/SERNUMBERS('{sernum}')"
-    params = {"$select": EQUIPMENT_FIELDS}
+    url = f"{PRIORITY_URL}/SERNUMBERS"
+    params = {
+        "$filter": f"SERNUM eq '{sernum}'",
+        "$select": EQUIPMENT_FIELDS,
+    }
     headers = {
         "Accept": "application/json",
         "OData-Version": "4.0",
@@ -135,15 +141,17 @@ def fetch_equipment_by_sernum(sernum):
 
     try:
         response = requests.get(url, params=params, headers=headers, auth=auth, timeout=15)
-        if response.status_code == 404:
-            logger.info(f"[600] Device {sernum} not found in Priority")
-            return None
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         logger.error(f"[600] Priority API error for SERNUM {sernum}: {e}")
         return None
 
-    rec = response.json()
+    records = response.json().get("value", [])
+    if not records:
+        logger.info(f"[600] Device {sernum} not found in Priority")
+        return None
+
+    rec = records[0]
     device = {
         "sernum": rec.get("SERNUM", ""),
         "partname": rec.get("PARTNAME", ""),
