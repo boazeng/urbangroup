@@ -30,6 +30,13 @@ const sections = [
     icon: '🎓',
     link: '/maintenance/bot-training',
   },
+  {
+    id: 'bot-flow',
+    title: 'עורך זרימה ויזואלי',
+    description: 'בנה תסריטי בוט בגרירה — חבר צמתים ויצור ענפי שיחה בצורה ויזואלית',
+    icon: '🗺️',
+    link: '/maintenance/bot-flow',
+  },
 ]
 
 export default function MaintenancePage() {

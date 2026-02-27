@@ -1,0 +1,86 @@
+import { memo } from 'react'
+import { Handle, Position } from '@xyflow/react'
+
+// ── Start Node ────────────────────────────────────────────────
+
+export const StartNode = memo(({ data, selected }) => (
+  <div className={`fn-node fn-start${selected ? ' fn-selected' : ''}`}>
+    <div className="fn-start-icon">🚀</div>
+    <div className="fn-start-title">פתיחת שיחה</div>
+    {data.name && <div className="fn-name-badge">{data.name}</div>}
+    <div className="fn-text">
+      {data.greeting_known || <span className="fn-placeholder">הגדר הודעת פתיחה...</span>}
+    </div>
+    <Handle type="source" position={Position.Bottom} className="fn-handle fn-handle-out" />
+  </div>
+))
+StartNode.displayName = 'StartNode'
+
+// ── Step Node (text input) ────────────────────────────────────
+
+export const StepNode = memo(({ data, selected }) => (
+  <div className={`fn-node fn-step${selected ? ' fn-selected' : ''}`}>
+    <Handle type="target" position={Position.Top} className="fn-handle fn-handle-in" />
+    <div className="fn-badge fn-badge-text">✏️ שאלה פתוחה</div>
+    <div className="fn-node-id">{data.id}</div>
+    <div className="fn-text">
+      {data.text || <span className="fn-placeholder">הגדר שאלה...</span>}
+    </div>
+    {data.save_to && (
+      <div className="fn-meta">שומר ב: <code>{data.save_to}</code></div>
+    )}
+    <Handle type="source" position={Position.Bottom} className="fn-handle fn-handle-out" />
+  </div>
+))
+StepNode.displayName = 'StepNode'
+
+// ── Buttons Node ──────────────────────────────────────────────
+
+export const ButtonsNode = memo(({ data, selected }) => {
+  const buttons = data.buttons || []
+  return (
+    <div className={`fn-node fn-buttons${selected ? ' fn-selected' : ''}`}>
+      <Handle type="target" position={Position.Top} className="fn-handle fn-handle-in" />
+      <div className="fn-badge fn-badge-btns">🔘 בחירה</div>
+      <div className="fn-node-id">{data.id}</div>
+      <div className="fn-text">
+        {data.text || <span className="fn-placeholder">הגדר שאלה...</span>}
+      </div>
+      <div className="fn-buttons-list">
+        {buttons.map((btn, i) => (
+          <div key={i} className="fn-btn-chip">
+            <span>{btn.title || `כפתור ${i + 1}`}</span>
+            <Handle
+              type="source"
+              position={Position.Bottom}
+              id={`btn-${i}`}
+              className="fn-handle fn-handle-btn"
+              style={{
+                left: `${((i + 1) * 100) / (buttons.length + 1)}%`,
+                bottom: -6,
+              }}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+})
+ButtonsNode.displayName = 'ButtonsNode'
+
+// ── Done Node ─────────────────────────────────────────────────
+
+export const DoneNode = memo(({ data, selected }) => (
+  <div className={`fn-node fn-done${selected ? ' fn-selected' : ''}`}>
+    <Handle type="target" position={Position.Top} className="fn-handle fn-handle-in" />
+    <div className="fn-done-icon">✓</div>
+    <div className="fn-done-title">סיום שיחה</div>
+    <div className="fn-text">
+      {data.text || <span className="fn-placeholder">הגדר הודעת סיום...</span>}
+    </div>
+    <div className="fn-done-action">
+      {data.action === 'save_service_call' ? '📋 קריאת שירות' : '💬 שמור הודעה'}
+    </div>
+  </div>
+))
+DoneNode.displayName = 'DoneNode'

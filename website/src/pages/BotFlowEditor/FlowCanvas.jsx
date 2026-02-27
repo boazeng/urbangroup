@@ -1,0 +1,202 @@
+import { useState, useCallback, useMemo } from 'react'
+import {
+  ReactFlow,
+  useNodesState,
+  useEdgesState,
+  addEdge,
+  Background,
+  Controls,
+  MiniMap,
+  Panel,
+} from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
+
+import { StartNode, StepNode, ButtonsNode, DoneNode } from './FlowNodes'
+import SidePanel from './SidePanel'
+import { flowToScript } from './flowUtils'
+
+const nodeTypes = {
+  startNode: StartNode,
+  stepNode: StepNode,
+  buttonsNode: ButtonsNode,
+  doneNode: DoneNode,
+}
+
+export default function FlowCanvas({ initialNodes, initialEdges, scriptId, originalScript, onSave, onBack }) {
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
+  const [selectedNode, setSelectedNode] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [saveMsg, setSaveMsg] = useState('')
+
+  // Connect two nodes by dragging
+  const onConnect = useCallback(
+    (params) => setEdges(eds => addEdge({ ...params, type: 'smoothstep' }, eds)),
+    []
+  )
+
+  // Select node for editing
+  function onNodeClick(_, node) {
+    setSelectedNode(node)
+  }
+
+  function onPaneClick() {
+    setSelectedNode(null)
+  }
+
+  // Update node data from side panel
+  function updateNodeData(id, newData) {
+    setNodes(nds => nds.map(n => n.id === id ? { ...n, data: newData } : n))
+    setSelectedNode(prev => prev?.id === id ? { ...prev, data: newData } : prev)
+  }
+
+  // Delete a node + its edges
+  function deleteNode(id) {
+    setNodes(nds => nds.filter(n => n.id !== id))
+    setEdges(eds => eds.filter(e => e.source !== id && e.target !== id))
+    setSelectedNode(null)
+  }
+
+  // Add new step node
+  function addStepNode() {
+    const id = `STEP_${Date.now()}`
+    setNodes(nds => [...nds, {
+      id,
+      type: 'stepNode',
+      position: { x: 170, y: 250 + nds.length * 30 },
+      data: { id, type: 'text_input', text: '', save_to: '' },
+    }])
+  }
+
+  // Add new buttons node
+  function addButtonsNode() {
+    const id = `STEP_${Date.now()}`
+    setNodes(nds => [...nds, {
+      id,
+      type: 'buttonsNode',
+      position: { x: 170, y: 250 + nds.length * 30 },
+      data: {
+        id,
+        type: 'buttons',
+        text: '',
+        buttons: [
+          { id: 'btn_1', title: '', next_step: '' },
+          { id: 'btn_2', title: '', next_step: '' },
+        ],
+      },
+    }])
+  }
+
+  // Add new done node
+  function addDoneNode() {
+    const id = `DONE_${Date.now()}`
+    setNodes(nds => [...nds, {
+      id,
+      type: 'doneNode',
+      position: { x: 170, y: 250 + nds.length * 30 },
+      data: { id, text: '', action: 'save_service_call' },
+    }])
+  }
+
+  // Save — convert flow to script and call API
+  async function handleSave() {
+    setSaving(true)
+    setSaveMsg('')
+    try {
+      const script = flowToScript(nodes, edges, originalScript)
+      const isNew = !originalScript?.script_id || originalScript.script_id.startsWith('flow_new_')
+      const method = isNew ? 'POST' : 'PUT'
+      const url = isNew ? '/api/bot-scripts' : `/api/bot-scripts/${script.script_id}`
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(script),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setSaveMsg('נשמר בהצלחה!')
+        onSave?.(script)
+      } else {
+        setSaveMsg(`שגיאה: ${data.error}`)
+      }
+    } catch (e) {
+      setSaveMsg(`שגיאה: ${e.message}`)
+    }
+    setSaving(false)
+  }
+
+  // Keep selected node in sync when nodes change
+  const syncedSelectedNode = useMemo(
+    () => selectedNode ? nodes.find(n => n.id === selectedNode.id) || null : null,
+    [selectedNode, nodes]
+  )
+
+  return (
+    <div className="fc-wrapper">
+      {/* Top toolbar */}
+      <div className="fc-toolbar">
+        <button className="fc-back-btn" onClick={onBack}>→ חזרה לרשימה</button>
+        <div className="fc-toolbar-title">
+          {originalScript?.name || 'תסריט חדש'}
+        </div>
+        <div className="fc-toolbar-right">
+          <button className="fc-add-btn" onClick={addStepNode}>+ שאלה פתוחה</button>
+          <button className="fc-add-btn" onClick={addButtonsNode}>+ שאלת בחירה</button>
+          <button className="fc-add-btn" onClick={addDoneNode}>+ סיום</button>
+          {saveMsg && (
+            <span className={`fc-save-msg ${saveMsg.includes('שגיאה') ? 'fc-error' : 'fc-success'}`}>
+              {saveMsg}
+            </span>
+          )}
+          <button className="fc-save-btn" onClick={handleSave} disabled={saving}>
+            {saving ? 'שומר...' : 'שמירה'}
+          </button>
+        </div>
+      </div>
+
+      {/* Canvas + side panel */}
+      <div className="fc-body">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onNodeClick={onNodeClick}
+          onPaneClick={onPaneClick}
+          nodeTypes={nodeTypes}
+          fitView
+          fitViewOptions={{ padding: 0.3 }}
+          deleteKeyCode="Delete"
+          minZoom={0.3}
+          maxZoom={2}
+        >
+          <Background color="#E2E8F0" gap={20} />
+          <Controls />
+          <MiniMap
+            nodeColor={n => {
+              if (n.type === 'startNode') return '#4299E1'
+              if (n.type === 'doneNode') return '#48BB78'
+              if (n.type === 'buttonsNode') return '#805AD5'
+              return '#718096'
+            }}
+          />
+          <Panel position="bottom-center">
+            <div className="fc-hint">
+              גרור צומת להזזה · גרור קו בין נקודות לחיבור · לחץ על צומת לעריכה
+            </div>
+          </Panel>
+        </ReactFlow>
+
+        {syncedSelectedNode && (
+          <SidePanel
+            node={syncedSelectedNode}
+            onUpdate={updateNodeData}
+            onDelete={deleteNode}
+            onClose={() => setSelectedNode(null)}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
