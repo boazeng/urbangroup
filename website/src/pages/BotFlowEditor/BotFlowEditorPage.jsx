@@ -117,6 +117,7 @@ export default function BotFlowEditorPage() {
                   <div>
                     <h3 className="bfe-card-name">{s.name || s.script_id}</h3>
                     <span className="bfe-card-meta">{(s.steps || []).length} שלבים</span>
+                    <span className="bfe-card-id">{s.script_id}</span>
                   </div>
                 </div>
                 <div className="bfe-card-right">

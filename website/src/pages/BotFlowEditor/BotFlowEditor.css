@@ -153,6 +153,18 @@
   color: var(--color-text-muted);
 }
 
+.bfe-card-id {
+  display: inline-block;
+  margin-top: 3px;
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--color-text-muted);
+  background: var(--color-bg-secondary, #f4f4f5);
+  border-radius: 4px;
+  padding: 1px 6px;
+  opacity: 0.7;
+}
+
 .bfe-card-right {
   display: flex;
   align-items: center;

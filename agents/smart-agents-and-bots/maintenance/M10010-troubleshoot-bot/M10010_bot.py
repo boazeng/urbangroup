@@ -188,6 +188,9 @@ def _enrich_from_device(session):
 def _load_script(script_id=None):
     """Load a bot script from DynamoDB (cached).
 
+    Tries to find the script by ID first. If not found, falls back to
+    scanning all scripts for a matching name (case-insensitive).
+
     Returns:
         dict: script data, or None if not found
     """
@@ -197,6 +200,14 @@ def _load_script(script_id=None):
         script = db.get_script(sid)
         if script:
             return script
+        # Fallback: search by name (useful when ROUTING_SCRIPT_ID is set to a display name)
+        logger.info(f"[M10010] Script '{sid}' not found by ID, searching by name...")
+        all_scripts = db.list_scripts()
+        sid_lower = sid.strip().lower()
+        for s in all_scripts:
+            if (s.get("name") or "").strip().lower() == sid_lower:
+                logger.info(f"[M10010] Found script by name '{sid}' → id={s['script_id']}")
+                return s
     except Exception as e:
         logger.error(f"[M10010] Failed to load script {sid}: {e}")
     return None
