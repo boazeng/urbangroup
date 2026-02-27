@@ -378,6 +378,18 @@
   margin-bottom: 6px;
 }
 
+.fn-instructions-badge {
+  display: inline-block;
+  background: #FEFCBF;
+  color: #744210;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  margin-bottom: 6px;
+  margin-right: 4px;
+}
+
 /* Step node */
 .fn-step { border-color: #A0AEC0; }
 .fn-step.fn-selected { border-color: var(--color-secondary); }

@@ -447,6 +447,8 @@ def _switch_to_script(phone, target_script_id, session, db):
     session["script_id"] = target_script_id
     session["step"] = first_step
     session["expires_at"] = int(time.time()) + SESSION_TTL_SECONDS
+    # Update bot_instructions from the new script
+    session["bot_instructions"] = new_script.get("bot_instructions", "")
     db.update_session(phone, session)
 
     logger.info(f"[M10010] Switched script: {target_script_id}, first_step={first_step}")
@@ -545,6 +547,10 @@ def start_session(phone, name, parsed_data=None, message_id="", media_id="",
 
     first_step = script.get("first_step", "GREETING")
 
+    bot_instructions = script.get("bot_instructions", "")
+    if bot_instructions:
+        logger.info(f"[M10010] Bot instructions loaded for script '{sid}': {bot_instructions[:100]}...")
+
     session_data = {
         "phone": phone,
         "session_id": str(uuid.uuid4()),
@@ -562,6 +568,7 @@ def start_session(phone, name, parsed_data=None, message_id="", media_id="",
         "original_media_id": media_id,
         "parsed_data": parsed_data or {},
         "llm_result": llm_result or {},
+        "bot_instructions": bot_instructions,
     }
 
     # Pre-initialize all save_to fields defined in the script (text steps and buttons)

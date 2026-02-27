@@ -62,6 +62,17 @@ export default function SidePanel({ node, onUpdate, onDelete, onClose }) {
               />
             </div>
             <div className="fsp-field">
+              <label>הוראות הפעלה לבוט</label>
+              <textarea
+                className="fsp-textarea"
+                rows={5}
+                value={data.bot_instructions || ''}
+                onChange={e => set('bot_instructions', e.target.value)}
+                placeholder="לדוגמה: הבוט מטפל בלקוחות חניה. אם לקוח מזכיר חירום — העלה עדיפות. תמיד דבר בנימוס."
+              />
+              <span className="fsp-hint">הוראות כלליות לבוט — איך להתנהג, מה לתעדף, כיצד לטפל במקרים מיוחדים</span>
+            </div>
+            <div className="fsp-field">
               <label>הודעת פתיחה (לקוח מוכר)</label>
               <textarea
                 className="fsp-textarea"

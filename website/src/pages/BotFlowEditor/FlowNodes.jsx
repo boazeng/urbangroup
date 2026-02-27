@@ -8,6 +8,9 @@ export const StartNode = memo(({ data, selected }) => (
     <div className="fn-start-icon">🚀</div>
     <div className="fn-start-title">פתיחת שיחה</div>
     {data.name && <div className="fn-name-badge">{data.name}</div>}
+    {data.bot_instructions && (
+      <div className="fn-instructions-badge">📋 הוראות הפעלה</div>
+    )}
     <div className="fn-text">
       {data.greeting_known || <span className="fn-placeholder">הגדר הודעת פתיחה...</span>}
     </div>

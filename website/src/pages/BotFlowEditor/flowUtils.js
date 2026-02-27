@@ -18,6 +18,7 @@ export function scriptToFlow(script) {
     position: savedPos['__start__'] || { x: xCenter - NODE_W / 2, y },
     data: {
       name: script.name || '',
+      bot_instructions: script.bot_instructions || '',
       greeting_known: script.greeting_known || '',
       greeting_unknown: script.greeting_unknown || '',
     },
@@ -231,6 +232,7 @@ export function flowToScript(nodes, edges, originalScript) {
   return {
     script_id: scriptId,
     name: scriptName,
+    bot_instructions: startNode?.data?.bot_instructions || '',
     greeting_known: startNode?.data?.greeting_known || '',
     greeting_unknown: startNode?.data?.greeting_unknown || '',
     first_step: firstStep,
