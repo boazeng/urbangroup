@@ -14,7 +14,9 @@ Flow:
 import os
 import uuid
 import time
+import json
 import logging
+import requests as _requests
 from datetime import datetime
 
 logger = logging.getLogger("urbangroup.M10010")
@@ -374,6 +376,72 @@ def _execute_action_step(step, session_data):
     return None
 
 
+def _llm_route_exits(step, session_data):
+    """Use OpenAI to decide which exit to take from an instructions node with exits.
+
+    Sends the instructions text + current session fields to GPT and asks it
+    to choose one of the provided exits by returning its next_step target.
+
+    Returns:
+        str: next_step target of the chosen exit, or first exit's next_step as fallback.
+    """
+    exits = step.get("exits", [])
+    if not exits:
+        return ""
+
+    api_key = os.environ.get("OPENAI_API_KEY", "")
+    model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+
+    # Build exit list for the prompt
+    exit_lines = "\n".join([
+        f"- יציאה {i}: \"{e.get('title', f'יציאה {i}')}\""
+        for i, e in enumerate(exits)
+    ])
+
+    # Filter session to relevant fields (skip internal/large fields)
+    skip_keys = {"expires_at", "session_id", "created_at", "updated_at",
+                 "parsed_data", "llm_result", "original_text", "original_message_id",
+                 "original_media_id", "bot_instructions", "bot_instructions_step"}
+    session_info = {k: v for k, v in session_data.items()
+                    if k not in skip_keys and isinstance(v, (str, int, float, bool)) and v}
+
+    prompt = (
+        f"אתה מנתח נתוני שיחה ובוחר יציאה לפי הוראות. "
+        f"החזר אך ורק מספר היציאה (0, 1 או 2) ללא שום טקסט נוסף.\n\n"
+        f"הוראות:\n{step.get('text', '')}\n\n"
+        f"נתוני הסשן הנוכחי:\n{json.dumps(session_info, ensure_ascii=False)}\n\n"
+        f"אפשרויות יציאה:\n{exit_lines}\n\n"
+        f"בחר מספר יציאה:"
+    )
+
+    try:
+        response = _requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 5,
+                "temperature": 0,
+            },
+            timeout=10,
+        )
+        response.raise_for_status()
+        answer = response.json()["choices"][0]["message"]["content"].strip()
+        idx = int(answer)
+        if 0 <= idx < len(exits):
+            chosen = exits[idx]
+            logger.info(f"[M10010] LLM chose exit {idx} ('{chosen.get('title')}') → {chosen.get('next_step')}")
+            return chosen.get("next_step", "")
+    except Exception as e:
+        logger.error(f"[M10010] LLM route failed: {e}")
+
+    # Fallback: first exit
+    fallback = exits[0].get("next_step", "")
+    logger.warning(f"[M10010] LLM route fallback → first exit: {fallback}")
+    return fallback
+
+
 def _resolve_skip_chain(step_id, script, session_data, max_depth=10):
     """Resolve automatic steps (skip_if and action) without waiting for user input.
 
@@ -398,15 +466,23 @@ def _resolve_skip_chain(step_id, script, session_data, max_depth=10):
         if not step:
             break
 
-        # Auto-execute instructions steps (store in session, advance to next)
+        # Auto-execute instructions steps (LLM-route if exits, else simple advance)
         if step.get("type") == "instructions":
             instr_text = step.get("text", "")
             session_data["bot_instructions_step"] = instr_text
-            logger.info(f"[M10010] Instructions step {current}: {instr_text[:100]}")
-            target = step.get("next_step", "")
-            if target and target != current:
-                current = target
-                continue
+            exits = step.get("exits", [])
+            if exits:
+                # LLM decides which exit to take
+                target = _llm_route_exits(step, session_data)
+                if target and target != current:
+                    current = target
+                    continue
+            else:
+                logger.info(f"[M10010] Instructions step {current}: {instr_text[:100]}")
+                target = step.get("next_step", "")
+                if target and target != current:
+                    current = target
+                    continue
             break
 
         # Auto-execute action steps (no user input needed)

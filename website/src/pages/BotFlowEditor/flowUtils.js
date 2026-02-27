@@ -90,6 +90,34 @@ export function scriptToFlow(script) {
           labelBgStyle: { fill: '#FFF5F5', fillOpacity: 0.9 },
         })
       }
+    } else if (isInstructions) {
+      const hasExits = (step.exits || []).length > 0
+      if (hasExits) {
+        const exitColors = ['#805AD5', '#38B2AC', '#FC8181']
+        ;(step.exits || []).forEach((exit, ei) => {
+          if (exit.next_step) {
+            edges.push({
+              id: `${step.id}-exit${ei}->${exit.next_step}`,
+              source: step.id,
+              sourceHandle: `exit-${ei}`,
+              target: exit.next_step,
+              label: exit.title,
+              type: 'smoothstep',
+              style: { stroke: exitColors[ei % exitColors.length] },
+              labelStyle: { fontSize: 11, fill: '#553C9A' },
+              labelBgStyle: { fill: '#FAF5FF', fillOpacity: 0.9 },
+            })
+          }
+        })
+        y += 30 * Math.max((step.exits || []).length - 1, 0)
+      } else if (step.next_step) {
+        edges.push({
+          id: `${step.id}->${step.next_step}`,
+          source: step.id,
+          target: step.next_step,
+          type: 'smoothstep',
+        })
+      }
     } else {
       if (step.next_step) {
         edges.push({
@@ -147,6 +175,7 @@ export function flowToScript(nodes, edges, originalScript) {
   const simpleNext = {}       // sourceId → targetId
   const buttonNext = {}       // sourceId → { 'btn-0': targetId, ... }
   const actionNext = {}       // sourceId → { success: targetId, failure: targetId }
+  const exitNext = {}         // sourceId → { 'exit-0': targetId, ... }
 
   edges.forEach(edge => {
     if (edge.source === '__start__') return
@@ -156,6 +185,9 @@ export function flowToScript(nodes, edges, originalScript) {
     } else if (edge.sourceHandle === 'success' || edge.sourceHandle === 'failure') {
       if (!actionNext[edge.source]) actionNext[edge.source] = {}
       actionNext[edge.source][edge.sourceHandle] = edge.target
+    } else if (edge.sourceHandle?.startsWith('exit-')) {
+      if (!exitNext[edge.source]) exitNext[edge.source] = {}
+      exitNext[edge.source][edge.sourceHandle] = edge.target
     } else {
       simpleNext[edge.source] = edge.target
     }
@@ -200,6 +232,19 @@ export function flowToScript(nodes, edges, originalScript) {
         on_failure: aMap['failure'] || node.data.on_failure || '',
       }
     } else if (node.type === 'instructionsNode') {
+      const hasExits = (node.data.exits || []).length > 0
+      if (hasExits) {
+        const eMap = exitNext[node.id] || {}
+        return {
+          id: node.id,
+          type: 'instructions',
+          text: node.data.text || '',
+          exits: (node.data.exits || []).map((exit, ei) => ({
+            ...exit,
+            next_step: eMap[`exit-${ei}`] || exit.next_step || '',
+          })),
+        }
+      }
       return {
         id: node.id,
         type: 'instructions',

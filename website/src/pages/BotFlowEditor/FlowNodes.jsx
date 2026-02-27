@@ -127,19 +127,59 @@ export const ActionNode = memo(({ data, selected }) => (
 ))
 ActionNode.displayName = 'ActionNode'
 
+// Exit colors — purple/teal/red palette for instructions exits
+const EXIT_COLORS = [
+  { bg: '#FAF5FF', border: '#D6BCFA', text: '#553C9A', handle: '#805AD5' }, // purple
+  { bg: '#E6FFFA', border: '#81E6D9', text: '#234E52', handle: '#38B2AC' }, // teal
+  { bg: '#FFF5F5', border: '#FEB2B2', text: '#C53030', handle: '#FC8181' }, // red
+]
+
 // ── Instructions Node ─────────────────────────────────────────
 
-export const InstructionsNode = memo(({ data, selected }) => (
-  <div className={`fn-node fn-instructions${selected ? ' fn-selected' : ''}`}>
-    <Handle type="target" position={Position.Top} className="fn-handle fn-handle-in" />
-    <div className="fn-badge fn-badge-instr">📝 הוראות לבוט</div>
-    <div className="fn-node-id">{data.id}</div>
-    <div className="fn-text">
-      {data.text || <span className="fn-placeholder">הוסף הוראות לבוט...</span>}
+export const InstructionsNode = memo(({ data, selected }) => {
+  const exits = data.exits || []
+  const hasExits = exits.length > 0
+  return (
+    <div className={`fn-node fn-instructions${selected ? ' fn-selected' : ''}`}>
+      <Handle type="target" position={Position.Top} className="fn-handle fn-handle-in" />
+      <div className="fn-badge fn-badge-instr">📝 הוראות לבוט</div>
+      <div className="fn-node-id">{data.id}</div>
+      <div className="fn-text">
+        {data.text || <span className="fn-placeholder">הוסף הוראות לבוט...</span>}
+      </div>
+      {hasExits && (
+        <div className="fn-buttons-list">
+          {exits.map((exit, i) => {
+            const c = EXIT_COLORS[i % EXIT_COLORS.length]
+            return (
+              <div key={i} className="fn-btn-chip"
+                style={{ background: c.bg, borderColor: c.border, color: c.text }}>
+                <span>{exit.title || `יציאה ${i + 1}`}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {hasExits ? (
+        exits.map((_, i) => {
+          const c = EXIT_COLORS[i % EXIT_COLORS.length]
+          return (
+            <Handle
+              key={i}
+              type="source"
+              position={Position.Bottom}
+              id={`exit-${i}`}
+              className="fn-handle fn-handle-btn"
+              style={{ left: `${((i + 1) * 100) / (exits.length + 1)}%`, background: c.handle }}
+            />
+          )
+        })
+      ) : (
+        <Handle type="source" position={Position.Bottom} className="fn-handle fn-handle-out" />
+      )}
     </div>
-    <Handle type="source" position={Position.Bottom} className="fn-handle fn-handle-out" />
-  </div>
-))
+  )
+})
 InstructionsNode.displayName = 'InstructionsNode'
 
 // ── Done Node ─────────────────────────────────────────────────

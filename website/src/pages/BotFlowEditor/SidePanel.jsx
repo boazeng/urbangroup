@@ -28,6 +28,25 @@ export default function SidePanel({ node, onUpdate, onDelete, onClose }) {
     set('buttons', buttons)
   }
 
+  function addExit() {
+    const exits = [...(data.exits || [])]
+    if (exits.length >= 3) return
+    exits.push({ id: `exit_${Date.now()}`, title: '' })
+    set('exits', exits)
+  }
+
+  function setExit(ei, field, value) {
+    const exits = [...(data.exits || [])]
+    exits[ei] = { ...exits[ei], [field]: value }
+    set('exits', exits)
+  }
+
+  function removeExit(ei) {
+    const exits = [...(data.exits || [])]
+    exits.splice(ei, 1)
+    set('exits', exits)
+  }
+
   const isStart = type === 'startNode'
   const isStep = type === 'stepNode'
   const isButtons = type === 'buttonsNode'
@@ -226,15 +245,32 @@ export default function SidePanel({ node, onUpdate, onDelete, onClose }) {
               <label>הוראות לבוט</label>
               <textarea
                 className="fsp-textarea"
-                rows={7}
+                rows={6}
                 value={data.text || ''}
                 onChange={e => set('text', e.target.value)}
-                placeholder={'לדוגמה:\n• אם לקוח חדש — שלח התראה לקבוצת וואטסאפ X\n• אם לקוח קיים — שלח למנהל Y\n• אם הבעיה דחופה — סמן עדיפות גבוהה'}
+                placeholder={'לדוגמה:\nבדוק אם customer_number קיים בסשן.\nאם כן — צא ביציאה "לקוח קיים".\nאם לא — צא ביציאה "לקוח חדש".'}
               />
-              <span className="fsp-hint">הוראות אלו גלויות לבוט בנקודה זו בשיחה — לא נשלחות ללקוח</span>
+              <span className="fsp-hint">הוראות אלו מועברות לבוט — הוא יחליט לפיהן לאיזו יציאה לצאת</span>
             </div>
+            <div className="fsp-section-label">יציאות — הבוט יבחר אחת (עד 3)</div>
+            {(data.exits || []).map((exit, ei) => (
+              <div key={ei} className="fsp-btn-row">
+                <input
+                  className="fsp-input fsp-btn-input"
+                  value={exit.title || ''}
+                  onChange={e => setExit(ei, 'title', e.target.value)}
+                  placeholder={`שם יציאה ${ei + 1} (לדוגמה: לקוח קיים)`}
+                />
+                <button className="fsp-remove-btn" onClick={() => removeExit(ei)}>✕</button>
+              </div>
+            ))}
+            {(data.exits || []).length < 3 && (
+              <button className="fsp-add-btn" onClick={addExit}>+ הוסף יציאה</button>
+            )}
             <div className="fsp-hint fsp-connect-hint">
-              חבר את הצומת לשלב הבא ע"י גרירת קו מהנקודה התחתונה
+              {(data.exits || []).length > 0
+                ? 'גרור קו מכל יציאה לשלב הבא שלה — הבוט יבחר אוטומטית לפי ההוראות'
+                : 'ללא יציאות — הבוט ממשיך אוטומטית לשלב הבא'}
             </div>
           </>
         )}
