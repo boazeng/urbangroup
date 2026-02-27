@@ -171,7 +171,7 @@ export default function SidePanel({ node, onUpdate, onDelete, onClose }) {
                 value={data.action_type || 'check_equipment'}
                 onChange={e => set('action_type', e.target.value)}
               >
-                <option value="check_equipment">🔍 בדיקת ציוד (לפי מספר מכשיר)</option>
+                <option value="check_equipment">🔍 בדיקת מערכת (לפי מספר מכשיר)</option>
               </select>
             </div>
             <div className="fsp-field">
@@ -196,8 +196,8 @@ export default function SidePanel({ node, onUpdate, onDelete, onClose }) {
               <span className="fsp-hint">תיאור חופשי שיעזור להבין מה הבדיקה עושה</span>
             </div>
             <div className="fsp-hint fsp-connect-hint">
-              גרור קו מ-<strong>הצלחה</strong> (שמאל) לשלב הבא בהצלחה<br />
-              גרור קו מ-<strong>כישלון</strong> (ימין) לשלב החלופי
+              גרור קו מ-<strong>✓ הצלחה</strong> (שמאל) לשלב הבא בהצלחה<br />
+              גרור קו מ-<strong>✕ כישלון</strong> (ימין) לשלב החלופי
             </div>
           </>
         )}

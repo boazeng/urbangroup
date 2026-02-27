@@ -8,11 +8,14 @@ export function scriptToFlow(script) {
   let y = 50
   const yGap = 160
 
+  // Restore saved node positions if available
+  const savedPos = script._flow_positions || {}
+
   // Start node
   nodes.push({
     id: '__start__',
     type: 'startNode',
-    position: { x: xCenter - NODE_W / 2, y },
+    position: savedPos['__start__'] || { x: xCenter - NODE_W / 2, y },
     data: {
       name: script.name || '',
       greeting_known: script.greeting_known || '',
@@ -38,7 +41,7 @@ export function scriptToFlow(script) {
     nodes.push({
       id: step.id,
       type: isButtons ? 'buttonsNode' : isAction ? 'actionNode' : 'stepNode',
-      position: { x: xCenter - NODE_W / 2, y },
+      position: savedPos[step.id] || { x: xCenter - NODE_W / 2, y },
       data: { ...step },
     })
 
@@ -113,7 +116,7 @@ export function scriptToFlow(script) {
     y += yGap
   })
 
-  // Done nodes — spread horizontally at bottom
+  // Done nodes — spread horizontally at bottom, or restore saved position
   const doneEntries = Object.entries(script.done_actions || {})
   const doneSpacing = 300
   const doneStartX = xCenter - ((doneEntries.length - 1) * doneSpacing) / 2 - NODE_W / 2
@@ -121,7 +124,7 @@ export function scriptToFlow(script) {
     nodes.push({
       id,
       type: 'doneNode',
-      position: { x: doneStartX + i * doneSpacing, y },
+      position: savedPos[id] || { x: doneStartX + i * doneSpacing, y },
       data: { id, ...action },
     })
   })
@@ -214,6 +217,12 @@ export function flowToScript(nodes, edges, originalScript) {
     }
   })
 
+  // Save node positions so they're restored on reload
+  const _flow_positions = {}
+  nodes.forEach(node => {
+    if (node.position) _flow_positions[node.id] = node.position
+  })
+
   const scriptId = originalScript?.script_id || `flow_${Date.now()}`
   const scriptName = startNode?.data?.name || originalScript?.name ||
     `תסריט ${new Date().toLocaleDateString('he-IL')}`
@@ -227,6 +236,7 @@ export function flowToScript(nodes, edges, originalScript) {
     steps,
     done_actions,
     active: originalScript?.active ?? true,
+    _flow_positions,
   }
 }
 

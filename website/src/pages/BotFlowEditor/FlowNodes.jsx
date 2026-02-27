@@ -91,7 +91,7 @@ export const ActionNode = memo(({ data, selected }) => (
     <div className="fn-badge fn-badge-action">⚡ פעולה אוטומטית</div>
     <div className="fn-node-id">{data.id}</div>
     <div className="fn-action-type">
-      {data.action_type === 'check_equipment' ? '🔍 בדיקת ציוד' : data.action_type || 'בחר סוג פעולה'}
+      {data.action_type === 'check_equipment' ? '🔍 בדיקת מערכת' : data.action_type || 'בחר סוג פעולה'}
     </div>
     {data.description && (
       <div className="fn-text" style={{ fontSize: 12, marginBottom: 2 }}>{data.description}</div>
@@ -104,20 +104,21 @@ export const ActionNode = memo(({ data, selected }) => (
       <span className="fn-out-failure">✕ כישלון</span>
       <span className="fn-out-success">✓ הצלחה</span>
     </div>
-    {/* RTL: הצלחה label is on the right side → success handle at 70% (right) */}
+    {/* RTL flex: כישלון (first in HTML) → visual RIGHT, הצלחה (second) → visual LEFT */}
+    {/* success handle at 30% (left), failure handle at 70% (right) — matches visual labels */}
     <Handle
       type="source"
       position={Position.Bottom}
       id="success"
       className="fn-handle fn-handle-success"
-      style={{ left: '70%' }}
+      style={{ left: '30%' }}
     />
     <Handle
       type="source"
       position={Position.Bottom}
       id="failure"
       className="fn-handle fn-handle-failure"
-      style={{ left: '30%' }}
+      style={{ left: '70%' }}
     />
   </div>
 ))

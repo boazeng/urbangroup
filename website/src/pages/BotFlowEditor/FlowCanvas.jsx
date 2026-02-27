@@ -116,20 +116,24 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
     setSaveMsg('')
     try {
       const script = flowToScript(nodes, edges, originalScript)
+      console.log('[FlowEditor] Saving script:', script.script_id, script)
       const res = await fetch(`/api/bot-scripts/${script.script_id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(script),
       })
       const data = await res.json()
+      console.log('[FlowEditor] Save response:', data)
       if (data.ok) {
         setSaveMsg('נשמר בהצלחה!')
         onSave?.(script)
       } else {
         setSaveMsg(`שגיאה: ${data.error}`)
+        console.error('[FlowEditor] Save failed:', data.error)
       }
     } catch (e) {
       setSaveMsg(`שגיאה: ${e.message}`)
+      console.error('[FlowEditor] Save exception:', e)
     }
     setSaving(false)
   }

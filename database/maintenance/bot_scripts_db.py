@@ -30,7 +30,7 @@ CACHE_TTL_SECONDS = 300  # 5 minutes
 
 
 # Fields that contain nested JSON objects/arrays
-_JSON_FIELDS = ("steps", "done_actions")
+_JSON_FIELDS = ("steps", "done_actions", "_flow_positions")
 
 
 def get_script(script_id, use_cache=True):
