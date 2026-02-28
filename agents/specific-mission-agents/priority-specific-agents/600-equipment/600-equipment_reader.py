@@ -35,25 +35,38 @@ EQUIPMENT_FIELDS = (
 )
 
 
-def _normalize_phone(phone):
-    """Convert WhatsApp phone format to search digits.
+def _phone_variants(phone):
+    """Return all formats to try when matching a phone number in Priority.
 
-    WhatsApp sends: '972545446259'
-    Priority stores: '054-5446259'
+    Priority stores numbers in various formats:
+      +972542777757   (international with +)
+      0542777757      (local without dash)
+      054-2777757     (local with dash after 3 digits)
 
-    Returns core digits without country code for contains() search.
-    E.g. '972545446259' → '545446259'
+    WhatsApp sends: '972542777757' (no + or spaces)
     """
     digits = re.sub(r"[^0-9]", "", phone)
+    # Strip country code to get 9-digit local number (e.g. 542777757)
     if digits.startswith("972") and len(digits) > 9:
-        digits = digits[3:]  # strip country code → '545446259'
+        local9 = digits[3:]
     elif digits.startswith("0") and len(digits) >= 9:
-        digits = digits[1:]  # strip leading 0 → '545446259'
-    return digits
+        local9 = digits[1:]
+    else:
+        local9 = digits
+
+    variants = set()
+    if len(local9) == 9:
+        variants.add(f"+972{local9}")         # +972542777757
+        variants.add(f"0{local9}")            # 0542777757
+        variants.add(f"0{local9[:2]}-{local9[2:]}")  # 054-2777757
+    variants.add(digits)                      # original digits as fallback
+    return variants
 
 
 def fetch_equipment_by_phone(phone):
     """Find equipment/devices in Priority by customer phone number.
+
+    Tries multiple phone formats since Priority stores numbers inconsistently.
 
     Args:
         phone: Phone number in any format (WhatsApp, local, etc.)
@@ -63,14 +76,18 @@ def fetch_equipment_by_phone(phone):
         Each dict: {sernum, partname, partdes, custname, cdes, phonenum,
                      statusname, familyname, familydes, facilityname, facilitydes}
     """
-    core_digits = _normalize_phone(phone)
-    if len(core_digits) < 7:
-        logger.warning(f"[600] Phone too short after normalization: {phone} → {core_digits}")
+    variants = _phone_variants(phone)
+    if not variants:
+        logger.warning(f"[600] Could not build phone variants for: {phone}")
         return []
+
+    # Build filter with OR across all format variants
+    or_clauses = " or ".join(f"PHONENUM eq '{v}'" for v in variants)
+    filter_expr = f"({or_clauses})"
 
     url = f"{PRIORITY_URL}/SERNUMBERS"
     params = {
-        "$filter": f"contains(PHONENUM, '{core_digits}')",
+        "$filter": filter_expr,
         "$select": EQUIPMENT_FIELDS,
     }
     headers = {
