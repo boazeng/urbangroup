@@ -408,7 +408,10 @@ export default function PdfSignPage() {
           {/* Signature history gallery */}
           {sigHistory.length > 0 && (
             <div className="ps-sig-history">
-              <div className="ps-sig-history-label">חתימות אחרונות</div>
+              <div className="ps-sig-history-label">
+                <span>חתימות אחרונות</span>
+                <button className="ps-sig-history-clear" onClick={() => { setSigHistory([]); setSigDataUrl(null); setSigNatural(null) }} title="נקה גלריה">✕</button>
+              </div>
               <div className="ps-sig-history-row">
                 {sigHistory.map((s, i) => (
                   <div

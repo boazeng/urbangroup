@@ -122,31 +122,30 @@
   max-width: 190px;
 }
 
-/* Paste zone */
+/* Paste zone — compact single row */
 .ps-paste-zone {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   gap: 6px;
-  padding: 12px 10px;
+  padding: 7px 10px;
   border-bottom: 1px solid #EDF2F7;
   background: #FFFBEB;
-  font-size: 12px;
+  font-size: 11px;
   color: #4A5568;
-  text-align: center;
   transition: background 0.2s;
 }
 .ps-paste-active { background: #FEF9C3 !important; }
 
-.ps-paste-icon { font-size: 22px; }
+.ps-paste-icon { font-size: 16px; flex-shrink: 0; }
 
 .ps-paste-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
-.ps-paste-text strong { color: #92400E; font-size: 12px; }
-.ps-paste-text span   { font-size: 11px; color: #78716C; }
+.ps-paste-text strong { color: #92400E; font-size: 11px; }
+.ps-paste-text span   { font-size: 10px; color: #78716C; }
 
 .ps-file-fallback {
   padding: 7px 10px;
@@ -160,16 +159,29 @@
 
 /* Signature history gallery */
 .ps-sig-history {
-  padding: 8px 10px;
+  padding: 7px 10px;
   border-bottom: 1px solid #EDF2F7;
 }
 
 .ps-sig-history-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   font-size: 10px;
   color: #A0AEC0;
-  text-align: center;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
 }
+
+.ps-sig-history-clear {
+  background: none;
+  border: none;
+  font-size: 11px;
+  color: #CBD5E0;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+.ps-sig-history-clear:hover { color: #E53E3E; }
 
 .ps-sig-history-row {
   display: flex;
