@@ -102,31 +102,39 @@ export default function PdfSignPage() {
   // ── Paste event (Ctrl+V) ──────────────────────────────────────
   useEffect(() => {
     const onPaste = (e) => {
-      const items = Array.from(e.clipboardData?.items || [])
+      // Don't intercept paste in form fields
+      const tag = (document.activeElement?.tagName || '').toUpperCase()
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
 
-      // 1. Check for image in clipboard (screenshot, Word object, copied image)
-      const imageItem = items.find(it => it.type.startsWith('image/'))
-      if (imageItem) {
-        const blob   = imageItem.getAsFile()
+      const cd = e.clipboardData
+      if (!cd) return
+
+      // 1. Image — check items (kind=file), then files fallback
+      const items = Array.from(cd.items || [])
+      const imgItem = items.find(it => it.kind === 'file' && it.type.startsWith('image/'))
+      const blob = imgItem?.getAsFile()
+        || Array.from(cd.files || []).find(f => f.type.startsWith('image/'))
+
+      if (blob) {
         const reader = new FileReader()
-        reader.onload = (ev) => applyStamp(ev.target.result, setters)
+        reader.onload = (ev) => {
+          applyStamp(ev.target.result, setters)
+          setPasteHint(true)
+          setTimeout(() => setPasteHint(false), 2000)
+        }
         reader.readAsDataURL(blob)
-        setPasteHint(true)
-        setTimeout(() => setPasteHint(false), 2000)
         return
       }
 
-      // 2. Check for text (Word text frame, plain text)
-      const textItem = items.find(it => it.type === 'text/plain')
-      if (textItem) {
-        textItem.getAsString((text) => {
-          const dataUrl = textToDataUrl(text)
-          if (dataUrl) {
-            applyStamp(dataUrl, setters)
-            setPasteHint(true)
-            setTimeout(() => setPasteHint(false), 2000)
-          }
-        })
+      // 2. Plain text → render to canvas (synchronous, more reliable than getAsString)
+      const text = cd.getData('text/plain')
+      if (text?.trim()) {
+        const dataUrl = textToDataUrl(text.trim())
+        if (dataUrl) {
+          applyStamp(dataUrl, setters)
+          setPasteHint(true)
+          setTimeout(() => setPasteHint(false), 2000)
+        }
       }
     }
 
