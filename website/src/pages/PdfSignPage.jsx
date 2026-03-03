@@ -88,11 +88,16 @@ function rotateDataUrl(dataUrl, degrees) {
 
 // ── Apply a data URL as the stamp ─────────────────────────────
 function applyStamp(dataUrl, setters) {
-  const { setSigDataUrl, setSigNatural } = setters
+  const { setSigDataUrl, setSigNatural, setSigHistory } = setters
   const img = new Image()
   img.onload = () => {
+    const entry = { dataUrl, w: img.naturalWidth, h: img.naturalHeight }
     setSigDataUrl(dataUrl)
     setSigNatural({ w: img.naturalWidth, h: img.naturalHeight })
+    setSigHistory(prev => {
+      const filtered = prev.filter(e => e.dataUrl !== dataUrl)
+      return [entry, ...filtered].slice(0, 3)
+    })
   }
   img.src = dataUrl
 }
@@ -104,6 +109,7 @@ export default function PdfSignPage() {
   const [selectedPage, setSelectedPage]   = useState(0)
   const [sigDataUrl, setSigDataUrl]       = useState(null)
   const [sigNatural, setSigNatural]       = useState(null)
+  const [sigHistory, setSigHistory]       = useState([])   // [{dataUrl, w, h}] max 3
   const [placements, setPlacements]       = useState([])
   const [loading, setLoading]             = useState(false)
   const [saving, setSaving]               = useState(false)
@@ -120,7 +126,7 @@ export default function PdfSignPage() {
   const pdfInputRef = useRef(null)
   const sigInputRef = useRef(null)
 
-  const setters = { setSigDataUrl, setSigNatural }
+  const setters = { setSigDataUrl, setSigNatural, setSigHistory }
 
   // Selected placement (for drag / resize / controls)
   const currentPlacement = placements.find(p => p.id === selectedPlacementId) || null
@@ -390,9 +396,6 @@ export default function PdfSignPage() {
               <strong>הדבק חתימה — Ctrl+V</strong>
               <span>תמונה, צילום מסך או טקסט מ-Word</span>
             </div>
-            {sigDataUrl && (
-              <img src={sigDataUrl} alt="חתימה" className="ps-sig-preview" />
-            )}
           </div>
 
           {/* File upload fallback */}
@@ -401,6 +404,26 @@ export default function PdfSignPage() {
           </div>
           <input ref={sigInputRef} type="file" accept="image/*" style={{ display: 'none' }}
             onChange={e => e.target.files[0] && loadSigFile(e.target.files[0])} />
+
+          {/* Signature history gallery */}
+          {sigHistory.length > 0 && (
+            <div className="ps-sig-history">
+              <div className="ps-sig-history-label">חתימות אחרונות</div>
+              <div className="ps-sig-history-row">
+                {sigHistory.map((s, i) => (
+                  <div
+                    key={i}
+                    className={`ps-sig-hist-item${s.dataUrl === sigDataUrl ? ' ps-sig-hist-active' : ''}`}
+                    onClick={() => { setSigDataUrl(s.dataUrl); setSigNatural({ w: s.w, h: s.h }) }}
+                    title={i === 0 ? 'הכי אחרונה' : `${i + 1} אחורה`}
+                  >
+                    <img src={s.dataUrl} alt={`חתימה ${i + 1}`} />
+                    {s.dataUrl === sigDataUrl && <span className="ps-sig-hist-check">✓</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Stamp controls */}
           {sigDataUrl && pages.length > 0 && (
