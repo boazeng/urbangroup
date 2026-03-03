@@ -7,9 +7,9 @@ import './PdfSignPage.css'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker
 
-const DISPLAY_WIDTH = 780  // max render width for the large page view
+const DISPLAY_WIDTH = 780
 
-// ── Render a pdfjs page to a canvas and return data ───────────
+// ── Render a pdfjs page to a data URL ─────────────────────────
 async function renderPage(pdfPage) {
   const viewport = pdfPage.getViewport({ scale: 1 })
   const scale = DISPLAY_WIDTH / viewport.width
@@ -28,32 +28,113 @@ async function renderPage(pdfPage) {
   }
 }
 
-export default function PdfSignPage() {
-  const [pdfBytes, setPdfBytes]       = useState(null)   // ArrayBuffer
-  const [pdfName, setPdfName]         = useState('')
-  const [pages, setPages]             = useState([])      // [{dataUrl, displayW, displayH, scale, pdfW, pdfH}]
-  const [selectedPage, setSelectedPage] = useState(0)
-  const [sigDataUrl, setSigDataUrl]   = useState(null)    // uploaded signature data URL
-  const [sigNatural, setSigNatural]   = useState(null)    // {w, h} natural size
-  const [placements, setPlacements]   = useState([])      // [{pageIdx, x, y, w, h}] display px
-  const [loading, setLoading]         = useState(false)
-  const [saving, setSaving]           = useState(false)
-  const [status, setStatus]           = useState('')
+// ── Render pasted text to a PNG data URL ──────────────────────
+function textToDataUrl(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
+  if (!lines.length) return null
 
-  // Drag state
-  const [dragging, setDragging]       = useState(false)
-  const [resizing, setResizing]       = useState(false)
-  const [dragOffset, setDragOffset]   = useState({ x: 0, y: 0 })
-  const [resizeStart, setResizeStart] = useState(null)  // {mouseX, mouseY, w, h}
+  const fontSize  = 22
+  const lineH     = fontSize + 10
+  const padding   = 16
+  const font      = `${fontSize}px Arial`
+
+  // Measure
+  const offscreen = document.createElement('canvas')
+  const octx      = offscreen.getContext('2d')
+  octx.font = font
+  const maxW = Math.max(...lines.map(l => octx.measureText(l).width))
+
+  const canvas  = document.createElement('canvas')
+  canvas.width  = Math.ceil(maxW) + padding * 2
+  canvas.height = lines.length * lineH + padding * 2
+
+  const ctx = canvas.getContext('2d')
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  ctx.font      = font
+  ctx.fillStyle = '#1a1a1a'
+  ctx.textBaseline = 'top'
+  // RTL support
+  ctx.direction = 'rtl'
+  lines.forEach((line, i) => {
+    ctx.fillText(line, canvas.width - padding, padding + i * lineH)
+  })
+
+  return canvas.toDataURL('image/png')
+}
+
+// ── Apply a data URL as the stamp ─────────────────────────────
+function applyStamp(dataUrl, setters) {
+  const { setSigDataUrl, setSigNatural } = setters
+  const img = new Image()
+  img.onload = () => {
+    setSigDataUrl(dataUrl)
+    setSigNatural({ w: img.naturalWidth, h: img.naturalHeight })
+  }
+  img.src = dataUrl
+}
+
+export default function PdfSignPage() {
+  const [pdfBytes, setPdfBytes]           = useState(null)
+  const [pdfName, setPdfName]             = useState('')
+  const [pages, setPages]                 = useState([])
+  const [selectedPage, setSelectedPage]   = useState(0)
+  const [sigDataUrl, setSigDataUrl]       = useState(null)
+  const [sigNatural, setSigNatural]       = useState(null)
+  const [placements, setPlacements]       = useState([])
+  const [loading, setLoading]             = useState(false)
+  const [saving, setSaving]               = useState(false)
+  const [status, setStatus]               = useState('')
+  const [pasteHint, setPasteHint]         = useState(false)  // flash hint
+
+  const [dragging, setDragging]           = useState(false)
+  const [resizing, setResizing]           = useState(false)
+  const [dragOffset, setDragOffset]       = useState({ x: 0, y: 0 })
+  const [resizeStart, setResizeStart]     = useState(null)
 
   const viewerRef   = useRef(null)
   const pdfInputRef = useRef(null)
   const sigInputRef = useRef(null)
 
-  // Current page's placement (if any)
+  const setters = { setSigDataUrl, setSigNatural }
+
   const currentPlacement = placements.find(p => p.pageIdx === selectedPage) || null
 
-  // ── Load PDF ─────────────────────────────────────────────────
+  // ── Paste event (Ctrl+V) ──────────────────────────────────────
+  useEffect(() => {
+    const onPaste = (e) => {
+      const items = Array.from(e.clipboardData?.items || [])
+
+      // 1. Check for image in clipboard (screenshot, Word object, copied image)
+      const imageItem = items.find(it => it.type.startsWith('image/'))
+      if (imageItem) {
+        const blob   = imageItem.getAsFile()
+        const reader = new FileReader()
+        reader.onload = (ev) => applyStamp(ev.target.result, setters)
+        reader.readAsDataURL(blob)
+        setPasteHint(true)
+        setTimeout(() => setPasteHint(false), 2000)
+        return
+      }
+
+      // 2. Check for text (Word text frame, plain text)
+      const textItem = items.find(it => it.type === 'text/plain')
+      if (textItem) {
+        textItem.getAsString((text) => {
+          const dataUrl = textToDataUrl(text)
+          if (dataUrl) {
+            applyStamp(dataUrl, setters)
+            setPasteHint(true)
+            setTimeout(() => setPasteHint(false), 2000)
+          }
+        })
+      }
+    }
+
+    document.addEventListener('paste', onPaste)
+    return () => document.removeEventListener('paste', onPaste)
+  }, []) // eslint-disable-line
+
+  // ── Load PDF ──────────────────────────────────────────────────
   const loadPdf = useCallback(async (file) => {
     setLoading(true)
     setStatus('')
@@ -72,31 +153,24 @@ export default function PdfSignPage() {
       }
       setPages(rendered)
       setSelectedPage(0)
-    } catch (e) {
+    } catch {
       setStatus('שגיאה בטעינת ה-PDF')
     }
     setLoading(false)
   }, [])
 
-  // ── Load signature image ──────────────────────────────────────
-  const loadSig = useCallback((file) => {
+  // ── Load signature from file (fallback) ───────────────────────
+  const loadSigFile = useCallback((file) => {
     const reader = new FileReader()
-    reader.onload = (e) => {
-      const img = new Image()
-      img.onload = () => {
-        setSigDataUrl(e.target.result)
-        setSigNatural({ w: img.naturalWidth, h: img.naturalHeight })
-      }
-      img.src = e.target.result
-    }
+    reader.onload = (e) => applyStamp(e.target.result, setters)
     reader.readAsDataURL(file)
-  }, [])
+  }, []) // eslint-disable-line
 
-  // ── Place signature on current page (or reset position) ──────
+  // ── Place stamp on current page ───────────────────────────────
   const placeSigOnPage = useCallback(() => {
-    if (!sigDataUrl || !pages[selectedPage]) return
-    const pg = pages[selectedPage]
-    const sigW = Math.min(200, pg.displayW * 0.25)
+    if (!sigDataUrl || !sigNatural || !pages[selectedPage]) return
+    const pg   = pages[selectedPage]
+    const sigW = Math.min(220, pg.displayW * 0.28)
     const sigH = sigW * (sigNatural.h / sigNatural.w)
     const placement = {
       pageIdx: selectedPage,
@@ -108,34 +182,27 @@ export default function PdfSignPage() {
     setPlacements(prev => [...prev.filter(p => p.pageIdx !== selectedPage), placement])
   }, [sigDataUrl, sigNatural, pages, selectedPage])
 
-  // Auto-place when switching to a page that has no placement yet
   useEffect(() => {
     if (sigDataUrl && pages[selectedPage] && !currentPlacement) {
       placeSigOnPage()
     }
   }, [selectedPage]) // eslint-disable-line
 
-  // ── Remove placement from current page ───────────────────────
-  const removePlacement = () => {
+  const removePlacement = () =>
     setPlacements(prev => prev.filter(p => p.pageIdx !== selectedPage))
-  }
 
-  // ── Update current placement ─────────────────────────────────
   const updatePlacement = useCallback((updater) => {
     setPlacements(prev => prev.map(p =>
       p.pageIdx === selectedPage ? { ...p, ...updater(p) } : p
     ))
   }, [selectedPage])
 
-  // ── Drag handlers ────────────────────────────────────────────
+  // ── Drag / resize ─────────────────────────────────────────────
   const onSigMouseDown = (e) => {
     if (!currentPlacement || e.target.classList.contains('ps-resize')) return
     e.preventDefault()
     const rect = viewerRef.current.getBoundingClientRect()
-    setDragOffset({
-      x: e.clientX - rect.left - currentPlacement.x,
-      y: e.clientY - rect.top  - currentPlacement.y,
-    })
+    setDragOffset({ x: e.clientX - rect.left - currentPlacement.x, y: e.clientY - rect.top - currentPlacement.y })
     setDragging(true)
   }
 
@@ -143,32 +210,24 @@ export default function PdfSignPage() {
     if (!currentPlacement) return
     e.preventDefault()
     e.stopPropagation()
-    setResizeStart({
-      mouseX: e.clientX,
-      mouseY: e.clientY,
-      w: currentPlacement.w,
-      h: currentPlacement.h,
-    })
+    setResizeStart({ mouseX: e.clientX, mouseY: e.clientY, w: currentPlacement.w, h: currentPlacement.h })
     setResizing(true)
   }
 
   const onMouseMove = useCallback((e) => {
     if (!viewerRef.current || !currentPlacement) return
     const rect = viewerRef.current.getBoundingClientRect()
-    const pg = pages[selectedPage]
-
+    const pg   = pages[selectedPage]
     if (dragging) {
       const newX = Math.max(0, Math.min(e.clientX - rect.left - dragOffset.x, pg.displayW - currentPlacement.w))
       const newY = Math.max(0, Math.min(e.clientY - rect.top  - dragOffset.y, pg.displayH - currentPlacement.h))
       updatePlacement(() => ({ x: newX, y: newY }))
     }
-
     if (resizing && resizeStart) {
-      const dx = e.clientX - resizeStart.mouseX
+      const dx   = e.clientX - resizeStart.mouseX
       const aspect = resizeStart.h / resizeStart.w
       const newW = Math.max(40, resizeStart.w + dx)
-      const newH = newW * aspect
-      updatePlacement(() => ({ w: newW, h: newH }))
+      updatePlacement(() => ({ w: newW, h: newW * aspect }))
     }
   }, [dragging, resizing, dragOffset, resizeStart, currentPlacement, pages, selectedPage, updatePlacement])
 
@@ -178,43 +237,36 @@ export default function PdfSignPage() {
     setResizeStart(null)
   }, [])
 
-  // ── Save PDF ─────────────────────────────────────────────────
+  // ── Save PDF ──────────────────────────────────────────────────
   const savePdf = async () => {
     if (!pdfBytes || placements.length === 0) return
     setSaving(true)
     setStatus('מכין את הקובץ...')
     try {
-      const pdfDoc = await PDFDocument.load(pdfBytes)
+      const pdfDoc  = await PDFDocument.load(pdfBytes)
       const pdfPages = pdfDoc.getPages()
 
       for (const pl of placements) {
-        const pg = pages[pl.pageIdx]
+        const pg      = pages[pl.pageIdx]
         const pdfPage = pdfPages[pl.pageIdx]
+        const xPdf    = pl.x / pg.scale
+        const yPdf    = pg.pdfH - (pl.y / pg.scale) - (pl.h / pg.scale)
+        const wPdf    = pl.w / pg.scale
+        const hPdf    = pl.h / pg.scale
 
-        // Convert display coords (top-left origin) → PDF coords (bottom-left origin)
-        const xPdf = pl.x / pg.scale
-        const yPdf = pg.pdfH - (pl.y / pg.scale) - (pl.h / pg.scale)
-        const wPdf = pl.w / pg.scale
-        const hPdf = pl.h / pg.scale
-
-        // Fetch image bytes from dataUrl
-        const resp = await fetch(sigDataUrl)
+        const resp     = await fetch(sigDataUrl)
         const imgBytes = await resp.arrayBuffer()
-
-        let embedded
-        if (sigDataUrl.startsWith('data:image/png')) {
-          embedded = await pdfDoc.embedPng(imgBytes)
-        } else {
-          embedded = await pdfDoc.embedJpg(imgBytes)
-        }
+        const embedded = sigDataUrl.startsWith('data:image/png')
+          ? await pdfDoc.embedPng(imgBytes)
+          : await pdfDoc.embedJpg(imgBytes)
 
         pdfPage.drawImage(embedded, { x: xPdf, y: yPdf, width: wPdf, height: hPdf })
       }
 
       const saved = await pdfDoc.save()
-      const blob = new Blob([saved], { type: 'application/pdf' })
-      const url  = URL.createObjectURL(blob)
-      const a    = document.createElement('a')
+      const blob  = new Blob([saved], { type: 'application/pdf' })
+      const url   = URL.createObjectURL(blob)
+      const a     = document.createElement('a')
       a.href = url
       a.download = pdfName.replace(/\.pdf$/i, '') + '-חתום.pdf'
       a.click()
@@ -226,22 +278,11 @@ export default function PdfSignPage() {
     setSaving(false)
   }
 
-  // ── Drop handlers ─────────────────────────────────────────────
-  const onDrop = (e) => {
-    e.preventDefault()
-    const file = e.dataTransfer.files[0]
-    if (!file) return
-    if (file.type === 'application/pdf') loadPdf(file)
-  }
-
   const pg = pages[selectedPage]
 
   return (
-    <div
-      className="ps-page"
-      onMouseMove={onMouseMove}
-      onMouseUp={onMouseUp}
-    >
+    <div className="ps-page" onMouseMove={onMouseMove} onMouseUp={onMouseUp}>
+
       {/* Top bar */}
       <div className="ps-topbar">
         <Link to="/apps" className="ps-back">&rarr; חזרה לאפליקציות</Link>
@@ -255,19 +296,22 @@ export default function PdfSignPage() {
         </div>
       </div>
 
-      {status && <div className={`ps-status ${status.startsWith('שגיאה') ? 'ps-status-err' : 'ps-status-ok'}`}>{status}</div>}
+      {status && (
+        <div className={`ps-status ${status.startsWith('שגיאה') ? 'ps-status-err' : 'ps-status-ok'}`}>
+          {status}
+        </div>
+      )}
 
-      {/* Main body */}
       <div className="ps-body">
 
-        {/* Left panel */}
+        {/* ── Left panel ── */}
         <div className="ps-left">
 
           {/* PDF upload */}
           <div
             className="ps-upload-zone"
             onClick={() => pdfInputRef.current?.click()}
-            onDrop={onDrop}
+            onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f?.type === 'application/pdf') loadPdf(f) }}
             onDragOver={e => e.preventDefault()}
           >
             {pdfName
@@ -278,18 +322,26 @@ export default function PdfSignPage() {
           <input ref={pdfInputRef} type="file" accept=".pdf" style={{ display: 'none' }}
             onChange={e => e.target.files[0] && loadPdf(e.target.files[0])} />
 
-          {/* Signature upload */}
-          <div className="ps-sig-zone" onClick={() => sigInputRef.current?.click()}>
-            {sigDataUrl
-              ? <img src={sigDataUrl} alt="חתימה" className="ps-sig-preview" />
-              : <><span className="ps-upload-icon">✍️</span><span>העלה תמונת חתימה</span></>
-            }
+          {/* Paste zone */}
+          <div className={`ps-paste-zone${pasteHint ? ' ps-paste-active' : ''}`}>
+            <span className="ps-paste-icon">📋</span>
+            <div className="ps-paste-text">
+              <strong>הדבק חתימה — Ctrl+V</strong>
+              <span>תמונה, צילום מסך או טקסט מ-Word</span>
+            </div>
+            {sigDataUrl && (
+              <img src={sigDataUrl} alt="חתימה" className="ps-sig-preview" />
+            )}
           </div>
-          <input ref={sigInputRef} type="file" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
-            style={{ display: 'none' }}
-            onChange={e => e.target.files[0] && loadSig(e.target.files[0])} />
 
-          {/* Signature controls */}
+          {/* File upload fallback */}
+          <div className="ps-file-fallback" onClick={() => sigInputRef.current?.click()}>
+            📁 העלה קובץ תמונה
+          </div>
+          <input ref={sigInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+            onChange={e => e.target.files[0] && loadSigFile(e.target.files[0])} />
+
+          {/* Stamp controls */}
           {sigDataUrl && pages.length > 0 && (
             <div className="ps-sig-controls">
               <button className="ps-btn-place" onClick={placeSigOnPage}>
@@ -325,12 +377,13 @@ export default function PdfSignPage() {
           )}
         </div>
 
-        {/* Right panel — large page viewer */}
+        {/* ── Right panel: viewer ── */}
         <div className="ps-right">
           {!pages.length && !loading && (
             <div className="ps-empty">
               <span className="ps-empty-icon">📄</span>
               <p>טען קובץ PDF כדי להתחיל</p>
+              <p className="ps-empty-hint">לאחר הטעינה — הדבק חתימה עם Ctrl+V</p>
             </div>
           )}
 
@@ -340,10 +393,8 @@ export default function PdfSignPage() {
               ref={viewerRef}
               style={{ width: pg.displayW, height: pg.displayH }}
             >
-              {/* Page image */}
               <img src={pg.dataUrl} alt={`עמוד ${selectedPage + 1}`} className="ps-page-img" draggable={false} />
 
-              {/* Signature overlay */}
               {currentPlacement && (
                 <div
                   className={`ps-sig-overlay${dragging ? ' ps-sig-dragging' : ''}`}
@@ -356,7 +407,6 @@ export default function PdfSignPage() {
                   onMouseDown={onSigMouseDown}
                 >
                   <img src={sigDataUrl} alt="חתימה" draggable={false} />
-                  {/* Resize handle */}
                   <div className="ps-resize" onMouseDown={onResizeMouseDown} />
                 </div>
               )}

@@ -111,26 +111,46 @@
   max-width: 190px;
 }
 
-.ps-sig-zone {
+/* Paste zone */
+.ps-paste-zone {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 6px;
-  padding: 10px;
+  padding: 12px 10px;
   border-bottom: 1px solid #EDF2F7;
-  cursor: pointer;
+  background: #FFFBEB;
   font-size: 12px;
   color: #4A5568;
   text-align: center;
-  transition: background 0.12s;
-  min-height: 60px;
+  transition: background 0.2s;
 }
-.ps-sig-zone:hover { background: #FFFFF0; }
+.ps-paste-active { background: #FEF9C3 !important; }
+
+.ps-paste-icon { font-size: 22px; }
+
+.ps-paste-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ps-paste-text strong { color: #92400E; font-size: 12px; }
+.ps-paste-text span   { font-size: 11px; color: #78716C; }
+
+.ps-file-fallback {
+  padding: 7px 10px;
+  font-size: 11px;
+  color: #718096;
+  text-align: center;
+  cursor: pointer;
+  border-bottom: 1px solid #EDF2F7;
+  transition: background 0.12s;
+}
+.ps-file-fallback:hover { background: #F7FAFC; color: #2B6CB0; }
 
 .ps-sig-preview {
   max-width: 190px;
-  max-height: 60px;
+  max-height: 55px;
   object-fit: contain;
 }
 
@@ -250,6 +270,7 @@
 }
 .ps-empty-icon { font-size: 56px; }
 .ps-empty p    { font-size: 15px; margin: 0; }
+.ps-empty-hint { font-size: 13px !important; color: #CBD5E0 !important; margin-top: 4px !important; }
 
 /* Page viewer container */
 .ps-viewer {
