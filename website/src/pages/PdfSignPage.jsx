@@ -399,8 +399,18 @@ export default function PdfSignPage() {
                   <div className="ps-transform-row">
                     <button className="ps-btn-transform" onClick={() => scaleSig(0.85)} title="הקטן">−</button>
                     <button className="ps-btn-transform" onClick={() => scaleSig(1.18)} title="הגדל">+</button>
-                    <button className="ps-btn-transform" onClick={() => rotateSig(-90)} title="סובב שמאל">↺</button>
-                    <button className="ps-btn-transform" onClick={() => rotateSig(90)}  title="סובב ימין">↻</button>
+                    <button className="ps-btn-transform" onClick={() => rotateSig(-90)} title="סובב שמאל 90°">↺</button>
+                    <button className="ps-btn-transform" onClick={() => rotateSig(90)}  title="סובב ימין 90°">↻</button>
+                  </div>
+                  <div className="ps-rotation-row">
+                    <input
+                      type="range"
+                      className="ps-rotation-slider"
+                      min="0" max="359" step="1"
+                      value={currentPlacement.rotation || 0}
+                      onChange={e => updatePlacement(() => ({ rotation: Number(e.target.value) }))}
+                    />
+                    <span className="ps-rotation-val">{currentPlacement.rotation || 0}°</span>
                   </div>
                   <button className="ps-btn-remove" onClick={removePlacement}>✕ הסר מדף</button>
                 </>
@@ -411,25 +421,6 @@ export default function PdfSignPage() {
             </div>
           )}
 
-          {/* Thumbnails */}
-          {loading && <div className="ps-loading">טוען...</div>}
-          {pages.length > 0 && (
-            <div className="ps-thumbs">
-              {pages.map((p, i) => (
-                <div
-                  key={i}
-                  className={`ps-thumb ${i === selectedPage ? 'ps-thumb-selected' : ''}`}
-                  onClick={() => setSelectedPage(i)}
-                >
-                  <img src={p.dataUrl} alt={`עמוד ${i + 1}`} />
-                  <span className="ps-thumb-num">{i + 1}</span>
-                  {placements.some(pl => pl.pageIdx === i) && (
-                    <span className="ps-thumb-badge">✍️</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* ── Right panel: viewer ── */}
@@ -469,6 +460,28 @@ export default function PdfSignPage() {
             </div>
           )}
         </div>
+
+        {/* ── Thumbnails panel: left side (RTL = leftmost visually) ── */}
+        {(pages.length > 0 || loading) && (
+          <div className="ps-thumbs-panel">
+            {loading && <div className="ps-loading">טוען...</div>}
+            <div className="ps-thumbs">
+              {pages.map((p, i) => (
+                <div
+                  key={i}
+                  className={`ps-thumb ${i === selectedPage ? 'ps-thumb-selected' : ''}`}
+                  onClick={() => setSelectedPage(i)}
+                >
+                  <img src={p.dataUrl} alt={`עמוד ${i + 1}`} />
+                  <span className="ps-thumb-num">{i + 1}</span>
+                  {placements.some(pl => pl.pageIdx === i) && (
+                    <span className="ps-thumb-badge">✍️</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

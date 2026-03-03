@@ -66,19 +66,30 @@
 .ps-status-ok  { background: #F0FFF4; color: #276749; border-bottom: 1px solid #9AE6B4; }
 .ps-status-err { background: #FFF5F5; color: #C53030; border-bottom: 1px solid #FEB2B2; }
 
-/* Body: two panels */
+/* Body: three panels (RTL: tools | viewer | thumbs) */
 .ps-body {
   display: flex;
   flex: 1;
   overflow: hidden;
 }
 
-/* ── Left panel ─────────────────────────────────────────────── */
+/* ── Tools panel (right side in RTL) ────────────────────────── */
 .ps-left {
-  width: 220px;
+  width: 190px;
   flex-shrink: 0;
   background: #fff;
   border-left: 1px solid #E2E8F0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Thumbnails panel (left side in RTL) ────────────────────── */
+.ps-thumbs-panel {
+  width: 120px;
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid #E2E8F0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -329,6 +340,29 @@
   line-height: 1;
 }
 .ps-btn-transform:hover { background: #E2E8F0; }
+
+/* Rotation slider */
+.ps-rotation-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.ps-rotation-slider {
+  flex: 1;
+  height: 4px;
+  accent-color: #4299E1;
+  cursor: pointer;
+}
+
+.ps-rotation-val {
+  font-size: 11px;
+  color: #4A5568;
+  min-width: 28px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
 
 /* Resize handle — bottom-left corner (RTL) */
 .ps-resize {
