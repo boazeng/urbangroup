@@ -1,0 +1,300 @@
+/* ── PDF Sign Page ──────────────────────────────────────────── */
+
+.ps-page {
+  direction: rtl;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #F7FAFC;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Top bar */
+.ps-topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  background: #fff;
+  border-bottom: 1px solid #E2E8F0;
+  flex-shrink: 0;
+}
+
+.ps-back {
+  color: #4A5568;
+  text-decoration: none;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.ps-back:hover { color: #2B6CB0; }
+
+.ps-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1A202C;
+  margin: 0;
+  flex: 1;
+}
+
+.ps-topbar-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.ps-save-btn {
+  padding: 8px 20px;
+  background: #2B6CB0;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ps-save-btn:hover:not(:disabled) { background: #2C5282; }
+.ps-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Status bar */
+.ps-status {
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.ps-status-ok  { background: #F0FFF4; color: #276749; border-bottom: 1px solid #9AE6B4; }
+.ps-status-err { background: #FFF5F5; color: #C53030; border-bottom: 1px solid #FEB2B2; }
+
+/* Body: two panels */
+.ps-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Left panel ─────────────────────────────────────────────── */
+.ps-left {
+  width: 220px;
+  flex-shrink: 0;
+  background: #fff;
+  border-left: 1px solid #E2E8F0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ps-upload-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 10px;
+  border-bottom: 1px solid #EDF2F7;
+  cursor: pointer;
+  font-size: 12px;
+  color: #4A5568;
+  text-align: center;
+  transition: background 0.12s;
+  min-height: 70px;
+}
+.ps-upload-zone:hover { background: #EBF8FF; }
+
+.ps-upload-icon { font-size: 24px; }
+
+.ps-upload-name {
+  font-size: 11px;
+  color: #2B6CB0;
+  font-weight: 600;
+  word-break: break-all;
+  max-width: 190px;
+}
+
+.ps-sig-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border-bottom: 1px solid #EDF2F7;
+  cursor: pointer;
+  font-size: 12px;
+  color: #4A5568;
+  text-align: center;
+  transition: background 0.12s;
+  min-height: 60px;
+}
+.ps-sig-zone:hover { background: #FFFFF0; }
+
+.ps-sig-preview {
+  max-width: 190px;
+  max-height: 60px;
+  object-fit: contain;
+}
+
+.ps-sig-controls {
+  padding: 10px;
+  border-bottom: 1px solid #EDF2F7;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ps-btn-place {
+  width: 100%;
+  padding: 7px;
+  background: #E6FFFA;
+  border: 1px solid #81E6D9;
+  border-radius: 6px;
+  color: #234E52;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.ps-btn-place:hover { background: #B2F5EA; }
+
+.ps-btn-remove {
+  width: 100%;
+  padding: 7px;
+  background: #FFF5F5;
+  border: 1px solid #FEB2B2;
+  border-radius: 6px;
+  color: #C53030;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.ps-btn-remove:hover { background: #FED7D7; }
+
+.ps-placement-count {
+  text-align: center;
+  font-size: 11px;
+  color: #718096;
+}
+
+/* Thumbnails */
+.ps-loading {
+  padding: 20px;
+  text-align: center;
+  color: #A0AEC0;
+  font-size: 13px;
+}
+
+.ps-thumbs {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ps-thumb {
+  position: relative;
+  border: 2px solid #E2E8F0;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.12s;
+  flex-shrink: 0;
+}
+.ps-thumb:hover { border-color: #90CDF4; }
+.ps-thumb-selected { border-color: #4299E1 !important; }
+
+.ps-thumb img {
+  width: 100%;
+  display: block;
+}
+
+.ps-thumb-num {
+  position: absolute;
+  bottom: 3px;
+  right: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(0,0,0,0.5);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.ps-thumb-badge {
+  position: absolute;
+  top: 3px;
+  left: 5px;
+  font-size: 14px;
+}
+
+/* ── Right panel: page viewer ───────────────────────────────── */
+.ps-right {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 20px;
+}
+
+.ps-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #A0AEC0;
+  text-align: center;
+  gap: 12px;
+}
+.ps-empty-icon { font-size: 56px; }
+.ps-empty p    { font-size: 15px; margin: 0; }
+
+/* Page viewer container */
+.ps-viewer {
+  position: relative;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+  cursor: default;
+}
+
+.ps-page-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Signature overlay */
+.ps-sig-overlay {
+  position: absolute;
+  cursor: grab;
+  border: 2px dashed #4299E1;
+  box-sizing: border-box;
+  border-radius: 3px;
+}
+.ps-sig-overlay:hover { border-color: #2B6CB0; }
+.ps-sig-dragging { cursor: grabbing; border-color: #E53E3E; }
+
+.ps-sig-overlay img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
+/* Resize handle — bottom-left corner (RTL) */
+.ps-resize {
+  position: absolute;
+  bottom: -1px;
+  left: -1px;
+  width: 14px;
+  height: 14px;
+  background: #4299E1;
+  border-radius: 2px;
+  cursor: sw-resize;
+}

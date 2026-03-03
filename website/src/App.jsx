@@ -23,6 +23,7 @@ import BotScriptsPage from './pages/BotScriptsPage'
 import BotTrainingPage from './pages/BotTrainingPage'
 import BotFlowEditorPage from './pages/BotFlowEditor/BotFlowEditorPage'
 import BotDiagnosticsPage from './pages/BotDiagnosticsPage'
+import PdfSignPage from './pages/PdfSignPage'
 
 export default function App() {
   return (
@@ -50,6 +51,7 @@ export default function App() {
           <Route path="/apps/supplier-invoice-entry" element={<SupplierInvoiceEntryPage />} />
           <Route path="/apps/invoice-printer" element={<InvoicePrinterPage />} />
           <Route path="/apps/pdf-tools" element={<PdfToolsPage />} />
+          <Route path="/apps/pdf-sign" element={<PdfSignPage />} />
           <Route path="/app/:appId" element={<AppPage />} />
           <Route path="*" element={<HomePage />} />
         </Routes>
