@@ -308,6 +308,28 @@
   pointer-events: none;
 }
 
+/* Transform row: scale + rotate buttons */
+.ps-transform-row {
+  display: flex;
+  gap: 4px;
+}
+
+.ps-btn-transform {
+  flex: 1;
+  padding: 6px 2px;
+  background: #EDF2F7;
+  border: 1px solid #CBD5E0;
+  border-radius: 6px;
+  color: #2D3748;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s;
+  text-align: center;
+  line-height: 1;
+}
+.ps-btn-transform:hover { background: #E2E8F0; }
+
 /* Resize handle — bottom-left corner (RTL) */
 .ps-resize {
   position: absolute;

@@ -62,6 +62,30 @@ function textToDataUrl(text) {
   return canvas.toDataURL('image/png')
 }
 
+// ── Rotate a data URL N degrees CW, returns Promise<dataUrl> ──
+function rotateDataUrl(dataUrl, degrees) {
+  if (!degrees || degrees % 360 === 0) return Promise.resolve(dataUrl)
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => {
+      const rad  = (degrees * Math.PI) / 180
+      const sin  = Math.abs(Math.sin(rad))
+      const cos  = Math.abs(Math.cos(rad))
+      const newW = Math.round(img.width * cos + img.height * sin)
+      const newH = Math.round(img.width * sin + img.height * cos)
+      const canvas = document.createElement('canvas')
+      canvas.width  = newW
+      canvas.height = newH
+      const ctx = canvas.getContext('2d')
+      ctx.translate(newW / 2, newH / 2)
+      ctx.rotate(rad)
+      ctx.drawImage(img, -img.width / 2, -img.height / 2)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    img.src = dataUrl
+  })
+}
+
 // ── Apply a data URL as the stamp ─────────────────────────────
 function applyStamp(dataUrl, setters) {
   const { setSigDataUrl, setSigNatural } = setters
@@ -186,15 +210,10 @@ export default function PdfSignPage() {
       y: (pg.displayH - sigH) / 2,
       w: sigW,
       h: sigH,
+      rotation: 0,
     }
     setPlacements(prev => [...prev.filter(p => p.pageIdx !== selectedPage), placement])
   }, [sigDataUrl, sigNatural, pages, selectedPage])
-
-  useEffect(() => {
-    if (sigDataUrl && pages[selectedPage] && !currentPlacement) {
-      placeSigOnPage()
-    }
-  }, [selectedPage]) // eslint-disable-line
 
   const removePlacement = () =>
     setPlacements(prev => prev.filter(p => p.pageIdx !== selectedPage))
@@ -204,6 +223,15 @@ export default function PdfSignPage() {
       p.pageIdx === selectedPage ? { ...p, ...updater(p) } : p
     ))
   }, [selectedPage])
+
+  const rotateSig = (delta) =>
+    updatePlacement(p => ({ rotation: ((p.rotation || 0) + delta + 360) % 360 }))
+
+  const scaleSig = (factor) =>
+    updatePlacement(p => {
+      const newW = Math.max(40, Math.min(p.w * factor, pages[selectedPage].displayW * 0.9))
+      return { w: newW, h: newW * (p.h / p.w) }
+    })
 
   // ── Drag / resize ─────────────────────────────────────────────
   const onSigMouseDown = (e) => {
@@ -257,14 +285,25 @@ export default function PdfSignPage() {
       for (const pl of placements) {
         const pg      = pages[pl.pageIdx]
         const pdfPage = pdfPages[pl.pageIdx]
-        const xPdf    = pl.x / pg.scale
-        const yPdf    = pg.pdfH - (pl.y / pg.scale) - (pl.h / pg.scale)
-        const wPdf    = pl.w / pg.scale
-        const hPdf    = pl.h / pg.scale
+        const rot     = pl.rotation || 0
 
-        const resp     = await fetch(sigDataUrl)
+        // Pre-rotate the image on a canvas (handles CW rotation correctly)
+        const rotatedUrl = await rotateDataUrl(sigDataUrl, rot)
+
+        // For 90 / 270, visual w and h swap
+        const is90 = rot === 90 || rot === 270
+        const wPdf = (is90 ? pl.h : pl.w) / pg.scale
+        const hPdf = (is90 ? pl.w : pl.h) / pg.scale
+
+        // Draw centered on the same spot as the overlay (PDF origin is bottom-left)
+        const centerXPdf = (pl.x + pl.w / 2) / pg.scale
+        const centerYPdf = pg.pdfH - (pl.y + pl.h / 2) / pg.scale
+        const xPdf = centerXPdf - wPdf / 2
+        const yPdf = centerYPdf - hPdf / 2
+
+        const resp     = await fetch(rotatedUrl)
         const imgBytes = await resp.arrayBuffer()
-        const embedded = sigDataUrl.startsWith('data:image/png')
+        const embedded = rotatedUrl.startsWith('data:image/png')
           ? await pdfDoc.embedPng(imgBytes)
           : await pdfDoc.embedJpg(imgBytes)
 
@@ -356,7 +395,15 @@ export default function PdfSignPage() {
                 {currentPlacement ? '↺ אפס מיקום' : '+ הוסף לדף'}
               </button>
               {currentPlacement && (
-                <button className="ps-btn-remove" onClick={removePlacement}>✕ הסר מדף</button>
+                <>
+                  <div className="ps-transform-row">
+                    <button className="ps-btn-transform" onClick={() => scaleSig(0.85)} title="הקטן">−</button>
+                    <button className="ps-btn-transform" onClick={() => scaleSig(1.18)} title="הגדל">+</button>
+                    <button className="ps-btn-transform" onClick={() => rotateSig(-90)} title="סובב שמאל">↺</button>
+                    <button className="ps-btn-transform" onClick={() => rotateSig(90)}  title="סובב ימין">↻</button>
+                  </div>
+                  <button className="ps-btn-remove" onClick={removePlacement}>✕ הסר מדף</button>
+                </>
               )}
               <div className="ps-placement-count">
                 {placements.length} דף{placements.length !== 1 ? 'ים' : ''} עם חתימה
@@ -411,6 +458,7 @@ export default function PdfSignPage() {
                     top:  currentPlacement.y,
                     width: currentPlacement.w,
                     height: currentPlacement.h,
+                    transform: currentPlacement.rotation ? `rotate(${currentPlacement.rotation}deg)` : undefined,
                   }}
                   onMouseDown={onSigMouseDown}
                 >
