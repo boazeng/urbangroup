@@ -114,6 +114,7 @@ export default function PdfSignPage() {
   const [resizing, setResizing]           = useState(false)
   const [dragOffset, setDragOffset]       = useState({ x: 0, y: 0 })
   const [resizeStart, setResizeStart]     = useState(null)
+  const [selectedPlacementId, setSelectedPlacementId] = useState(null)
 
   const viewerRef   = useRef(null)
   const pdfInputRef = useRef(null)
@@ -121,7 +122,11 @@ export default function PdfSignPage() {
 
   const setters = { setSigDataUrl, setSigNatural }
 
-  const currentPlacement = placements.find(p => p.pageIdx === selectedPage) || null
+  // Selected placement (for drag / resize / controls)
+  const currentPlacement = placements.find(p => p.id === selectedPlacementId) || null
+
+  // Clear selection when switching pages
+  useEffect(() => { setSelectedPlacementId(null) }, [selectedPage])
 
   // ── Paste event (Ctrl+V) ──────────────────────────────────────
   useEffect(() => {
@@ -198,31 +203,37 @@ export default function PdfSignPage() {
     reader.readAsDataURL(file)
   }, []) // eslint-disable-line
 
-  // ── Place stamp on current page ───────────────────────────────
+  // ── Place stamp on current page (always adds new) ─────────────
   const placeSigOnPage = useCallback(() => {
     if (!sigDataUrl || !sigNatural || !pages[selectedPage]) return
     const pg   = pages[selectedPage]
     const sigW = Math.min(220, pg.displayW * 0.28)
     const sigH = sigW * (sigNatural.h / sigNatural.w)
+    const id   = Date.now()
     const placement = {
+      id,
       pageIdx: selectedPage,
       x: (pg.displayW - sigW) / 2,
       y: (pg.displayH - sigH) / 2,
       w: sigW,
       h: sigH,
       rotation: 0,
+      imgUrl: sigDataUrl,   // each placement owns its image
     }
-    setPlacements(prev => [...prev.filter(p => p.pageIdx !== selectedPage), placement])
+    setPlacements(prev => [...prev, placement])
+    setSelectedPlacementId(id)
   }, [sigDataUrl, sigNatural, pages, selectedPage])
 
-  const removePlacement = () =>
-    setPlacements(prev => prev.filter(p => p.pageIdx !== selectedPage))
+  const removePlacement = () => {
+    setPlacements(prev => prev.filter(p => p.id !== selectedPlacementId))
+    setSelectedPlacementId(null)
+  }
 
   const updatePlacement = useCallback((updater) => {
     setPlacements(prev => prev.map(p =>
-      p.pageIdx === selectedPage ? { ...p, ...updater(p) } : p
+      p.id === selectedPlacementId ? { ...p, ...updater(p) } : p
     ))
-  }, [selectedPage])
+  }, [selectedPlacementId])
 
   const rotateSig = (delta) =>
     updatePlacement(p => ({ rotation: ((p.rotation || 0) + delta + 360) % 360 }))
@@ -234,11 +245,14 @@ export default function PdfSignPage() {
     })
 
   // ── Drag / resize ─────────────────────────────────────────────
-  const onSigMouseDown = (e) => {
-    if (!currentPlacement || e.target.classList.contains('ps-resize')) return
+  const onSigMouseDown = (e, id) => {
+    if (e.target.classList.contains('ps-resize')) return
     e.preventDefault()
+    const pl = placements.find(p => p.id === id)
+    if (!pl) return
+    setSelectedPlacementId(id)
     const rect = viewerRef.current.getBoundingClientRect()
-    setDragOffset({ x: e.clientX - rect.left - currentPlacement.x, y: e.clientY - rect.top - currentPlacement.y })
+    setDragOffset({ x: e.clientX - rect.left - pl.x, y: e.clientY - rect.top - pl.y })
     setDragging(true)
   }
 
@@ -288,7 +302,7 @@ export default function PdfSignPage() {
         const rot     = pl.rotation || 0
 
         // Pre-rotate the image on a canvas (handles CW rotation correctly)
-        const rotatedUrl = await rotateDataUrl(sigDataUrl, rot)
+        const rotatedUrl = await rotateDataUrl(pl.imgUrl, rot)
 
         // For 90 / 270, visual w and h swap
         const is90 = rot === 90 || rot === 270
@@ -392,7 +406,7 @@ export default function PdfSignPage() {
           {sigDataUrl && pages.length > 0 && (
             <div className="ps-sig-controls">
               <button className="ps-btn-place" onClick={placeSigOnPage}>
-                {currentPlacement ? '↺ אפס מיקום' : '+ הוסף לדף'}
+                + הוסף לדף
               </button>
               {currentPlacement && (
                 <>
@@ -412,11 +426,11 @@ export default function PdfSignPage() {
                     />
                     <span className="ps-rotation-val">{currentPlacement.rotation || 0}°</span>
                   </div>
-                  <button className="ps-btn-remove" onClick={removePlacement}>✕ הסר מדף</button>
+                  <button className="ps-btn-remove" onClick={removePlacement}>✕ הסר חתימה</button>
                 </>
               )}
               <div className="ps-placement-count">
-                {placements.length} דף{placements.length !== 1 ? 'ים' : ''} עם חתימה
+                {placements.filter(p => p.pageIdx === selectedPage).length} בדף · {placements.length} סה"כ
               </div>
             </div>
           )}
@@ -441,22 +455,32 @@ export default function PdfSignPage() {
             >
               <img src={pg.dataUrl} alt={`עמוד ${selectedPage + 1}`} className="ps-page-img" draggable={false} />
 
-              {currentPlacement && (
-                <div
-                  className={`ps-sig-overlay${dragging ? ' ps-sig-dragging' : ''}`}
-                  style={{
-                    left: currentPlacement.x,
-                    top:  currentPlacement.y,
-                    width: currentPlacement.w,
-                    height: currentPlacement.h,
-                    transform: currentPlacement.rotation ? `rotate(${currentPlacement.rotation}deg)` : undefined,
-                  }}
-                  onMouseDown={onSigMouseDown}
-                >
-                  <img src={sigDataUrl} alt="חתימה" draggable={false} />
-                  <div className="ps-resize" onMouseDown={onResizeMouseDown} />
-                </div>
-              )}
+              {placements
+                .filter(p => p.pageIdx === selectedPage)
+                .map(p => (
+                  <div
+                    key={p.id}
+                    className={`ps-sig-overlay${
+                      p.id === selectedPlacementId
+                        ? (dragging ? ' ps-sig-dragging' : ' ps-sig-selected')
+                        : ''
+                    }`}
+                    style={{
+                      left: p.x,
+                      top:  p.y,
+                      width: p.w,
+                      height: p.h,
+                      transform: p.rotation ? `rotate(${p.rotation}deg)` : undefined,
+                    }}
+                    onMouseDown={e => onSigMouseDown(e, p.id)}
+                  >
+                    <img src={p.imgUrl} alt="חתימה" draggable={false} />
+                    {p.id === selectedPlacementId && (
+                      <div className="ps-resize" onMouseDown={onResizeMouseDown} />
+                    )}
+                  </div>
+                ))
+              }
             </div>
           )}
         </div>
@@ -474,9 +498,10 @@ export default function PdfSignPage() {
                 >
                   <img src={p.dataUrl} alt={`עמוד ${i + 1}`} />
                   <span className="ps-thumb-num">{i + 1}</span>
-                  {placements.some(pl => pl.pageIdx === i) && (
-                    <span className="ps-thumb-badge">✍️</span>
-                  )}
+                  {(() => {
+                    const n = placements.filter(pl => pl.pageIdx === i).length
+                    return n > 0 ? <span className="ps-thumb-badge">{n > 1 ? n : '✍️'}</span> : null
+                  })()}
                 </div>
               ))}
             </div>

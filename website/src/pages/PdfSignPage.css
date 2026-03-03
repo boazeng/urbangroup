@@ -304,12 +304,14 @@
 .ps-sig-overlay {
   position: absolute;
   cursor: grab;
-  border: 2px dashed #4299E1;
+  border: 2px dashed #CBD5E0;
   box-sizing: border-box;
   border-radius: 3px;
+  transition: border-color 0.1s;
 }
-.ps-sig-overlay:hover { border-color: #2B6CB0; }
-.ps-sig-dragging { cursor: grabbing; border-color: #E53E3E; }
+.ps-sig-overlay:hover  { border-color: #90CDF4; }
+.ps-sig-selected       { border: 2px solid #4299E1 !important; }
+.ps-sig-dragging       { cursor: grabbing; border-color: #E53E3E !important; }
 
 .ps-sig-overlay img {
   width: 100%;
