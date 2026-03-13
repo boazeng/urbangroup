@@ -174,8 +174,8 @@ export default function SidePanel({ node, onUpdate, onDelete, onClose }) {
                   className="fsp-input fsp-btn-input"
                   value={btn.title || ''}
                   onChange={e => setBtn(bi, 'title', e.target.value)}
-                  placeholder={`כפתור ${bi + 1} (עד 20 תווים)`}
-                  maxLength={20}
+                  placeholder={`כפתור ${bi + 1}`}
+                  maxLength={50}
                 />
                 <button className="fsp-remove-btn" onClick={() => removeButton(bi)}>✕</button>
               </div>
