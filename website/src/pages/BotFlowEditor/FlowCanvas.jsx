@@ -64,20 +64,28 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
 
   // Push-down drag handlers
   function onNodeDragStart(_, node) {
-    dragStartY.current = node.position.y
+    dragStartY.current = { x: node.position.x, y: node.position.y }
   }
 
   function onNodeDragStop(_, node) {
     if (!pushMode || dragStartY.current === null) return
-    const delta = node.position.y - dragStartY.current
+    const deltaX = node.position.x - dragStartY.current.x
+    const deltaY = node.position.y - dragStartY.current.y
     dragStartY.current = null
-    if (delta <= 0) return
+    if (deltaX === 0 && deltaY === 0) return
     setNodes(nds => nds.map(n => {
       if (n.id === node.id) return n
-      if (n.position.y > node.position.y - delta) {
-        return { ...n, position: { ...n.position, y: n.position.y + delta } }
+      const belowOrRight =
+        (deltaY > 0 && n.position.y > node.position.y - deltaY) ||
+        (deltaX > 0 && n.position.x > node.position.x - deltaX)
+      if (!belowOrRight) return n
+      return {
+        ...n,
+        position: {
+          x: deltaX !== 0 ? n.position.x + deltaX : n.position.x,
+          y: deltaY !== 0 ? n.position.y + deltaY : n.position.y,
+        },
       }
-      return n
     }))
   }
 
