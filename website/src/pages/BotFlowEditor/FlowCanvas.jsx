@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
 import {
   ReactFlow,
   useNodesState,
@@ -30,6 +30,8 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
   const [selectedNode, setSelectedNode] = useState(null)
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
+  const [pushMode, setPushMode] = useState(false)
+  const dragStartY = useRef(null)
 
   // Connect two nodes by dragging
   const onConnect = useCallback(
@@ -59,6 +61,25 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
     ))
   }
   const scriptName = nodes.find(n => n.id === '__start__')?.data?.name || ''
+
+  // Push-down drag handlers
+  function onNodeDragStart(_, node) {
+    dragStartY.current = node.position.y
+  }
+
+  function onNodeDragStop(_, node) {
+    if (!pushMode || dragStartY.current === null) return
+    const delta = node.position.y - dragStartY.current
+    dragStartY.current = null
+    if (delta <= 0) return
+    setNodes(nds => nds.map(n => {
+      if (n.id === node.id) return n
+      if (n.position.y > node.position.y - delta) {
+        return { ...n, position: { ...n.position, y: n.position.y + delta } }
+      }
+      return n
+    }))
+  }
 
   // Delete a node + its edges
   function deleteNode(id) {
@@ -195,6 +216,11 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
           <button className="fc-add-btn fc-add-action" onClick={addActionNode}>+ בדיקה</button>
           <button className="fc-add-btn fc-add-instr" onClick={addInstructionsNode}>+ הוראות לבוט</button>
           <button className="fc-add-btn" onClick={addDoneNode}>+ סיום</button>
+          <button
+            className={`fc-push-btn${pushMode ? ' fc-push-btn--active' : ''}`}
+            onClick={() => setPushMode(v => !v)}
+            title="כשפעיל — גרירת ריבוע למטה מזיזה גם את הריבועים שמתחתיו"
+          >↕ הזזה קולקטיבית</button>
           {saveMsg && (
             <span className={`fc-save-msg ${saveMsg.includes('שגיאה') ? 'fc-error' : 'fc-success'}`}>
               {saveMsg}
@@ -217,6 +243,8 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
           onNodeClick={onNodeClick}
           onPaneClick={onPaneClick}
           nodeTypes={nodeTypes}
+          onNodeDragStart={onNodeDragStart}
+          onNodeDragStop={onNodeDragStop}
           fitView
           fitViewOptions={{ padding: 0.3 }}
           deleteKeyCode="Delete"

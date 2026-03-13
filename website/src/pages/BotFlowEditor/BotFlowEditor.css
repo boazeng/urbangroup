@@ -327,6 +327,25 @@
 .fc-save-btn:hover:not(:disabled) { background: var(--color-secondary); }
 .fc-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
+.fc-push-btn {
+  background: #F0FFF4;
+  color: #276749;
+  border: 1px dashed #276749;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.fc-push-btn:hover { background: #C6F6D5; }
+.fc-push-btn--active {
+  background: #276749;
+  color: white;
+  border-style: solid;
+}
+
 .fc-save-msg {
   font-size: var(--font-size-sm);
   font-weight: 600;
