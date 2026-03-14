@@ -648,8 +648,19 @@ def _handle_done(done_id, script, session):
         notify_tmpl = done_config.get("notify_text",
             "נפתחה קריאת שירות חדשה מהבוט הקולי 📞\nמספר קריאה: {call_id}\nטלפון: {phone}")
         try:
+            # Flatten parsed_data fields so Hebrew keys from voice-bot are available in template
+            flat_ctx = {}
+            raw_pd = session.get("parsed_data", {})
+            if isinstance(raw_pd, str):
+                try:
+                    raw_pd = json.loads(raw_pd)
+                except Exception:
+                    raw_pd = {}
+            if isinstance(raw_pd, dict):
+                flat_ctx.update(raw_pd)
+            flat_ctx.update(session)
             notify_msg = notify_tmpl.format_map(
-                _col.defaultdict(str, call_id=call_id, **session)
+                _col.defaultdict(str, call_id=call_id, **flat_ctx)
             )
             result["notify_whatsapp"] = {"phone": notify_phone, "text": notify_msg}
             logger.info(f"[M10010] Admin notification queued → {notify_phone}")
