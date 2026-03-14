@@ -215,6 +215,23 @@ def process_message(phone, name, text, msg_type="text", message_id="", media_id=
     except Exception as e:
         logger.error(f"[M1000] Equipment lookup failed: {e}")
 
+    # If phone lookup found nothing, try by device serial number from QR message
+    if not equipment_list and parsed_data.get("מספר מכשיר"):
+        sernum = parsed_data["מספר מכשיר"].strip()
+        try:
+            eq_reader = _get_equipment_reader()
+            device = eq_reader.fetch_equipment_by_sernum(sernum)
+            if device:
+                equipment_list = [device]
+                device_number = device["sernum"]
+                customer_number = device["custname"]
+                customer_name = device["cdes"]
+                logger.info(f"[M1000] Device identified by sernum {sernum}: {device_number} for {customer_name}")
+            else:
+                logger.info(f"[M1000] Device sernum {sernum} not found in Priority")
+        except Exception as e:
+            logger.error(f"[M1000] Equipment lookup by sernum failed: {e}")
+
     # Always hand off to M10010 for structured conversation
     logger.info(f"[M1000] Handing off to M10010 with script_id={ROUTING_SCRIPT_ID}")
     return {
