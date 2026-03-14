@@ -17,11 +17,15 @@ import SidePanel from './SidePanel'
 import { flowToScript } from './flowUtils'
 
 // Must render inside ReactFlow context to access fitView
-function FitViewPanel() {
+function FitViewPanel({ onRecenter }) {
   const { fitView } = useReactFlow()
+  function handleClick() {
+    onRecenter()
+    setTimeout(() => fitView({ padding: 0.3, duration: 400 }), 50)
+  }
   return (
     <Panel position="top-left">
-      <button className="fc-fitview-btn" onClick={() => fitView({ padding: 0.3, duration: 400 })}>
+      <button className="fc-fitview-btn" onClick={handleClick}>
         ⬛ הצג הכל
       </button>
     </Panel>
@@ -110,6 +114,19 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
     const centerX = (Math.min(...xs) + Math.max(...xs)) / 2
     const bottomY = Math.max(...ys)
     return { x: centerX, y: bottomY + 220 }
+  }
+
+  // Move all nodes so the top-left corner starts at (100, 100)
+  function recenterNodes() {
+    setNodes(nds => {
+      if (nds.length === 0) return nds
+      const minX = Math.min(...nds.map(n => n.position.x))
+      const minY = Math.min(...nds.map(n => n.position.y))
+      return nds.map(n => ({
+        ...n,
+        position: { x: n.position.x - minX + 100, y: n.position.y - minY + 100 },
+      }))
+    })
   }
 
   // Delete nodes that have no edges at all (except the start node)
@@ -289,12 +306,12 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
           fitView
           fitViewOptions={{ padding: 0.3 }}
           deleteKeyCode="Delete"
-          minZoom={0.3}
+          minZoom={0.05}
           maxZoom={2}
         >
           <Background color="#E2E8F0" gap={20} />
           <Controls />
-          <FitViewPanel />
+          <FitViewPanel onRecenter={recenterNodes} />
           <MiniMap
             nodeColor={n => {
               if (n.type === 'startNode') return '#4299E1'
