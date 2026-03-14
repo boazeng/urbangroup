@@ -8,14 +8,14 @@ const BOT_PHONE_DEFAULT = '972547653274'
 export default function QrGeneratorPage() {
   const [botPhone, setBotPhone] = useState(BOT_PHONE_DEFAULT)
   const [rows, setRows] = useState([
-    { id: 1, deviceNum: '', location: '', description: '' },
+    { id: 1, deviceNum: '', deviceType: '', address: '' },
   ])
   const [generated, setGenerated] = useState([])
   const [pdfLoading, setPdfLoading] = useState(false)
   const printRef = useRef(null)
 
   function addRow() {
-    setRows(r => [...r, { id: Date.now(), deviceNum: '', location: '', description: '' }])
+    setRows(r => [...r, { id: Date.now(), deviceNum: '', deviceType: '', address: '' }])
   }
 
   function removeRow(id) {
@@ -29,7 +29,8 @@ export default function QrGeneratorPage() {
   function buildWaText(row) {
     const parts = []
     if (row.deviceNum) parts.push(`מספר מכשיר: ${row.deviceNum}`)
-    if (row.location) parts.push(`מיקום: ${row.location}`)
+    if (row.deviceType) parts.push(`סוג מכשיר: ${row.deviceType}`)
+    if (row.address) parts.push(`כתובת: ${row.address}`)
     return parts.join('\n')
   }
 
@@ -104,18 +105,18 @@ export default function QrGeneratorPage() {
           ctx.textAlign = 'center'
           ctx.fillText(item.deviceNum, CARD_W / 2, 198)
 
-          // Location
-          if (item.location) {
+          // Device type
+          if (item.deviceType) {
             ctx.fillStyle = '#2b6cb0'
             ctx.font = '12px Arial'
-            ctx.fillText(item.location, CARD_W / 2, 216)
+            ctx.fillText(item.deviceType, CARD_W / 2, 216)
           }
 
-          // Description
-          if (item.description) {
+          // Address
+          if (item.address) {
             ctx.fillStyle = '#718096'
             ctx.font = '11px Arial'
-            ctx.fillText(item.description, CARD_W / 2, 232)
+            ctx.fillText(item.address, CARD_W / 2, 232)
           }
 
           // Divider
@@ -192,8 +193,8 @@ export default function QrGeneratorPage() {
               <tr>
                 <th>#</th>
                 <th>מספר מכשיר *</th>
-                <th>מיקום / דירה</th>
-                <th>תיאור (לתווית בלבד)</th>
+                <th>סוג המכשיר</th>
+                <th>כתובת המכשיר</th>
                 <th></th>
               </tr>
             </thead>
@@ -212,17 +213,17 @@ export default function QrGeneratorPage() {
                   <td>
                     <input
                       className="qrg-input"
-                      value={row.location}
-                      onChange={e => updateRow(row.id, 'location', e.target.value)}
-                      placeholder="דירה 5 / קומה 3"
+                      value={row.deviceType}
+                      onChange={e => updateRow(row.id, 'deviceType', e.target.value)}
+                      placeholder="מזגן / דוד שמש..."
                     />
                   </td>
                   <td>
                     <input
                       className="qrg-input"
-                      value={row.description}
-                      onChange={e => updateRow(row.id, 'description', e.target.value)}
-                      placeholder="מזגן סלון..."
+                      value={row.address}
+                      onChange={e => updateRow(row.id, 'address', e.target.value)}
+                      placeholder="רחוב העצמאות 5, דירה 3"
                     />
                   </td>
                   <td>
@@ -265,8 +266,8 @@ export default function QrGeneratorPage() {
                   />
                   <div className="qrg-card-info">
                     <div className="qrg-card-device">{item.deviceNum}</div>
-                    {item.location && <div className="qrg-card-location">{item.location}</div>}
-                    {item.description && <div className="qrg-card-desc">{item.description}</div>}
+                    {item.deviceType && <div className="qrg-card-location">{item.deviceType}</div>}
+                    {item.address && <div className="qrg-card-desc">{item.address}</div>}
                   </div>
                   <div className="qrg-card-wa-data">
                     <div className="qrg-wa-label">📱 נתונים שיישלחו לבוט:</div>
