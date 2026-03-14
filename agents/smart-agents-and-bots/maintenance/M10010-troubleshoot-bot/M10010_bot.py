@@ -422,9 +422,10 @@ def _llm_route_exits(step, session_data):
     api_key = os.environ.get("OPENAI_API_KEY", "")
     model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 
-    # Build exit list for the prompt
+    # Build exit list for the prompt — use 1-based numbering to match natural Hebrew
+    # (scripts are written with "יציאה 1", "יציאה 2", etc.)
     exit_lines = "\n".join([
-        f"- יציאה {i}: \"{e.get('title', f'יציאה {i}')}\""
+        f"- יציאה {i + 1}: \"{e.get('title', f'יציאה {i + 1}')}\""
         for i, e in enumerate(exits)
     ])
 
@@ -445,7 +446,7 @@ def _llm_route_exits(step, session_data):
         f"ההודעה המקורית שהתקבלה:\n{original_text}\n\n"
         f"נתוני הסשן הנוכחי:\n{json.dumps(session_info, ensure_ascii=False)}\n\n"
         f"אפשרויות יציאה:\n{exit_lines}\n\n"
-        f"בחר מספר יציאה:"
+        f"בחר מספר יציאה (החזר רק את המספר, 1 עד {len(exits)}):"
     )
 
     try:
@@ -462,7 +463,7 @@ def _llm_route_exits(step, session_data):
         )
         response.raise_for_status()
         answer = response.json()["choices"][0]["message"]["content"].strip()
-        idx = int(answer)
+        idx = int(answer) - 1  # convert 1-based answer to 0-based index
         if 0 <= idx < len(exits):
             chosen = exits[idx]
             logger.info(f"[M10010] LLM chose exit {idx} ('{chosen.get('title')}') → {chosen.get('next_step')}")
@@ -534,6 +535,9 @@ def _resolve_skip_chain(step_id, script, session_data, max_depth=10):
             target = _execute_action_step(step, session_data)
             if target and target != current:
                 result = "success" if target == step.get("on_success") else "failure"
+                # Store action result explicitly so subsequent INSTR/LLM steps can read it
+                if action_type == "check_equipment":
+                    session_data["equipment_check_result"] = "found" if result == "success" else "not_found"
                 logger.info(f"[M10010] Action step: {current} → {target} "
                             f"(action_type={action_type})")
                 _append_log(session_data, "action_executed",
