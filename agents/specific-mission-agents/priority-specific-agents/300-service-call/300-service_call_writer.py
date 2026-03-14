@@ -47,13 +47,19 @@ def customer_exists(custname):
 
 
 def sernum_exists(sernum):
-    """Check if a device serial number exists in Priority."""
-    url = f"{PRIORITY_URL}/SERNUMBERS('{sernum}')"
+    """Check if a device serial number exists in Priority.
+
+    Uses $filter instead of key URL to handle leading zeros and dashes correctly
+    (e.g. '008-501' fails as a URL key but works via filter).
+    """
+    url = f"{PRIORITY_URL}/SERNUMBERS"
+    params = {"$filter": f"SERNUM eq '{sernum}'", "$select": "SERNUM"}
     headers = {"Accept": "application/json", "OData-Version": "4.0"}
     auth = HTTPBasicAuth(PRIORITY_USERNAME, PRIORITY_PASSWORD)
     try:
-        resp = requests.get(url, headers=headers, auth=auth)
-        return resp.status_code == 200
+        resp = requests.get(url, params=params, headers=headers, auth=auth, timeout=10)
+        data = resp.json()
+        return len(data.get("value", [])) > 0
     except Exception:
         return False
 
