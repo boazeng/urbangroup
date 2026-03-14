@@ -619,6 +619,8 @@ def _handle_done(done_id, script, session):
     elif action == "escalate":
         _save_completed_service_call(session, script)
         logger.info(f"[M10010] Escalation done: {done_id}")
+    elif action == "end_conversation":
+        logger.info(f"[M10010] End-conversation done: {done_id}, no record saved")
     elif action == "notify_only":
         logger.info(f"[M10010] Notify-only done: {done_id}, no record saved")
     elif action:
