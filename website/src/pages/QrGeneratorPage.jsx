@@ -64,7 +64,7 @@ export default function QrGeneratorPage() {
   }
 
   function buildWaText(row) {
-    const parts = []
+    const parts = ['פתיחת קריאה לאחזקה']
     if (row.deviceNum) parts.push(`מספר מכשיר: ${row.deviceNum}`)
     if (row.deviceType) parts.push(`סוג מכשיר: ${row.deviceType}`)
     if (row.address) parts.push(`כתובת: ${row.address}`)
