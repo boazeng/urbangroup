@@ -160,6 +160,27 @@
   margin: 0;
 }
 
+.qrg-results-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.qrg-pdf-btn {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 8px 20px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s;
+}
+.qrg-pdf-btn:hover:not(:disabled) { background: var(--color-secondary); }
+.qrg-pdf-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
 .qrg-print-btn {
   background: #F0FFF4;
   color: #276749;
@@ -218,11 +239,30 @@
   margin-top: 2px;
 }
 
-.qrg-card-wa {
-  font-size: 11px;
+.qrg-card-wa-data {
+  width: 100%;
+  background: #F7FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+
+.qrg-wa-label {
+  font-size: 10px;
   color: #25D366;
-  font-weight: 600;
-  margin-top: 6px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.qrg-wa-text {
+  font-size: 11px;
+  color: var(--color-primary);
+  font-family: monospace;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  direction: rtl;
+  text-align: right;
 }
 
 .qrg-download-btn {

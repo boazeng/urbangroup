@@ -11,6 +11,7 @@ export default function QrGeneratorPage() {
     { id: 1, deviceNum: '', location: '', description: '' },
   ])
   const [generated, setGenerated] = useState([])
+  const [pdfLoading, setPdfLoading] = useState(false)
   const printRef = useRef(null)
 
   function addRow() {
@@ -25,18 +26,21 @@ export default function QrGeneratorPage() {
     setRows(r => r.map(row => row.id === id ? { ...row, [field]: value } : row))
   }
 
-  function buildWaLink(row) {
+  function buildWaText(row) {
     const parts = []
     if (row.deviceNum) parts.push(`מספר מכשיר: ${row.deviceNum}`)
     if (row.location) parts.push(`מיקום: ${row.location}`)
-    const text = parts.join('\n')
-    return `https://wa.me/${botPhone}?text=${encodeURIComponent(text)}`
+    return parts.join('\n')
+  }
+
+  function buildWaLink(row) {
+    return `https://wa.me/${botPhone}?text=${encodeURIComponent(buildWaText(row))}`
   }
 
   function generate() {
     const valid = rows.filter(r => r.deviceNum.trim())
     if (!valid.length) return
-    setGenerated(valid.map(r => ({ ...r, waLink: buildWaLink(r) })))
+    setGenerated(valid.map(r => ({ ...r, waLink: buildWaLink(r), waText: buildWaText(r) })))
   }
 
   function downloadQr(id, deviceNum) {
@@ -46,6 +50,116 @@ export default function QrGeneratorPage() {
     link.download = `QR-${deviceNum || id}.png`
     link.href = canvas.toDataURL('image/png')
     link.click()
+  }
+
+  async function downloadPdf() {
+    setPdfLoading(true)
+    try {
+      const { PDFDocument } = await import('pdf-lib')
+      const pdfDoc = await PDFDocument.create()
+
+      const CARD_W = 200
+      const CARD_H = 290
+      const PER_ROW = 3
+      const MARGIN = 20
+      const PAGE_W = 595
+      const PAGE_H = 842
+
+      const chunks = []
+      for (let i = 0; i < generated.length; i += PER_ROW) {
+        chunks.push(generated.slice(i, i + PER_ROW))
+      }
+
+      for (const rowItems of chunks) {
+        const page = pdfDoc.addPage([PAGE_W, PAGE_H])
+
+        for (let j = 0; j < rowItems.length; j++) {
+          const item = rowItems[j]
+          const qrCanvas = document.getElementById(`qr-canvas-${item.id}`)
+          if (!qrCanvas) continue
+
+          // Draw card on offscreen canvas
+          const cardCanvas = document.createElement('canvas')
+          cardCanvas.width = CARD_W
+          cardCanvas.height = CARD_H
+          const ctx = cardCanvas.getContext('2d')
+
+          // Background
+          ctx.fillStyle = '#ffffff'
+          ctx.fillRect(0, 0, CARD_W, CARD_H)
+
+          // Border
+          ctx.strokeStyle = '#E2E8F0'
+          ctx.lineWidth = 1
+          ctx.strokeRect(0.5, 0.5, CARD_W - 1, CARD_H - 1)
+
+          // QR image centered
+          const qrSize = 170
+          const qrX = (CARD_W - qrSize) / 2
+          ctx.drawImage(qrCanvas, qrX, 8, qrSize, qrSize)
+
+          // Device number
+          ctx.fillStyle = '#1a365d'
+          ctx.font = 'bold 15px Arial'
+          ctx.textAlign = 'center'
+          ctx.fillText(item.deviceNum, CARD_W / 2, 198)
+
+          // Location
+          if (item.location) {
+            ctx.fillStyle = '#2b6cb0'
+            ctx.font = '12px Arial'
+            ctx.fillText(item.location, CARD_W / 2, 216)
+          }
+
+          // Description
+          if (item.description) {
+            ctx.fillStyle = '#718096'
+            ctx.font = '11px Arial'
+            ctx.fillText(item.description, CARD_W / 2, 232)
+          }
+
+          // Divider
+          ctx.strokeStyle = '#E2E8F0'
+          ctx.lineWidth = 0.5
+          ctx.beginPath()
+          ctx.moveTo(10, 244)
+          ctx.lineTo(CARD_W - 10, 244)
+          ctx.stroke()
+
+          // WA text (decoded message)
+          ctx.fillStyle = '#25D366'
+          ctx.font = 'bold 10px Arial'
+          ctx.fillText('📱 סרוק לפתיחת WhatsApp', CARD_W / 2, 258)
+
+          ctx.fillStyle = '#718096'
+          ctx.font = '9px Arial'
+          const shortText = item.waText.replace(/\n/g, '  |  ')
+          ctx.fillText(shortText.length > 36 ? shortText.slice(0, 36) + '...' : shortText, CARD_W / 2, 272)
+
+          // Embed in PDF
+          const pngData = cardCanvas.toDataURL('image/png')
+          const pngBytes = await fetch(pngData).then(r => r.arrayBuffer())
+          const pngImage = await pdfDoc.embedPng(pngBytes)
+
+          const x = MARGIN + j * (CARD_W + MARGIN)
+          const y = PAGE_H - MARGIN - CARD_H
+          page.drawImage(pngImage, { x, y, width: CARD_W, height: CARD_H })
+        }
+      }
+
+      const pdfBytes = await pdfDoc.save()
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `QR-devices-${new Date().toISOString().slice(0, 10)}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      console.error('PDF error:', e)
+      alert('שגיאה ביצירת PDF: ' + e.message)
+    }
+    setPdfLoading(false)
   }
 
   function handlePrint() {
@@ -66,7 +180,7 @@ export default function QrGeneratorPage() {
             className="qrg-input qrg-phone-input"
             value={botPhone}
             onChange={e => setBotPhone(e.target.value.replace(/\D/g, ''))}
-            placeholder="15551790484"
+            placeholder="972547653274"
             dir="ltr"
           />
         </div>
@@ -132,7 +246,12 @@ export default function QrGeneratorPage() {
           <>
             <div className="qrg-results-header">
               <h2 className="qrg-results-title">קודי QR ({generated.length})</h2>
-              <button className="qrg-print-btn" onClick={handlePrint}>🖨️ הדפס הכל</button>
+              <div className="qrg-results-actions">
+                <button className="qrg-pdf-btn no-print" onClick={downloadPdf} disabled={pdfLoading}>
+                  {pdfLoading ? 'יוצר PDF...' : '⬇ הורד PDF'}
+                </button>
+                <button className="qrg-print-btn no-print" onClick={handlePrint}>🖨️ הדפס הכל</button>
+              </div>
             </div>
             <div className="qrg-cards" ref={printRef}>
               {generated.map(item => (
@@ -148,13 +267,16 @@ export default function QrGeneratorPage() {
                     <div className="qrg-card-device">{item.deviceNum}</div>
                     {item.location && <div className="qrg-card-location">{item.location}</div>}
                     {item.description && <div className="qrg-card-desc">{item.description}</div>}
-                    <div className="qrg-card-wa">📱 סרוק לפתיחת WhatsApp</div>
+                  </div>
+                  <div className="qrg-card-wa-data">
+                    <div className="qrg-wa-label">📱 נתונים שיישלחו לבוט:</div>
+                    <pre className="qrg-wa-text">{item.waText}</pre>
                   </div>
                   <button
                     className="qrg-download-btn no-print"
                     onClick={() => downloadQr(item.id, item.deviceNum)}
                   >
-                    ⬇ הורד PNG
+                    ⬇ PNG
                   </button>
                 </div>
               ))}
