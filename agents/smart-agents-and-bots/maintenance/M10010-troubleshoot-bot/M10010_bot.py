@@ -956,6 +956,7 @@ def _save_completed_service_call(session, script=None):
 
     result = maint_db.save_service_call(**call_data)
     call_id = result.get("id", "")
+    priority_callno = ""
 
     # Auto-push to Priority in demo environment
     if _is_demo_env():
@@ -963,13 +964,14 @@ def _save_completed_service_call(session, script=None):
             writer = _get_service_call_writer()
             call_data["callstatuscode"] = "ממתין לאישור"
             priority_result = writer.create_service_call(call_data)
-            callno = str(priority_result.get("DOCNO", ""))
-            maint_db.mark_service_call_pushed(call_id, callno=callno)
-            logger.info(f"[M10010] Auto-pushed to Priority: DOCNO={callno}")
+            priority_callno = str(priority_result.get("DOCNO", ""))
+            maint_db.mark_service_call_pushed(call_id, callno=priority_callno)
+            logger.info(f"[M10010] Auto-pushed to Priority: DOCNO={priority_callno}")
         except Exception as e:
             logger.error(f"[M10010] Auto-push to Priority failed: {e}")
 
-    return call_id
+    # Return Priority DOCNO when available, else internal DB id
+    return priority_callno or call_id
 
 
 # ── Seed Default Script ───────────────────────────────────────
