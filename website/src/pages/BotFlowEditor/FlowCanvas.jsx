@@ -3,6 +3,7 @@ import {
   ReactFlow,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   addEdge,
   Background,
   Controls,
@@ -14,6 +15,18 @@ import '@xyflow/react/dist/style.css'
 import { StartNode, StepNode, ButtonsNode, ActionNode, InstructionsNode, DoneNode } from './FlowNodes'
 import SidePanel from './SidePanel'
 import { flowToScript } from './flowUtils'
+
+// Must render inside ReactFlow context to access fitView
+function FitViewPanel() {
+  const { fitView } = useReactFlow()
+  return (
+    <Panel position="top-left">
+      <button className="fc-fitview-btn" onClick={() => fitView({ padding: 0.3, duration: 400 })}>
+        ⬛ הצג הכל
+      </button>
+    </Panel>
+  )
+}
 
 const nodeTypes = {
   startNode: StartNode,
@@ -97,6 +110,13 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
     const centerX = (Math.min(...xs) + Math.max(...xs)) / 2
     const bottomY = Math.max(...ys)
     return { x: centerX, y: bottomY + 220 }
+  }
+
+  // Delete nodes that have no edges at all (except the start node)
+  function deleteOrphans() {
+    const connectedIds = new Set(edges.flatMap(e => [e.source, e.target]))
+    setNodes(nds => nds.filter(n => n.type === 'startNode' || n.id === '__start__' || connectedIds.has(n.id)))
+    setSelectedNode(null)
   }
 
   // Delete a node + its edges
@@ -239,6 +259,9 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
             onClick={() => setPushMode(v => !v)}
             title="כשפעיל — גרירת ריבוע למטה מזיזה גם את הריבועים שמתחתיו"
           >↕ הזזה קולקטיבית</button>
+          <button className="fc-danger-btn" onClick={deleteOrphans} title="מחק צמתים שאין להם חיבורים">
+            🗑 מחק בודדים
+          </button>
           {saveMsg && (
             <span className={`fc-save-msg ${saveMsg.includes('שגיאה') ? 'fc-error' : 'fc-success'}`}>
               {saveMsg}
@@ -271,6 +294,7 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
         >
           <Background color="#E2E8F0" gap={20} />
           <Controls />
+          <FitViewPanel />
           <MiniMap
             nodeColor={n => {
               if (n.type === 'startNode') return '#4299E1'
