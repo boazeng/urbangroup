@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { QRCodeCanvas } from 'qrcode.react'
 import './QrGeneratorPage.css'
 
-const BOT_PHONE_DEFAULT = '15551790484'
+const BOT_PHONE_DEFAULT = '972547653274'
 
 export default function QrGeneratorPage() {
   const [botPhone, setBotPhone] = useState(BOT_PHONE_DEFAULT)
