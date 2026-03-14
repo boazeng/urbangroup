@@ -44,6 +44,13 @@ const sections = [
     icon: '🔍',
     link: '/maintenance/bot-diagnostics',
   },
+  {
+    id: 'qr-generator',
+    title: 'יצירת QR למכשירים',
+    description: 'צור קוד QR לכל מכשיר — לקוח יסרוק ויפתח שיחת WhatsApp עם הבוט ומספר המכשיר מולא אוטומטית',
+    icon: '📱',
+    link: '/maintenance/qr-generator',
+  },
 ]
 
 export default function MaintenancePage() {
