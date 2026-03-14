@@ -726,6 +726,15 @@ def start_session(phone, name, parsed_data=None, message_id="", media_id="",
     now = datetime.utcnow().isoformat() + "Z"
 
     # Use only Priority data from M1000 — no DynamoDB history fallback
+    # Fallback chain: Priority lookup → parsed_data["שם הלקוח"] → WhatsApp profile name
+    if not customer_name and parsed_data:
+        raw_pd = parsed_data if isinstance(parsed_data, dict) else {}
+        if isinstance(parsed_data, str):
+            try:
+                raw_pd = json.loads(parsed_data)
+            except Exception:
+                raw_pd = {}
+        customer_name = raw_pd.get("שם הלקוח", "")
     customer_name = customer_name or name
 
     first_step = script.get("first_step", "GREETING")

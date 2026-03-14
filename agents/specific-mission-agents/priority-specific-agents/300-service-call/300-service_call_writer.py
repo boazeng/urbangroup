@@ -129,9 +129,15 @@ def create_service_call(service_call_data):
         body["DETAILS"] = location
 
     # Build fault description text for DOCTEXT_Q_2_SUBFORM
+    # fault_text already includes description, so don't add description separately
     text_parts = []
-    for key in ("fault_text", "description", "internal_notes"):
+    for key in ("fault_text", "internal_notes"):
         val = service_call_data.get(key, "")
+        if val:
+            text_parts.append(val)
+    if not text_parts:
+        # fallback: no fault_text provided
+        val = service_call_data.get("description", "")
         if val:
             text_parts.append(val)
     if text_parts:
