@@ -430,15 +430,19 @@ def _llm_route_exits(step, session_data):
 
     # Filter session to relevant fields (skip internal/large fields)
     skip_keys = {"expires_at", "session_id", "created_at", "updated_at",
-                 "parsed_data", "llm_result", "original_text", "original_message_id",
+                 "parsed_data", "llm_result", "original_message_id",
                  "original_media_id", "bot_instructions", "bot_instructions_step"}
     session_info = {k: v for k, v in session_data.items()
                     if k not in skip_keys and isinstance(v, (str, int, float, bool)) and v}
+
+    # Always include original_text so format-detection instructions can read the raw message
+    original_text = session_data.get("original_text", "")
 
     prompt = (
         f"אתה מנתח נתוני שיחה ובוחר יציאה לפי הוראות. "
         f"החזר אך ורק מספר היציאה (0, 1 או 2) ללא שום טקסט נוסף.\n\n"
         f"הוראות:\n{step.get('text', '')}\n\n"
+        f"ההודעה המקורית שהתקבלה:\n{original_text}\n\n"
         f"נתוני הסשן הנוכחי:\n{json.dumps(session_info, ensure_ascii=False)}\n\n"
         f"אפשרויות יציאה:\n{exit_lines}\n\n"
         f"בחר מספר יציאה:"
