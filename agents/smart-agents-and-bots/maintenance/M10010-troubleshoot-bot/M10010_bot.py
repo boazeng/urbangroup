@@ -923,6 +923,9 @@ def _save_completed_service_call(session, script=None):
     # Fallback: use first collected script field as description if none named "description"
     if not description and script_fields:
         description = script_fields[0][1]
+    # Final fallback: use original_text (e.g. voice-bot messages that skip straight to DONE)
+    if not description:
+        description = session.get("original_text", "")
     location = session.get("location", "")
     is_system_down = session.get("is_system_down", "") == "yes"
 
