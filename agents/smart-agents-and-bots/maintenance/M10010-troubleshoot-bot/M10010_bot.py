@@ -612,12 +612,13 @@ def _handle_done(done_id, script, session):
     done_config = done_actions.get(done_id, {})
 
     action = done_config.get("action", "")
+    call_id = ""
     if action == "save_message":
         _save_customer_message(session, script)
     elif action == "save_service_call":
-        _save_completed_service_call(session, script)
+        call_id = _save_completed_service_call(session, script) or ""
     elif action == "escalate":
-        _save_completed_service_call(session, script)
+        call_id = _save_completed_service_call(session, script) or ""
         logger.info(f"[M10010] Escalation done: {done_id}")
     elif action == "end_conversation":
         logger.info(f"[M10010] End-conversation done: {done_id}, no record saved")
@@ -638,7 +639,24 @@ def _handle_done(done_id, script, session):
     except Exception as e:
         logger.error(f"[M10010] Failed to persist done log for {session.get('phone')}: {e}")
 
-    return {"text": done_config.get("text", "תודה!")}
+    result = {"text": done_config.get("text", "תודה!")}
+
+    # Send admin WhatsApp notification if configured on this done action
+    notify_phone = done_config.get("notify_phone", "")
+    if notify_phone and call_id:
+        import collections as _col
+        notify_tmpl = done_config.get("notify_text",
+            "נפתחה קריאת שירות חדשה מהבוט הקולי 📞\nמספר קריאה: {call_id}\nטלפון: {phone}")
+        try:
+            notify_msg = notify_tmpl.format_map(
+                _col.defaultdict(str, call_id=call_id, **session)
+            )
+            result["notify_whatsapp"] = {"phone": notify_phone, "text": notify_msg}
+            logger.info(f"[M10010] Admin notification queued → {notify_phone}")
+        except Exception as e:
+            logger.error(f"[M10010] Failed to build admin notification: {e}")
+
+    return result
 
 
 # ── Public API ────────────────────────────────────────────────

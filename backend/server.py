@@ -534,6 +534,15 @@ def _send_bot_response(phone, result):
     else:
         whatsapp_bot.send_message(phone, result["text"])
 
+    # Send admin notification if M10010 requested one (e.g. voice bot service call)
+    notify = result.get("notify_whatsapp")
+    if notify and notify.get("phone") and notify.get("text"):
+        try:
+            whatsapp_bot.send_message(notify["phone"], notify["text"])
+            logger.info(f"Admin notification sent to {notify['phone']}")
+        except Exception as e:
+            logger.error(f"Admin notification failed: {e}")
+
 
 @app.route("/api/whatsapp/send", methods=["POST"])
 def whatsapp_send():
