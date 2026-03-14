@@ -59,10 +59,10 @@ export default function QrGeneratorPage() {
       const { PDFDocument } = await import('pdf-lib')
       const pdfDoc = await PDFDocument.create()
 
-      const CARD_W = 200
-      const CARD_H = 290
-      const PER_ROW = 3
-      const MARGIN = 20
+      const CARD_W = 260
+      const CARD_H = 360
+      const PER_ROW = 2
+      const MARGIN = 25
       const PAGE_W = 595
       const PAGE_H = 842
 
@@ -95,47 +95,47 @@ export default function QrGeneratorPage() {
           ctx.strokeRect(0.5, 0.5, CARD_W - 1, CARD_H - 1)
 
           // QR image centered
-          const qrSize = 170
+          const qrSize = 220
           const qrX = (CARD_W - qrSize) / 2
-          ctx.drawImage(qrCanvas, qrX, 8, qrSize, qrSize)
+          ctx.drawImage(qrCanvas, qrX, 10, qrSize, qrSize)
 
           // Device number
           ctx.fillStyle = '#1a365d'
-          ctx.font = 'bold 15px Arial'
+          ctx.font = 'bold 18px Arial'
           ctx.textAlign = 'center'
-          ctx.fillText(item.deviceNum, CARD_W / 2, 198)
+          ctx.fillText(item.deviceNum, CARD_W / 2, 248)
 
           // Device type
           if (item.deviceType) {
             ctx.fillStyle = '#2b6cb0'
-            ctx.font = '12px Arial'
-            ctx.fillText(item.deviceType, CARD_W / 2, 216)
+            ctx.font = '14px Arial'
+            ctx.fillText(item.deviceType, CARD_W / 2, 270)
           }
 
           // Address
           if (item.address) {
             ctx.fillStyle = '#718096'
-            ctx.font = '11px Arial'
-            ctx.fillText(item.address, CARD_W / 2, 232)
+            ctx.font = '12px Arial'
+            ctx.fillText(item.address, CARD_W / 2, 290)
           }
 
           // Divider
           ctx.strokeStyle = '#E2E8F0'
           ctx.lineWidth = 0.5
           ctx.beginPath()
-          ctx.moveTo(10, 244)
-          ctx.lineTo(CARD_W - 10, 244)
+          ctx.moveTo(10, 305)
+          ctx.lineTo(CARD_W - 10, 305)
           ctx.stroke()
 
           // WA text (decoded message)
           ctx.fillStyle = '#25D366'
-          ctx.font = 'bold 10px Arial'
-          ctx.fillText('📱 סרוק לפתיחת WhatsApp', CARD_W / 2, 258)
+          ctx.font = 'bold 11px Arial'
+          ctx.fillText('📱 סרוק לפתיחת WhatsApp', CARD_W / 2, 320)
 
           ctx.fillStyle = '#718096'
-          ctx.font = '9px Arial'
+          ctx.font = '10px Arial'
           const shortText = item.waText.replace(/\n/g, '  |  ')
-          ctx.fillText(shortText.length > 36 ? shortText.slice(0, 36) + '...' : shortText, CARD_W / 2, 272)
+          ctx.fillText(shortText.length > 42 ? shortText.slice(0, 42) + '...' : shortText, CARD_W / 2, 338)
 
           // Embed in PDF
           const pngData = cardCanvas.toDataURL('image/png')
@@ -260,7 +260,7 @@ export default function QrGeneratorPage() {
                   <QRCodeCanvas
                     id={`qr-canvas-${item.id}`}
                     value={item.waLink}
-                    size={180}
+                    size={240}
                     level="M"
                     includeMargin={true}
                   />
