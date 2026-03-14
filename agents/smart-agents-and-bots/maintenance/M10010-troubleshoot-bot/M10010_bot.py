@@ -937,6 +937,17 @@ def _save_completed_service_call(session, script=None):
         description = session.get("original_text", "")
     location = session.get("location", "")
     is_system_down = session.get("is_system_down", "") == "yes"
+    # Fallback for voice-bot: check parsed_data["מערכת מושבתת"]
+    if not is_system_down:
+        raw_pd = session.get("parsed_data", {})
+        if isinstance(raw_pd, str):
+            try:
+                raw_pd = json.loads(raw_pd)
+            except Exception:
+                raw_pd = {}
+        pd_val = str(raw_pd.get("מערכת מושבתת", "")).strip() if isinstance(raw_pd, dict) else ""
+        if pd_val and pd_val not in ("לא", "לא פעיל", "לא מושבת", "no", "false"):
+            is_system_down = True
 
     # Build fault text
     fault_lines = []

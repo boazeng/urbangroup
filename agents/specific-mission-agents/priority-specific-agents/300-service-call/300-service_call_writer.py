@@ -129,6 +129,10 @@ def create_service_call(service_call_data):
         else:
             logger.info(f"SERNUM '{sernum}' not found in Priority, skipping")
 
+    # BREAKSTART — set only when system is down
+    if service_call_data.get("is_system_down"):
+        body["BREAKSTART"] = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+
     # Facility address in DETAILS
     location = service_call_data.get("location", "")
     if location:
