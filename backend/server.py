@@ -523,16 +523,18 @@ def whatsapp_incoming():
 
 def _send_bot_response(phone, result):
     """Send a bot response - either buttons or plain text."""
-    if result.get("buttons"):
-        whatsapp_bot.send_buttons(
-            phone,
-            result["text"],
-            result["buttons"],
-            header=result.get("header"),
-            footer=result.get("footer"),
-        )
-    else:
-        whatsapp_bot.send_message(phone, result["text"])
+    text = result.get("text", "")
+    if text:  # Skip sending if text is empty (e.g. silent done actions)
+        if result.get("buttons"):
+            whatsapp_bot.send_buttons(
+                phone,
+                text,
+                result["buttons"],
+                header=result.get("header"),
+                footer=result.get("footer"),
+            )
+        else:
+            whatsapp_bot.send_message(phone, text)
 
     # Send admin notification if M10010 requested one (e.g. voice bot service call)
     notify = result.get("notify_whatsapp")
