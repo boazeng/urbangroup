@@ -89,6 +89,16 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
     }))
   }
 
+  // Calculate position for new node — near existing nodes, not at origin
+  function newNodePos(nds) {
+    if (nds.length === 0) return { x: 400, y: 250 }
+    const xs = nds.map(n => n.position.x)
+    const ys = nds.map(n => n.position.y)
+    const centerX = (Math.min(...xs) + Math.max(...xs)) / 2
+    const bottomY = Math.max(...ys)
+    return { x: centerX, y: bottomY + 220 }
+  }
+
   // Delete a node + its edges
   function deleteNode(id) {
     setNodes(nds => nds.filter(n => n.id !== id))
@@ -102,7 +112,7 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
     setNodes(nds => [...nds, {
       id,
       type: 'stepNode',
-      position: { x: 170, y: 250 + nds.length * 30 },
+      position: newNodePos(nds),
       data: { id, type: 'text_input', text: '', save_to: '' },
     }])
   }
@@ -113,7 +123,7 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
     setNodes(nds => [...nds, {
       id,
       type: 'buttonsNode',
-      position: { x: 170, y: 250 + nds.length * 30 },
+      position: newNodePos(nds),
       data: {
         id,
         type: 'buttons',
@@ -132,7 +142,7 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
     setNodes(nds => [...nds, {
       id,
       type: 'instructionsNode',
-      position: { x: 170, y: 250 + nds.length * 30 },
+      position: newNodePos(nds),
       data: { id, text: '' },
     }])
   }
@@ -143,7 +153,7 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
     setNodes(nds => [...nds, {
       id,
       type: 'actionNode',
-      position: { x: 170, y: 250 + nds.length * 30 },
+      position: newNodePos(nds),
       data: { id, action_type: 'check_equipment', field: 'device_number', on_success: '', on_failure: '' },
     }])
   }
@@ -154,7 +164,7 @@ export default function FlowCanvas({ initialNodes, initialEdges, scriptId, origi
     setNodes(nds => [...nds, {
       id,
       type: 'doneNode',
-      position: { x: 170, y: 250 + nds.length * 30 },
+      position: newNodePos(nds),
       data: { id, text: '', action: 'save_service_call' },
     }])
   }
