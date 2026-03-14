@@ -269,6 +269,8 @@ export function flowToScript(nodes, edges, originalScript) {
       text: node.data.text || '',
       action: node.data.action || 'save_service_call',
       ...(node.data.target_script_id ? { target_script_id: node.data.target_script_id } : {}),
+      ...(node.data.notify_phone ? { notify_phone: node.data.notify_phone } : {}),
+      ...(node.data.notify_text ? { notify_text: node.data.notify_text } : {}),
     }
   })
 

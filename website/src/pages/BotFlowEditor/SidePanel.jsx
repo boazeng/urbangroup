@@ -330,6 +330,34 @@ export default function SidePanel({ node, onUpdate, onDelete, onClose }) {
               )}
               <span className="fsp-hint">הבוט יבצע פעולה זו בסיום השיחה</span>
             </div>
+            {['save_service_call', 'escalate', 'notify_only', 'save_message'].includes(data.action) && (
+              <>
+                <div className="fsp-field">
+                  <label>📲 שלח התראה לטלפון (אופציונלי)</label>
+                  <input
+                    className="fsp-input"
+                    value={data.notify_phone || ''}
+                    onChange={e => set('notify_phone', e.target.value)}
+                    placeholder="לדוגמה: 972542777757"
+                    dir="ltr"
+                  />
+                  <span className="fsp-hint">מספר ב-WhatsApp — ישלח הודעת התראה בסיום השיחה</span>
+                </div>
+                {data.notify_phone && (
+                  <div className="fsp-field">
+                    <label>תבנית הודעת ההתראה</label>
+                    <textarea
+                      className="fsp-textarea"
+                      rows={3}
+                      value={data.notify_text || ''}
+                      onChange={e => set('notify_text', e.target.value)}
+                      placeholder={'לדוגמה:\nנפתחה קריאה 📞\nמספר: {call_id}\nלקוח: {customer_name}'}
+                    />
+                    <span className="fsp-hint">משתנים: {'{call_id}'}, {'{customer_name}'}, {'{phone}'}, {'{device_number}'}, {'{description}'}</span>
+                  </div>
+                )}
+              </>
+            )}
           </>
         )}
 
