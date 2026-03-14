@@ -66,6 +66,41 @@
   flex-shrink: 0;
 }
 
+/* Excel upload bar */
+.qrg-excel-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.qrg-excel-btn {
+  background: #FFFAF0;
+  color: #C05621;
+  border: 1px solid #F6AD55;
+  padding: 8px 20px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+.qrg-excel-btn:hover { background: #FEEBC8; }
+
+.qrg-excel-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.qrg-excel-error {
+  font-size: 12px;
+  color: #C53030;
+  font-weight: 600;
+}
+
 /* Table */
 .qrg-table-wrap {
   background: white;

@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { QRCodeCanvas } from 'qrcode.react'
+import * as XLSX from 'xlsx'
 import './QrGeneratorPage.css'
 
 const BOT_PHONE_DEFAULT = '972547653274'
@@ -12,7 +13,9 @@ export default function QrGeneratorPage() {
   ])
   const [generated, setGenerated] = useState([])
   const [pdfLoading, setPdfLoading] = useState(false)
+  const [xlsxError, setXlsxError] = useState('')
   const printRef = useRef(null)
+  const fileInputRef = useRef(null)
 
   function addRow() {
     setRows(r => [...r, { id: Date.now(), deviceNum: '', deviceType: '', address: '' }])
@@ -20,6 +23,40 @@ export default function QrGeneratorPage() {
 
   function removeRow(id) {
     setRows(r => r.filter(row => row.id !== id))
+  }
+
+  function handleExcelUpload(e) {
+    setXlsxError('')
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const wb = XLSX.read(ev.target.result, { type: 'array' })
+        const ws = wb.Sheets[wb.SheetNames[0]]
+        const data = XLSX.utils.sheet_to_json(ws, { header: 1 })
+        // Skip header row, map columns: [0]=deviceNum [1]=deviceType [2]=address
+        const loaded = data
+          .slice(1)
+          .filter(row => row[0])
+          .map((row, i) => ({
+            id: Date.now() + i,
+            deviceNum: String(row[0] || '').trim(),
+            deviceType: String(row[1] || '').trim(),
+            address: String(row[2] || '').trim(),
+          }))
+        if (!loaded.length) {
+          setXlsxError('לא נמצאו שורות בקובץ')
+          return
+        }
+        setRows(loaded)
+        setGenerated([])
+      } catch (err) {
+        setXlsxError('שגיאה בקריאת הקובץ: ' + err.message)
+      }
+    }
+    reader.readAsArrayBuffer(file)
+    e.target.value = ''
   }
 
   function updateRow(id, field, value) {
@@ -183,6 +220,22 @@ export default function QrGeneratorPage() {
             onChange={e => setBotPhone(e.target.value.replace(/\D/g, ''))}
             placeholder="972547653274"
             dir="ltr"
+          />
+        </div>
+
+        {/* Excel upload */}
+        <div className="qrg-excel-bar">
+          <button className="qrg-excel-btn" onClick={() => fileInputRef.current.click()}>
+            📂 העלה קובץ Excel
+          </button>
+          <span className="qrg-excel-hint">עמודות נדרשות: מספר מכשיר, סוג מכשיר, כתובת המכשיר</span>
+          {xlsxError && <span className="qrg-excel-error">{xlsxError}</span>}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            style={{ display: 'none' }}
+            onChange={handleExcelUpload}
           />
         </div>
 
