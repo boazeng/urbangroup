@@ -185,19 +185,25 @@ def create_service_call(service_call_data):
     if docno and not service_call_data.get("is_system_down"):
         try:
             patch_url = f"{PRIORITY_URL}/DOCUMENTS_Q('{docno}')"
-            patch_headers = {**headers, "If-Match": "*"}
+            # OData v4 JSON Merge Patch: null clears the field
+            patch_headers = {
+                "Content-Type": "application/merge-patch+json",
+                "Accept": "application/json",
+                "OData-Version": "4.0",
+                "If-Match": "*",
+            }
             patch_resp = requests.patch(
                 patch_url,
-                json={"BREAKSTART": ""},
+                json={"BREAKSTART": None},
                 headers=patch_headers,
                 auth=auth,
                 timeout=10,
             )
-            logger.info(f"BREAKSTART PATCH status={patch_resp.status_code} body={patch_resp.text[:200]}")
+            logger.info(f"BREAKSTART PATCH status={patch_resp.status_code} body={patch_resp.text[:400]}")
             if patch_resp.status_code < 400:
                 logger.info(f"BREAKSTART cleared for {docno}")
             else:
-                logger.warning(f"Failed to clear BREAKSTART for {docno}: {patch_resp.status_code} {patch_resp.text[:200]}")
+                logger.warning(f"Failed to clear BREAKSTART for {docno}: {patch_resp.status_code} {patch_resp.text[:400]}")
         except Exception as e:
             logger.warning(f"BREAKSTART clear failed for {docno}: {e}")
 
