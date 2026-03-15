@@ -185,30 +185,22 @@ def create_service_call(service_call_data):
     docno = result.get("DOCNO", "")
     logger.info(f"Service call created: DOCNO={docno}")
 
-    # If system is NOT down, PATCH to explicitly clear BREAKSTART
-    # Priority ignores null on POST and auto-fills from STARTDATE; try empty string on PATCH
+    # If system is NOT down, try OData v4 property DELETE to set BREAKSTART = null.
+    # PATCH with null/empty is ignored by Priority; OData property DELETE is the standard way.
     if docno and not service_call_data.get("is_system_down"):
         try:
-            patch_url = f"{PRIORITY_URL}/DOCUMENTS_Q('{docno}')"
-            # OData v4 JSON Merge Patch: null clears the field
-            patch_headers = {
-                "Content-Type": "application/merge-patch+json",
+            delete_url = f"{PRIORITY_URL}/DOCUMENTS_Q('{docno}')/BREAKSTART"
+            del_headers = {
                 "Accept": "application/json",
                 "OData-Version": "4.0",
                 "If-Match": "*",
             }
-            patch_resp = requests.patch(
-                patch_url,
-                json={"BREAKSTART": None},
-                headers=patch_headers,
-                auth=auth,
-                timeout=10,
-            )
-            logger.info(f"BREAKSTART PATCH status={patch_resp.status_code} body={patch_resp.text[:400]}")
-            if patch_resp.status_code < 400:
-                logger.info(f"BREAKSTART cleared for {docno}")
+            del_resp = requests.delete(delete_url, headers=del_headers, auth=auth, timeout=10)
+            logger.info(f"BREAKSTART DELETE status={del_resp.status_code} body={del_resp.text[:400]}")
+            if del_resp.status_code < 400:
+                logger.info(f"BREAKSTART cleared via DELETE for {docno}")
             else:
-                logger.warning(f"Failed to clear BREAKSTART for {docno}: {patch_resp.status_code} {patch_resp.text[:400]}")
+                logger.warning(f"Failed to clear BREAKSTART via DELETE for {docno}: {del_resp.status_code} {del_resp.text[:400]}")
         except Exception as e:
             logger.warning(f"BREAKSTART clear failed for {docno}: {e}")
 
