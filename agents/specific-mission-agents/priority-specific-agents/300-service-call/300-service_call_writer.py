@@ -185,22 +185,30 @@ def create_service_call(service_call_data):
     docno = result.get("DOCNO", "")
     logger.info(f"Service call created: DOCNO={docno}")
 
-    # If system is NOT down, try OData v4 property DELETE to set BREAKSTART = null.
-    # PATCH with null/empty is ignored by Priority; OData property DELETE is the standard way.
+    # If system is NOT down, try PATCH BREAKSTART to the Excel/Priority null-date epoch (1899-12-30).
+    # In Priority (Delphi/COM heritage) this date value is treated as "empty" in the UI.
+    # All standard OData approaches (null, "", DELETE) have been tried and rejected.
     if docno and not service_call_data.get("is_system_down"):
         try:
-            delete_url = f"{PRIORITY_URL}/DOCUMENTS_Q('{docno}')/BREAKSTART"
-            del_headers = {
+            patch_url = f"{PRIORITY_URL}/DOCUMENTS_Q('{docno}')"
+            patch_headers = {
+                "Content-Type": "application/json",
                 "Accept": "application/json",
                 "OData-Version": "4.0",
                 "If-Match": "*",
             }
-            del_resp = requests.delete(delete_url, headers=del_headers, auth=auth, timeout=10)
-            logger.info(f"BREAKSTART DELETE status={del_resp.status_code} body={del_resp.text[:400]}")
-            if del_resp.status_code < 400:
-                logger.info(f"BREAKSTART cleared via DELETE for {docno}")
+            patch_resp = requests.patch(
+                patch_url,
+                json={"BREAKSTART": "1899-12-30T00:00:00Z"},
+                headers=patch_headers,
+                auth=auth,
+                timeout=10,
+            )
+            logger.info(f"BREAKSTART null-epoch PATCH status={patch_resp.status_code} body={patch_resp.text[:400]}")
+            if patch_resp.status_code < 400:
+                logger.info(f"BREAKSTART set to null-epoch for {docno}")
             else:
-                logger.warning(f"Failed to clear BREAKSTART via DELETE for {docno}: {del_resp.status_code} {del_resp.text[:400]}")
+                logger.warning(f"BREAKSTART null-epoch failed for {docno}: {patch_resp.status_code} {patch_resp.text[:400]}")
         except Exception as e:
             logger.warning(f"BREAKSTART clear failed for {docno}: {e}")
 
