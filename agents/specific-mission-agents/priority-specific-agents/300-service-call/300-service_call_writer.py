@@ -170,7 +170,28 @@ def create_service_call(service_call_data):
         raise RuntimeError(err_msg or f"Priority API error {response.status_code}")
 
     result = response.json()
-    logger.info(f"Service call created: DOCNO={result.get('DOCNO', 'N/A')}")
+    docno = result.get("DOCNO", "")
+    logger.info(f"Service call created: DOCNO={docno}")
+
+    # If system is NOT down, PATCH to explicitly clear BREAKSTART
+    # (Priority ignores null on POST and auto-fills it from STARTDATE)
+    if docno and not service_call_data.get("is_system_down"):
+        try:
+            patch_url = f"{PRIORITY_URL}/DOCUMENTS_Q('{docno}')"
+            patch_resp = requests.patch(
+                patch_url,
+                json={"BREAKSTART": None},
+                headers=headers,
+                auth=auth,
+                timeout=10,
+            )
+            if patch_resp.status_code < 400:
+                logger.info(f"BREAKSTART cleared for {docno}")
+            else:
+                logger.warning(f"Failed to clear BREAKSTART for {docno}: {patch_resp.status_code}")
+        except Exception as e:
+            logger.warning(f"BREAKSTART clear failed for {docno}: {e}")
+
     return result
 
 
