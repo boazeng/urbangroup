@@ -9,7 +9,16 @@ import io
 import json
 import logging
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+# Israel Standard Time = UTC+2 (winter). DST (UTC+3) starts last Sunday of March.
+# Priority treats datetime values as local time, so we must send Israeli time.
+_ISRAEL_TZ = timezone(timedelta(hours=2))
+
+
+def _israel_now():
+    """Current time in Israeli timezone formatted for Priority OData."""
+    return datetime.now(_ISRAEL_TZ).strftime("%Y-%m-%dT%H:%M:%S")
 
 # Fix Windows console encoding for Hebrew (only when running directly)
 if __name__ == "__main__":
@@ -102,7 +111,7 @@ def create_service_call(service_call_data):
     body = {
         "CUSTNAME": custname,
         "BRANCHNAME": branchname,
-        "STARTDATE": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "STARTDATE": _israel_now(),
     }
 
     # Call status (e.g. "מתוכנן", "ממתין לאישור")
@@ -132,7 +141,7 @@ def create_service_call(service_call_data):
     # BREAKSTART — set to current time when system is down
     # (do NOT include when not down — Priority ignores null on POST anyway)
     if service_call_data.get("is_system_down"):
-        body["BREAKSTART"] = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        body["BREAKSTART"] = _israel_now()
 
     # Facility address in DETAILS
     location = service_call_data.get("location", "")
@@ -176,10 +185,11 @@ def create_service_call(service_call_data):
     if docno and not service_call_data.get("is_system_down"):
         try:
             patch_url = f"{PRIORITY_URL}/DOCUMENTS_Q('{docno}')"
+            patch_headers = {**headers, "If-Match": "*"}
             patch_resp = requests.patch(
                 patch_url,
                 json={"BREAKSTART": ""},
-                headers=headers,
+                headers=patch_headers,
                 auth=auth,
                 timeout=10,
             )
