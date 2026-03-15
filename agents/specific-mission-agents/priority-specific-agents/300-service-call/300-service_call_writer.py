@@ -17,8 +17,13 @@ _ISRAEL_TZ = timezone(timedelta(hours=2))
 
 
 def _israel_now():
-    """Current time in Israeli timezone formatted for Priority OData."""
-    return datetime.now(_ISRAEL_TZ).strftime("%Y-%m-%dT%H:%M:%S")
+    """Current time in Israeli timezone formatted for Priority OData.
+
+    Priority ignores/discards the Z suffix and treats the datetime as local time,
+    so we send Israeli local time with the Z format that Priority was previously
+    accepting (removing Z caused Priority to reject the POST).
+    """
+    return datetime.now(_ISRAEL_TZ).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 # Fix Windows console encoding for Hebrew (only when running directly)
 if __name__ == "__main__":
