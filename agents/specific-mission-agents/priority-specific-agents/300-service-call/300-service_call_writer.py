@@ -129,12 +129,10 @@ def create_service_call(service_call_data):
         else:
             logger.info(f"SERNUM '{sernum}' not found in Priority, skipping")
 
-    # BREAKSTART — set to current time when system is down, explicitly null otherwise
-    # (Priority auto-fills BREAKSTART from STARTDATE if the field is absent)
+    # BREAKSTART — set to current time when system is down
+    # (do NOT include when not down — Priority ignores null on POST anyway)
     if service_call_data.get("is_system_down"):
         body["BREAKSTART"] = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
-    else:
-        body["BREAKSTART"] = None
 
     # Facility address in DETAILS
     location = service_call_data.get("location", "")
@@ -174,21 +172,22 @@ def create_service_call(service_call_data):
     logger.info(f"Service call created: DOCNO={docno}")
 
     # If system is NOT down, PATCH to explicitly clear BREAKSTART
-    # (Priority ignores null on POST and auto-fills it from STARTDATE)
+    # Priority ignores null on POST and auto-fills from STARTDATE; try empty string on PATCH
     if docno and not service_call_data.get("is_system_down"):
         try:
             patch_url = f"{PRIORITY_URL}/DOCUMENTS_Q('{docno}')"
             patch_resp = requests.patch(
                 patch_url,
-                json={"BREAKSTART": None},
+                json={"BREAKSTART": ""},
                 headers=headers,
                 auth=auth,
                 timeout=10,
             )
+            logger.info(f"BREAKSTART PATCH status={patch_resp.status_code} body={patch_resp.text[:200]}")
             if patch_resp.status_code < 400:
                 logger.info(f"BREAKSTART cleared for {docno}")
             else:
-                logger.warning(f"Failed to clear BREAKSTART for {docno}: {patch_resp.status_code}")
+                logger.warning(f"Failed to clear BREAKSTART for {docno}: {patch_resp.status_code} {patch_resp.text[:200]}")
         except Exception as e:
             logger.warning(f"BREAKSTART clear failed for {docno}: {e}")
 
