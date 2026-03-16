@@ -78,6 +78,29 @@ def sernum_exists(sernum):
         return False
 
 
+def find_open_service_calls(sernum):
+    """Check if there are open service calls for a device serial number.
+
+    Returns:
+        list of dicts with DOCNO, STATDES, STARTDATE for open calls, or empty list.
+    """
+    url = f"{PRIORITY_URL}/DOCUMENTS_Q"
+    params = {
+        "$filter": f"SERNUM eq '{sernum}' and CLOSEDATE eq null",
+        "$select": "DOCNO,STATDES,STARTDATE,CUSTDES",
+        "$top": "5",
+    }
+    headers = {"Accept": "application/json", "OData-Version": "4.0"}
+    auth = HTTPBasicAuth(PRIORITY_USERNAME, PRIORITY_PASSWORD)
+    try:
+        resp = requests.get(url, params=params, headers=headers, auth=auth, timeout=10)
+        data = resp.json()
+        return data.get("value", [])
+    except Exception as e:
+        logger.warning(f"find_open_service_calls failed for {sernum}: {e}")
+        return []
+
+
 def create_service_call(service_call_data):
     """Create a service call in Priority via OData API.
 
@@ -185,32 +208,6 @@ def create_service_call(service_call_data):
     docno = result.get("DOCNO", "")
     logger.info(f"Service call created: DOCNO={docno}")
 
-    # If system is NOT down, try PATCH BREAKSTART to the Excel/Priority null-date epoch (1899-12-30).
-    # In Priority (Delphi/COM heritage) this date value is treated as "empty" in the UI.
-    # All standard OData approaches (null, "", DELETE) have been tried and rejected.
-    if docno and not service_call_data.get("is_system_down"):
-        try:
-            patch_url = f"{PRIORITY_URL}/DOCUMENTS_Q('{docno}')"
-            patch_headers = {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "OData-Version": "4.0",
-                "If-Match": "*",
-            }
-            patch_resp = requests.patch(
-                patch_url,
-                json={"BREAKSTART": "1899-12-30T00:00:00Z"},
-                headers=patch_headers,
-                auth=auth,
-                timeout=10,
-            )
-            logger.info(f"BREAKSTART null-epoch PATCH status={patch_resp.status_code} body={patch_resp.text[:400]}")
-            if patch_resp.status_code < 400:
-                logger.info(f"BREAKSTART set to null-epoch for {docno}")
-            else:
-                logger.warning(f"BREAKSTART null-epoch failed for {docno}: {patch_resp.status_code} {patch_resp.text[:400]}")
-        except Exception as e:
-            logger.warning(f"BREAKSTART clear failed for {docno}: {e}")
 
     return result
 

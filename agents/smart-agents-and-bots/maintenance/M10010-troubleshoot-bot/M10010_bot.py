@@ -402,6 +402,29 @@ def _execute_action_step(step, session_data):
             logger.error(f"[M10010] Action check_equipment failed for {value}: {e}")
             return step.get("on_failure", "")
 
+    if action_type == "check_open_service_call":
+        field = step.get("field", "device_number")
+        value = session_data.get(field, "")
+        if not value:
+            logger.info(f"[M10010] Action check_open_service_call: no device number → no open call")
+            return step.get("on_failure", "")
+        try:
+            writer = _get_service_call_writer()
+            open_calls = writer.find_open_service_calls(value)
+            if open_calls:
+                call = open_calls[0]
+                session_data["open_call_docno"] = call.get("DOCNO", "")
+                session_data["open_call_status"] = call.get("STATDES", "")
+                logger.info(f"[M10010] Action check_open_service_call: {value} has open call "
+                            f"DOCNO={call.get('DOCNO')}")
+                return step.get("on_success", "")
+            else:
+                logger.info(f"[M10010] Action check_open_service_call: {value} no open calls")
+                return step.get("on_failure", "")
+        except Exception as e:
+            logger.error(f"[M10010] Action check_open_service_call failed for {value}: {e}")
+            return step.get("on_failure", "")
+
     logger.warning(f"[M10010] Unknown action_type: {action_type}")
     return None
 
@@ -538,6 +561,8 @@ def _resolve_skip_chain(step_id, script, session_data, max_depth=10):
                 # Store action result explicitly so subsequent INSTR/LLM steps can read it
                 if action_type == "check_equipment":
                     session_data["equipment_check_result"] = "found" if result == "success" else "not_found"
+                if action_type == "check_open_service_call":
+                    session_data["open_service_call_result"] = "exists" if result == "success" else "none"
                 logger.info(f"[M10010] Action step: {current} → {target} "
                             f"(action_type={action_type})")
                 _append_log(session_data, "action_executed",
