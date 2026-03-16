@@ -129,25 +129,31 @@ def append_note_to_service_call(docno, note_text):
     }
     auth = HTTPBasicAuth(PRIORITY_USERNAME, PRIORITY_PASSWORD)
 
-    # 1. Read existing fault description text
-    existing_text = ""
+    # 1. Read existing fault description HTML
+    existing_html = ""
     try:
         resp = requests.get(
             f"{base_url}/DOCTEXT_Q_2_SUBFORM",
             headers=headers, auth=auth, timeout=10,
         )
         if resp.status_code == 200:
-            html = resp.json().get("TEXT", "")
-            # Strip HTML tags to get plain text
-            existing_text = re.sub(r"<[^>]+>", "", html).strip()
+            existing_html = resp.json().get("TEXT", "")
     except Exception as e:
         logger.warning(f"Failed to read existing text for {docno}: {e}")
 
-    # 2. Combine existing + new text
-    separator = "\n---\n"
-    combined = existing_text + separator + note_text if existing_text else note_text
+    # 2. Build update as HTML with line breaks
+    note_html = "<br>".join(
+        line for line in note_text.split("\n") if line.strip()
+    )
+    separator = '<br><b>---</b><br>'
 
-    # 3. Write combined text back to DOCTEXT_Q_2_SUBFORM
+    if existing_html:
+        # Append before the closing tags
+        combined = existing_html.rstrip() + separator + note_html
+    else:
+        combined = note_html
+
+    # 3. Write combined HTML back to DOCTEXT_Q_2_SUBFORM
     try:
         resp = requests.post(
             f"{base_url}/DOCTEXT_Q_2_SUBFORM",
