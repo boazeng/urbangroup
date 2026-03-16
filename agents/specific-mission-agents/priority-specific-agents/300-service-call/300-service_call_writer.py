@@ -106,19 +106,22 @@ def find_open_service_calls(sernum):
 
 
 def append_note_to_service_call(docno, note_text):
-    """Append a text note as an attachment to an existing service call.
+    """Append a text note to an existing service call's fault description.
 
-    Uses EXTFILES_SUBFORM to attach a UTF-8 text file with the note content.
-    Also updates DETAILS field (truncated to 24 chars) as a short indicator.
+    Reads the current DOCTEXT_Q_2_SUBFORM text, appends the new note,
+    and writes the combined text back. Also attaches the note as a file.
 
     Args:
         docno: Service call document number (e.g. 'SC26000000104')
-        note_text: The full text to attach
+        note_text: The full text to append
 
     Returns:
         True if successful, False otherwise.
     """
-    url = f"{PRIORITY_URL}/DOCUMENTS_Q(DOCNO='{docno}',TYPE='Q')/EXTFILES_SUBFORM"
+    import base64
+    import re
+
+    base_url = f"{PRIORITY_URL}/DOCUMENTS_Q(DOCNO='{docno}',TYPE='Q')"
     headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
@@ -126,36 +129,54 @@ def append_note_to_service_call(docno, note_text):
     }
     auth = HTTPBasicAuth(PRIORITY_USERNAME, PRIORITY_PASSWORD)
 
-    import base64
-    encoded = base64.b64encode(note_text.encode("utf-8")).decode("ascii")
-
-    body = {
-        "EXTFILEDES": "עדכון מהבוט",
-        "EXTFILENAME": f"data:text/plain;base64,{encoded}",
-        "SUFFIX": ".txt",
-    }
-
+    # 1. Read existing fault description text
+    existing_text = ""
     try:
-        resp = requests.post(url, json=body, headers=headers, auth=auth, timeout=15)
+        resp = requests.get(
+            f"{base_url}/DOCTEXT_Q_2_SUBFORM",
+            headers=headers, auth=auth, timeout=10,
+        )
+        if resp.status_code == 200:
+            html = resp.json().get("TEXT", "")
+            # Strip HTML tags to get plain text
+            existing_text = re.sub(r"<[^>]+>", "", html).strip()
+    except Exception as e:
+        logger.warning(f"Failed to read existing text for {docno}: {e}")
+
+    # 2. Combine existing + new text
+    separator = "\n---\n"
+    combined = existing_text + separator + note_text if existing_text else note_text
+
+    # 3. Write combined text back to DOCTEXT_Q_2_SUBFORM
+    try:
+        resp = requests.post(
+            f"{base_url}/DOCTEXT_Q_2_SUBFORM",
+            json={"TEXT": combined},
+            headers=headers, auth=auth, timeout=15,
+        )
         if resp.status_code in (200, 201):
-            logger.info(f"Note attached to {docno}")
+            logger.info(f"Fault text updated for {docno}")
         else:
-            logger.warning(f"Failed to attach note to {docno}: {resp.status_code} {resp.text[:200]}")
+            logger.warning(f"Failed to update fault text for {docno}: {resp.status_code} {resp.text[:200]}")
             return False
     except Exception as e:
-        logger.warning(f"append_note_to_service_call failed for {docno}: {e}")
+        logger.warning(f"Failed to update fault text for {docno}: {e}")
         return False
 
-    # Also update DETAILS as a short indicator (max 24 chars)
+    # 4. Also attach as a file for audit trail
     try:
-        patch_url = f"{PRIORITY_URL}/DOCUMENTS_Q(DOCNO='{docno}',TYPE='Q')"
-        short = note_text.split("\n")[0][:24]
-        requests.patch(
-            patch_url, json={"DETAILS": short},
-            headers={**headers, "If-Match": "*"}, auth=auth, timeout=10,
+        encoded = base64.b64encode(note_text.encode("utf-8")).decode("ascii")
+        requests.post(
+            f"{base_url}/EXTFILES_SUBFORM",
+            json={
+                "EXTFILEDES": "עדכון מהבוט",
+                "EXTFILENAME": f"data:text/plain;base64,{encoded}",
+                "SUFFIX": ".txt",
+            },
+            headers=headers, auth=auth, timeout=15,
         )
     except Exception:
-        pass  # best-effort, attachment is the main record
+        pass  # best-effort, text update is the main record
 
     return True
 
