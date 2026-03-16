@@ -82,18 +82,22 @@ def find_open_service_calls(sernum):
     """Check if there are open service calls for a device serial number.
 
     Returns:
-        list of dicts with DOCNO, STATDES, STARTDATE for open calls, or empty list.
+        list of dicts with DOCNO, CALLSTATUSCODE, STARTDATE, CDES for open calls,
+        or empty list.
     """
     url = f"{PRIORITY_URL}/DOCUMENTS_Q"
     params = {
-        "$filter": f"SERNUM eq '{sernum}' and CLOSEDATE eq null",
-        "$select": "DOCNO,STATDES,STARTDATE,CUSTDES",
+        "$filter": f"SERNUM eq '{sernum}' and ACTIVEFLAG eq 'Y'",
+        "$select": "DOCNO,CALLSTATUSCODE,STARTDATE,CDES",
         "$top": "5",
     }
     headers = {"Accept": "application/json", "OData-Version": "4.0"}
     auth = HTTPBasicAuth(PRIORITY_USERNAME, PRIORITY_PASSWORD)
     try:
         resp = requests.get(url, params=params, headers=headers, auth=auth, timeout=10)
+        if resp.status_code != 200:
+            logger.warning(f"find_open_service_calls HTTP {resp.status_code} for {sernum}: {resp.text[:200]}")
+            return []
         data = resp.json()
         return data.get("value", [])
     except Exception as e:

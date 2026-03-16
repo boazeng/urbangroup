@@ -414,7 +414,7 @@ def _execute_action_step(step, session_data):
             if open_calls:
                 call = open_calls[0]
                 session_data["open_call_docno"] = call.get("DOCNO", "")
-                session_data["open_call_status"] = call.get("STATDES", "")
+                session_data["open_call_status"] = call.get("CALLSTATUSCODE", "")
                 logger.info(f"[M10010] Action check_open_service_call: {value} has open call "
                             f"DOCNO={call.get('DOCNO')}")
                 return step.get("on_success", "")
