@@ -105,6 +105,61 @@ def find_open_service_calls(sernum):
         return []
 
 
+def append_note_to_service_call(docno, note_text):
+    """Append a text note as an attachment to an existing service call.
+
+    Uses EXTFILES_SUBFORM to attach a UTF-8 text file with the note content.
+    Also updates DETAILS field (truncated to 24 chars) as a short indicator.
+
+    Args:
+        docno: Service call document number (e.g. 'SC26000000104')
+        note_text: The full text to attach
+
+    Returns:
+        True if successful, False otherwise.
+    """
+    url = f"{PRIORITY_URL}/DOCUMENTS_Q(DOCNO='{docno}',TYPE='Q')/EXTFILES_SUBFORM"
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "OData-Version": "4.0",
+    }
+    auth = HTTPBasicAuth(PRIORITY_USERNAME, PRIORITY_PASSWORD)
+
+    import base64
+    encoded = base64.b64encode(note_text.encode("utf-8")).decode("ascii")
+
+    body = {
+        "EXTFILEDES": "עדכון מהבוט",
+        "EXTFILENAME": f"data:text/plain;base64,{encoded}",
+        "SUFFIX": ".txt",
+    }
+
+    try:
+        resp = requests.post(url, json=body, headers=headers, auth=auth, timeout=15)
+        if resp.status_code in (200, 201):
+            logger.info(f"Note attached to {docno}")
+        else:
+            logger.warning(f"Failed to attach note to {docno}: {resp.status_code} {resp.text[:200]}")
+            return False
+    except Exception as e:
+        logger.warning(f"append_note_to_service_call failed for {docno}: {e}")
+        return False
+
+    # Also update DETAILS as a short indicator (max 24 chars)
+    try:
+        patch_url = f"{PRIORITY_URL}/DOCUMENTS_Q(DOCNO='{docno}',TYPE='Q')"
+        short = note_text.split("\n")[0][:24]
+        requests.patch(
+            patch_url, json={"DETAILS": short},
+            headers={**headers, "If-Match": "*"}, auth=auth, timeout=10,
+        )
+    except Exception:
+        pass  # best-effort, attachment is the main record
+
+    return True
+
+
 def create_service_call(service_call_data):
     """Create a service call in Priority via OData API.
 

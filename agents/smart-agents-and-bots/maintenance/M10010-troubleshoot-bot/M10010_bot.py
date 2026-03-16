@@ -651,6 +651,8 @@ def _handle_done(done_id, script, session):
         logger.info(f"[M10010] Escalation done: {done_id}")
     elif action == "end_conversation":
         logger.info(f"[M10010] End-conversation done: {done_id}, no record saved")
+    elif action == "update_existing_service_call":
+        call_id = _update_existing_service_call(session, script) or ""
     elif action == "notify_only":
         logger.info(f"[M10010] Notify-only done: {done_id}, no record saved")
     elif action:
@@ -1035,6 +1037,70 @@ def _save_completed_service_call(session, script=None):
 
     # Return Priority DOCNO when available, else internal DB id
     return priority_callno or call_id
+
+
+def _update_existing_service_call(session, script=None):
+    """Append fault description and customer info to an existing open service call.
+
+    Called when check_open_service_call found an existing call (DOCNO stored
+    in session['open_call_docno']).  Attaches a text note via EXTFILES_SUBFORM
+    and also saves the update to DynamoDB.
+
+    Returns:
+        str: the existing DOCNO
+    """
+    docno = session.get("open_call_docno", "")
+    if not docno:
+        logger.warning("[M10010] update_existing_service_call: no open_call_docno in session")
+        return ""
+
+    phone = session.get("phone", "")
+    name = session.get("customer_name", "") or session.get("name", "")
+    description = session.get("description", "")
+
+    # Build the note text
+    lines = []
+    if description:
+        lines.append(f"תיאור תקלה: {description}")
+    lines.append(f"טלפון: {phone}")
+    if name:
+        lines.append(f"לקוח: {name}")
+    if session.get("device_number"):
+        lines.append(f"מכשיר: {session['device_number']}")
+    if session.get("is_system_down") == "yes":
+        lines.append("מערכת מושבתת: כן")
+    lines.append(f"תאריך עדכון: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    note_text = "\n".join(lines)
+
+    # Attach note to existing Priority service call
+    try:
+        writer = _get_service_call_writer()
+        writer.append_note_to_service_call(docno, note_text)
+        logger.info(f"[M10010] Note appended to existing call {docno}")
+    except Exception as e:
+        logger.error(f"[M10010] Failed to append note to {docno}: {e}")
+
+    # Also save to DynamoDB as an update record
+    try:
+        maint_db = _get_maint_db()
+        maint_db.save_service_call(
+            phone=phone,
+            name=name,
+            issue_type="עדכון לקריאה קיימת",
+            description=f"עדכון לקריאה {docno}: {description}",
+            urgency="medium",
+            summary=f"עדכון לקריאה {docno}",
+            custname=session.get("customer_number", "") or "99999",
+            cdes=name,
+            sernum=session.get("device_number", ""),
+            branchname="001",
+            technicianlogin=_get_technician(),
+            fault_text=note_text,
+        )
+    except Exception as e:
+        logger.error(f"[M10010] Failed to save update to DynamoDB: {e}")
+
+    return docno
 
 
 # ── Seed Default Script ───────────────────────────────────────
