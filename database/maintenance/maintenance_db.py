@@ -220,7 +220,18 @@ def get_service_calls(status=None, phone=None, limit=50):
             Limit=limit,
         )
     else:
-        resp = _service_calls_table.scan(Limit=limit)
+        # Scan has no guaranteed order, so fetch more than needed then trim.
+        # Paginate to collect enough items for a reliable sort.
+        items = []
+        scan_kwargs = {}
+        while len(items) < limit * 4:
+            resp = _service_calls_table.scan(Limit=500, **scan_kwargs)
+            items.extend(resp.get("Items", []))
+            if "LastEvaluatedKey" not in resp:
+                break
+            scan_kwargs["ExclusiveStartKey"] = resp["LastEvaluatedKey"]
+        items.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+        return items[:limit]
 
     items = resp.get("Items", [])
     items.sort(key=lambda x: x.get("created_at", ""), reverse=True)
