@@ -493,7 +493,12 @@ def whatsapp_incoming():
                 caption=msg.get("caption", ""),
             )
 
-            if isinstance(response, dict) and response.get("handoff") == "M10010":
+            if isinstance(response, dict) and response.get("voice_bot_handled"):
+                # Voice bot: service call created directly, no reply needed
+                logger.info(f"Voice bot call created for {phone}: "
+                            f"DOCNO={response.get('priority_callno', '')} "
+                            f"ID={response.get('call_id', '')}")
+            elif isinstance(response, dict) and response.get("handoff") == "M10010":
                 # M1000 hands off - start troubleshooting session
                 result = m10010_bot.start_session(
                     phone=phone,

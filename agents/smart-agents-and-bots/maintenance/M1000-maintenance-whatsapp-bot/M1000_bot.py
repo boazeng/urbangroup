@@ -17,10 +17,14 @@ logger = logging.getLogger("urbangroup.M1000")
 # Set ROUTING_SCRIPT_ID env var to override (e.g. your custom routing script).
 ROUTING_SCRIPT_ID = os.environ.get("ROUTING_SCRIPT_ID", "maintenance-troubleshoot")
 
+# Voice bot phone numbers — messages from these skip interactive flow
+VOICE_BOT_PHONES = os.environ.get("VOICE_BOT_PHONES", "97237630994").split(",")
+
 # Lazy-load modules to avoid import failures in environments without AWS/deps
 _maint_db = None
 _llm = None
 _equipment_reader = None
+_service_call_writer = None
 
 
 def _get_llm():
@@ -89,6 +93,27 @@ def _get_equipment_reader():
     return _equipment_reader
 
 
+def _get_service_call_writer():
+    global _service_call_writer
+    if _service_call_writer is None:
+        try:
+            from agents.specific_mission_agents.priority_specific_agents import service_call_writer_300
+            _service_call_writer = service_call_writer_300
+        except ImportError:
+            import importlib.util
+            w_path = os.path.join(
+                os.path.dirname(__file__), "..", "..", "..",
+                "specific-mission-agents", "priority-specific-agents",
+                "300-service-call", "300-service_call_writer.py",
+            )
+            w_path = os.path.normpath(w_path)
+            spec = importlib.util.spec_from_file_location("service_call_writer_300", w_path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            _service_call_writer = mod
+    return _service_call_writer
+
+
 # ── Priority ERP field mapping helpers ────────────────────────
 
 BRANCH_MAP = {
@@ -134,6 +159,92 @@ def parse_message(text):
             if key and value:
                 parsed[key] = value
     return parsed
+
+
+def _is_demo_env():
+    """Check if running against the demo Priority environment."""
+    url = os.environ.get("PRIORITY_URL_DEMO", "") or os.environ.get("PRIORITY_URL", "")
+    real = os.environ.get("PRIORITY_URL_REAL", "")
+    current = os.environ.get("PRIORITY_URL", "")
+    if current and real and current == real:
+        return False
+    return True
+
+
+def _handle_voice_bot(phone, name, text, msg_type, message_id, media_id,
+                      llm_result, parsed_data, device_number, customer_number,
+                      customer_name):
+    """Create a service call directly for voice bot messages (no interactive flow).
+
+    Returns:
+        dict with 'voice_bot_handled' key and the service call result.
+    """
+    maint_db = _get_maint_db()
+
+    description = (
+        llm_result.get("description", "")
+        or parsed_data.get("תיאור", "")
+        or (text if text != "[תמונה]" else "")
+    )
+    location = llm_result.get("location", "") or parsed_data.get("כתובת", "")
+    is_system_down = llm_result.get("is_system_down", False)
+    issue_type = llm_result.get("issue_type", "תקלה") or "תקלה"
+
+    fault_lines = []
+    if description:
+        fault_lines.append(description)
+    fault_lines.append(f"טלפון: {phone}")
+    fault_lines.append(f"מקור: בוט קולי ({name})")
+    if customer_name:
+        fault_lines.append(f"לקוח: {customer_name}")
+    if location:
+        fault_lines.append(f"מיקום: {location}")
+    if device_number:
+        fault_lines.append(f"מכשיר: {device_number}")
+    if is_system_down:
+        fault_lines.append("מערכת מושבתת: כן")
+    fault_text = "\n".join(fault_lines)
+
+    call_data = dict(
+        phone=phone,
+        name=name,
+        issue_type=issue_type,
+        description=description or f"קריאה מבוט קולי - {name}",
+        urgency="high" if is_system_down else "medium",
+        location=location,
+        summary=description or f"קריאה מבוט קולי - {name}",
+        message_id=message_id,
+        media_id=media_id,
+        custname=customer_number or "99999",
+        cdes=customer_name or name,
+        sernum=device_number,
+        branchname="001",
+        technicianlogin=_get_technician(),
+        fault_text=fault_text,
+        is_system_down=is_system_down,
+    )
+
+    result = maint_db.save_service_call(**call_data)
+    call_id = result.get("id", "")
+    priority_callno = ""
+
+    if _is_demo_env():
+        try:
+            writer = _get_service_call_writer()
+            call_data["callstatuscode"] = "ממתין לאישור"
+            priority_result = writer.create_service_call(call_data)
+            priority_callno = str(priority_result.get("DOCNO", ""))
+            maint_db.mark_service_call_pushed(call_id, callno=priority_callno)
+            logger.info(f"[M1000] Voice bot: auto-pushed to Priority DOCNO={priority_callno}")
+        except Exception as e:
+            logger.error(f"[M1000] Voice bot: auto-push to Priority failed: {e}")
+
+    logger.info(f"[M1000] Voice bot service call created: {priority_callno or call_id}")
+    return {
+        "voice_bot_handled": True,
+        "call_id": call_id,
+        "priority_callno": priority_callno,
+    }
 
 
 def process_message(phone, name, text, msg_type="text", message_id="", media_id="", caption=""):
@@ -231,6 +342,17 @@ def process_message(phone, name, text, msg_type="text", message_id="", media_id=
                 logger.info(f"[M1000] Device sernum {sernum} not found in Priority")
         except Exception as e:
             logger.error(f"[M1000] Equipment lookup by sernum failed: {e}")
+
+    # Voice bot: create service call directly without interactive flow
+    if phone in VOICE_BOT_PHONES:
+        logger.info(f"[M1000] Voice bot detected ({phone}), creating service call directly")
+        return _handle_voice_bot(
+            phone=phone, name=name, text=text, msg_type=msg_type,
+            message_id=message_id, media_id=media_id,
+            llm_result=llm_result, parsed_data=parsed_data,
+            device_number=device_number, customer_number=customer_number,
+            customer_name=customer_name,
+        )
 
     # Always hand off to M10010 for structured conversation
     logger.info(f"[M1000] Handing off to M10010 with script_id={ROUTING_SCRIPT_ID}")
