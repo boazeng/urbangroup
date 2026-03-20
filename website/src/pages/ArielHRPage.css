@@ -94,13 +94,15 @@
 }
 
 .hr-table {
-  min-width: 1800px;
+  width: 100%;
+  table-layout: auto;
+  border-collapse: collapse;
 }
 
 .hr-table th,
 .hr-table td {
   white-space: nowrap;
-  padding: 4px 2px;
+  padding: 3px 1px;
 }
 
 .hr-table th {
@@ -108,21 +110,23 @@
   top: 0;
   z-index: 1;
   font-size: 12px;
+  padding: 6px 4px;
 }
 
 /* Editable cell inputs */
 .hr-cell-input {
   width: 100%;
-  min-width: 50px;
+  min-width: 40px;
   border: 1px solid transparent;
   border-radius: 3px;
-  padding: 4px 4px;
-  font-size: var(--font-size-sm);
+  padding: 3px 3px;
+  font-size: 12px;
   font-family: inherit;
   background: transparent;
   color: #6b7280;
   outline: none;
   transition: border-color 0.15s, color 0.15s;
+  box-sizing: border-box;
 }
 
 .hr-cell-input:hover {
@@ -137,9 +141,9 @@
 
 /* Narrow columns */
 .hr-cell-input.hr-cell-narrow {
-  min-width: 30px;
-  max-width: 70px;
-  padding: 4px 2px;
+  min-width: 24px;
+  max-width: 65px;
+  padding: 3px 2px;
 }
 
 /* Dirty (changed) cells — red text */

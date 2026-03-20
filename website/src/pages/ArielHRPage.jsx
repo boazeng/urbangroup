@@ -39,7 +39,7 @@ const DISPLAY_COLS = [
   { idx: COL.PROFESSION, label: 'מקצוע', type: 'text', narrow: true },
   { idx: COL.TARIFF_TYPE, label: 'סוג תעריף', type: 'text', narrow: true },
   { idx: COL.TARIFF_NOTES, label: 'הערות תעריף', type: 'text', narrow: true },
-  { idx: COL.NOTES, label: 'הערות', type: 'text' },
+  { idx: COL.NOTES, label: 'הערות', type: 'text', narrow: true },
   { idx: COL.CONTRACTOR, label: 'כינוי קבלן', type: 'text', narrow: true },
   { idx: COL.HOURS_REG, label: 'שעות רגילות', type: 'num', narrow: true },
   { idx: COL.HOURS_125, label: 'שעות 125%', type: 'num', extra: true },
@@ -51,8 +51,8 @@ const DISPLAY_COLS = [
   { idx: COL.CONT_RATE, label: 'תעריף קבלן', type: 'num', narrow: true },
   { idx: COL.CONT_125, label: 'קבלן 125%', type: 'num', extra: true },
   { idx: COL.CONT_150, label: 'קבלן 150%', type: 'num', extra: true },
-  { idx: COL.CONT_TOTAL, label: 'סה"כ קבלן', type: 'num' },
-  { idx: COL.GAP, label: 'פער', type: 'num' },
+  { idx: COL.CONT_TOTAL, label: 'סה"כ קבלן', type: 'num', narrow: true },
+  { idx: COL.GAP, label: 'פער', type: 'num', narrow: true },
 ]
 
 function cellVal(v) {
