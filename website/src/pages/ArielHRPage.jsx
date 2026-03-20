@@ -74,6 +74,7 @@ export default function ArielHRPage() {
   const [selectedCustomer, setSelectedCustomer] = useState('')
   const [selectedSite, setSelectedSite] = useState('')
   const [showExtra, setShowExtra] = useState(false)
+  const [activeOnly, setActiveOnly] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -121,9 +122,24 @@ export default function ArielHRPage() {
       if (selectedContractor && contractor !== selectedContractor) return false
       if (selectedCustomer && customer !== selectedCustomer) return false
       if (selectedSite && site !== selectedSite) return false
+      if (activeOnly) {
+        const hours = row[COL.HOURS_REG]
+        if (hours === null || hours === undefined || hours === '' || hours === 0) return false
+      }
       return true
     })
-  }, [editedRows, selectedContractor, selectedCustomer, selectedSite])
+  }, [editedRows, selectedContractor, selectedCustomer, selectedSite, activeOnly])
+
+  // Contractor total (sum of CONT_TOTAL) — only when contractor filter is active
+  const contractorTotal = useMemo(() => {
+    if (!selectedContractor) return null
+    let sum = 0
+    for (const row of filteredRows) {
+      const val = Number(row[COL.CONT_TOTAL])
+      if (!isNaN(val)) sum += val
+    }
+    return sum
+  }, [filteredRows, selectedContractor])
 
   const clearFilters = () => {
     setSelectedContractor('')
@@ -216,6 +232,13 @@ export default function ArielHRPage() {
         <h1 className="ariel-title">ניהול כ&quot;א</h1>
         <p className="hr-subtitle">ניהול הצבות באתרים — טבלה ראשית — 2.26</p>
 
+        {contractorTotal !== null && (
+          <div className="hr-contractor-summary">
+            <span className="hr-summary-label">סיכום קבלן:</span>
+            <span className="hr-summary-value">{contractorTotal.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</span>
+          </div>
+        )}
+
         {error && <div className="ariel-error">{error}</div>}
 
         {loading ? (
@@ -293,6 +316,13 @@ export default function ArielHRPage() {
                 onClick={() => setShowExtra(v => !v)}
               >
                 {showExtra ? 'הסתר שעות נוספות' : 'הצג שעות נוספות'}
+              </button>
+
+              <button
+                className={`hr-toggle-extra-btn${activeOnly ? ' hr-toggle-active' : ''}`}
+                onClick={() => setActiveOnly(v => !v)}
+              >
+                {activeOnly ? 'הצג הכל' : 'רק שורות פעילות'}
               </button>
 
               {hasDirty && (

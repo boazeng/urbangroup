@@ -15,6 +15,31 @@
   margin-bottom: 24px;
 }
 
+/* Contractor summary */
+.hr-contractor-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 10px 16px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-sm);
+  width: fit-content;
+}
+
+.hr-summary-label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: #166534;
+}
+
+.hr-summary-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #166534;
+}
+
 /* Filters */
 .hr-filters {
   display: flex;
@@ -207,6 +232,11 @@
 }
 
 .hr-toggle-extra-btn:hover {
+  background: var(--color-secondary, #3b82f6);
+  color: #fff;
+}
+
+.hr-toggle-extra-btn.hr-toggle-active {
   background: var(--color-secondary, #3b82f6);
   color: #fff;
 }
