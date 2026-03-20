@@ -95,13 +95,15 @@
 
 .hr-table {
   width: 100%;
-  table-layout: auto;
+  table-layout: fixed;
   border-collapse: collapse;
 }
 
 .hr-table th,
 .hr-table td {
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   padding: 3px 1px;
 }
 
@@ -110,16 +112,21 @@
   top: 0;
   z-index: 1;
   font-size: 12px;
-  padding: 6px 4px;
+  padding: 6px 2px;
+}
+
+/* Narrow columns — constrain td/th width */
+.hr-td-narrow {
+  width: 65px;
+  max-width: 65px;
 }
 
 /* Editable cell inputs */
 .hr-cell-input {
   width: 100%;
-  min-width: 40px;
   border: 1px solid transparent;
   border-radius: 3px;
-  padding: 3px 3px;
+  padding: 3px 2px;
   font-size: 12px;
   font-family: inherit;
   background: transparent;
@@ -137,13 +144,6 @@
   border-color: var(--color-secondary);
   background: #fff;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-}
-
-/* Narrow columns */
-.hr-cell-input.hr-cell-narrow {
-  min-width: 24px;
-  max-width: 65px;
-  padding: 3px 2px;
 }
 
 /* Dirty (changed) cells — red text */

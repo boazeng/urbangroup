@@ -309,7 +309,7 @@ export default function ArielHRPage() {
                     <tr>
                       <th>#</th>
                       {visibleCols.map(col => (
-                        <th key={col.idx} className={col.type === 'num' ? 'ariel-num' : ''}>
+                        <th key={col.idx} className={`${col.type === 'num' ? 'ariel-num' : ''}${col.narrow ? ' hr-td-narrow' : ''}`}>
                           {col.label}
                         </th>
                       ))}
@@ -325,9 +325,9 @@ export default function ArielHRPage() {
                             const key = `${excelRow}:${col.idx}`
                             const isDirty = dirtyKeys.has(key)
                             return (
-                              <td key={col.idx} className={col.type === 'num' ? 'ariel-num' : ''}>
+                              <td key={col.idx} className={`${col.type === 'num' ? 'ariel-num' : ''}${col.narrow ? ' hr-td-narrow' : ''}`}>
                                 <input
-                                  className={`hr-cell-input${isDirty ? ' hr-cell-dirty' : ''}${col.narrow ? ' hr-cell-narrow' : ''}`}
+                                  className={`hr-cell-input${isDirty ? ' hr-cell-dirty' : ''}`}
                                   type="text"
                                   value={cellVal(row[col.idx])}
                                   onChange={e => handleCellChange(excelRow, col.idx, e.target.value)}
