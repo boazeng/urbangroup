@@ -75,6 +75,7 @@ export default function ArielHRPage() {
   const [selectedSite, setSelectedSite] = useState('')
   const [showExtra, setShowExtra] = useState(false)
   const [activeOnly, setActiveOnly] = useState(false)
+  const [nextNewId, setNextNewId] = useState(1)   // counter for new row temp IDs
 
   useEffect(() => {
     setLoading(true)
@@ -183,15 +184,64 @@ export default function ArielHRPage() {
     })
   }, [allRows])
 
+  // Duplicate row with empty hours
+  const handleDuplicateRow = useCallback((excelRow) => {
+    const sourceRow = editedRows.find(r => r[COL.ROW_INDEX] === excelRow)
+    if (!sourceRow) return
+
+    const newRow = [...sourceRow]
+    const tempId = `new_${nextNewId}`
+    setNextNewId(v => v + 1)
+
+    // Clear hours fields
+    newRow[COL.HOURS_REG] = ''
+    newRow[COL.HOURS_125] = ''
+    newRow[COL.HOURS_150] = ''
+    newRow[COL.CUST_TOTAL] = ''
+    newRow[COL.CONT_TOTAL] = ''
+    newRow[COL.GAP] = ''
+    newRow[COL.ROW_INDEX] = tempId  // temporary ID
+
+    // Insert right after the source row
+    setEditedRows(prev => {
+      const idx = prev.findIndex(r => r[COL.ROW_INDEX] === excelRow)
+      const next = [...prev]
+      next.splice(idx + 1, 0, newRow)
+      return next
+    })
+
+    // Mark all non-empty cells as dirty
+    const dirtyNew = new Set()
+    for (const col of DISPLAY_COLS) {
+      if (newRow[col.idx] !== '' && newRow[col.idx] !== null && newRow[col.idx] !== undefined) {
+        dirtyNew.add(`${tempId}:${col.idx}`)
+      }
+    }
+    setDirtyKeys(prev => new Set([...prev, ...dirtyNew]))
+  }, [editedRows, nextNewId])
+
   // Save changes
   const handleSave = async () => {
     if (dirtyKeys.size === 0) return
     setSaving(true)
     setError('')
 
+    // Separate existing cell updates from new rows
     const changes = []
+    const newRows = []
+    const newRowIds = new Set()
+
+    for (const key of dirtyKeys) {
+      const [rowStr] = key.split(':')
+      if (rowStr.startsWith('new_')) {
+        newRowIds.add(rowStr)
+      }
+    }
+
+    // Collect cell-level changes for existing rows
     for (const key of dirtyKeys) {
       const [rowStr, colStr] = key.split(':')
+      if (rowStr.startsWith('new_')) continue
       const excelRow = Number(rowStr)
       const colIdx = Number(colStr)
       const editedRow = editedRows.find(r => r[COL.ROW_INDEX] === excelRow)
@@ -200,15 +250,35 @@ export default function ArielHRPage() {
       }
     }
 
+    // Collect full new rows (columns A-V = indices 0-21)
+    for (const tempId of newRowIds) {
+      const row = editedRows.find(r => r[COL.ROW_INDEX] === tempId)
+      if (row) {
+        newRows.push(row.slice(0, 22))  // columns A-V only
+      }
+    }
+
     try {
       const resp = await fetch(`${API_BASE}/api/hr/save-changes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sheet: '2.26', changes }),
+        body: JSON.stringify({ sheet: '2.26', changes, newRows }),
       })
       const data = await resp.json()
       if (data.ok) {
-        // Update allRows to match editedRows (so they're no longer "dirty")
+        // Update new rows with their real Excel row indices
+        if (data.newRowIndices && data.newRowIndices.length > 0) {
+          const tempIds = [...newRowIds]
+          setEditedRows(prev => prev.map(r => {
+            const tIdx = tempIds.indexOf(r[COL.ROW_INDEX])
+            if (tIdx !== -1 && data.newRowIndices[tIdx] !== undefined) {
+              const copy = [...r]
+              copy[COL.ROW_INDEX] = data.newRowIndices[tIdx]
+              return copy
+            }
+            return r
+          }))
+        }
         setAllRows(editedRows.map(r => [...r]))
         setDirtyKeys(new Set())
       } else {
@@ -359,7 +429,10 @@ export default function ArielHRPage() {
                       const excelRow = row[COL.ROW_INDEX]
                       return (
                         <tr key={excelRow}>
-                          <td className="ariel-num hr-td-row-num">{i + 1}</td>
+                          <td className="ariel-num hr-td-row-num">
+                            <span>{i + 1}</span>
+                            <button className="hr-add-row-btn" onClick={() => handleDuplicateRow(excelRow)} title="שכפל שורה">+</button>
+                          </td>
                           {visibleCols.map(col => {
                             const key = `${excelRow}:${col.idx}`
                             const isDirty = dirtyKeys.has(key)

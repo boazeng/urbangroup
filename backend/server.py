@@ -1406,26 +1406,26 @@ def save_hr_changes():
         sheet: sheet name (e.g. '2.26')
         changes: list of {row: int, col: int, value: any}
             row = Excel row number (38+), col = 0-based column index (A=0)
+        newRows: list of [col0, col1, ..., col21] — new rows to append
     """
     body = request.get_json(force=True)
     sheet = body.get("sheet", "2.26")
     changes = body.get("changes", [])
-    if not changes:
-        return jsonify({"ok": True, "updated": 0})
+    new_rows = body.get("newRows", [])
+
+    if not changes and not new_rows:
+        return jsonify({"ok": True, "updated": 0, "newRowIndices": []})
 
     try:
         sp = _get_sp_connector()
         excel = sp.SharePointExcel(HR_SHARE_URL)
 
-        # Group changes by row to minimize API calls
-        # Write each cell individually (Graph API requires rectangular ranges)
+        # 1. Update existing cells
         updated = 0
         for ch in changes:
-            row_num = ch["row"]   # Excel row number
-            col_idx = ch["col"]   # 0-based column index
+            row_num = ch["row"]
+            col_idx = ch["col"]
             value = ch["value"]
-
-            # Convert column index to letter (A=0, B=1, ... V=21)
             col_letter = chr(65 + col_idx)
             cell = f"{col_letter}{row_num}"
             sp.write_excel_range(
@@ -1434,7 +1434,31 @@ def save_hr_changes():
             )
             updated += 1
 
-        return jsonify({"ok": True, "updated": updated})
+        # 2. Append new rows — find next empty row after current data
+        new_row_indices = []
+        if new_rows:
+            # Read current data extent to find the next empty row
+            data = excel.read(sheet, "A37:V508")
+            existing_rows = data.get("values", [])
+            # Find last non-empty row (header at index 0 = row 37)
+            last_data_row = 37  # header row
+            for i, row in enumerate(existing_rows):
+                if any(cell for cell in row[:22]):
+                    last_data_row = 37 + i
+            next_row = last_data_row + 1
+
+            for row_data in new_rows:
+                # Pad to 22 columns if needed
+                padded = list(row_data) + [''] * (22 - len(row_data))
+                cell_range = f"A{next_row}:V{next_row}"
+                sp.write_excel_range(
+                    excel.drive_id, excel.item_id,
+                    sheet, cell_range, [padded[:22]]
+                )
+                new_row_indices.append(next_row)
+                next_row += 1
+
+        return jsonify({"ok": True, "updated": updated, "newRowIndices": new_row_indices})
     except Exception as e:
         logger.error(f"HR save failed: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500

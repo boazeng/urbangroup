@@ -168,8 +168,34 @@
 
 /* Row number column */
 .hr-td-row-num {
-  width: 30px;
-  max-width: 30px;
+  width: 45px;
+  max-width: 45px;
+  position: relative;
+}
+
+.hr-add-row-btn {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  line-height: 14px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #16a34a;
+  background: none;
+  border: 1px solid #16a34a;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  margin-right: 2px;
+  opacity: 0.4;
+  transition: opacity 0.2s;
+}
+
+.hr-add-row-btn:hover {
+  opacity: 1;
+  background: #16a34a;
+  color: #fff;
 }
 
 /* Narrow columns — constrain td/th width */
