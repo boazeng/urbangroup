@@ -79,7 +79,7 @@ export default function ArielHRPage() {
   const [showAll, setShowAll] = useState(false)
   const [nextNewId, setNextNewId] = useState(1)   // counter for new row temp IDs
 
-  useEffect(() => {
+  const loadData = () => {
     setLoading(true)
     setError('')
     fetch(`${API_BASE}/api/hr/sheet-data?sheet=2.26`)
@@ -90,13 +90,16 @@ export default function ArielHRPage() {
           setEditedRows(data.rows.map(r => [...r]))
           setFilters(data.filters)
           setDirtyKeys(new Set())
+          setDeletedRows(new Set())
         } else {
           setError(data.error || 'שגיאה בטעינה')
         }
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { loadData() }, [])
 
   // Sites available for selected customer
   const availableSites = useMemo(() => {
@@ -145,6 +148,17 @@ export default function ArielHRPage() {
     }
     return sum
   }, [filteredRows, selectedContractor])
+
+  // Grand totals — all data rows (not filtered)
+  const grandTotals = useMemo(() => {
+    let custTotal = 0
+    let contTotal = 0
+    for (const row of editedRows) {
+      custTotal += Number(row[COL.CUST_TOTAL]) || 0
+      contTotal += Number(row[COL.CONT_TOTAL]) || 0
+    }
+    return { custTotal, contTotal, gap: custTotal - contTotal }
+  }, [editedRows])
 
   // Site summary — group by profession, sum hours and totals
   const siteSummary = useMemo(() => {
@@ -382,12 +396,35 @@ export default function ArielHRPage() {
         <h1 className="ariel-title">ניהול כ&quot;א</h1>
         <p className="hr-subtitle">ניהול הצבות באתרים — טבלה ראשית — 2.26</p>
 
-        <button
-          className={`hr-toggle-extra-btn hr-show-all-btn${showAll ? ' hr-toggle-active' : ''}`}
-          onClick={() => setShowAll(v => !v)}
-        >
-          {showAll ? 'חזור לסינון' : 'הצג את כל הטבלה'}
-        </button>
+        <div className="hr-top-actions">
+          <button className="hr-refresh-btn" onClick={loadData} disabled={loading}>
+            {loading ? 'טוען...' : 'רענן'}
+          </button>
+
+          <button
+            className={`hr-toggle-extra-btn hr-show-all-btn${showAll ? ' hr-toggle-active' : ''}`}
+            onClick={() => setShowAll(v => !v)}
+          >
+            {showAll ? 'חזור לסינון' : 'הצג את כל הטבלה'}
+          </button>
+        </div>
+
+        {editedRows.length > 0 && (
+          <div className="hr-grand-totals">
+            <div className="hr-grand-total-item hr-total-income">
+              <span className="hr-grand-total-label">סה&quot;כ הכנסות מלקוחות:</span>
+              <span className="hr-grand-total-value">{grandTotals.custTotal.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</span>
+            </div>
+            <div className="hr-grand-total-item hr-total-expense">
+              <span className="hr-grand-total-label">סה&quot;כ הוצאות לקבלנים:</span>
+              <span className="hr-grand-total-value">{grandTotals.contTotal.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</span>
+            </div>
+            <div className="hr-grand-total-item hr-total-gap">
+              <span className="hr-grand-total-label">פער (רווח):</span>
+              <span className="hr-grand-total-value">{grandTotals.gap.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</span>
+            </div>
+          </div>
+        )}
 
         {contractorTotal !== null && (
           <div className="hr-contractor-summary">

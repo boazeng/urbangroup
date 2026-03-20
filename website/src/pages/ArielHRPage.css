@@ -15,8 +15,84 @@
   margin-bottom: 12px;
 }
 
-.hr-show-all-btn {
+.hr-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 16px;
+}
+
+.hr-refresh-btn {
+  padding: 8px 20px;
+  border: 1px solid var(--color-secondary, #3b82f6);
+  border-radius: var(--radius-sm);
+  background: var(--color-secondary, #3b82f6);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.hr-refresh-btn:hover {
+  background: #2563eb;
+}
+
+.hr-refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Grand totals */
+.hr-grand-totals {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.hr-grand-total-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid;
+}
+
+.hr-total-income {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.hr-total-expense {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.hr-total-gap {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.hr-grand-total-label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.hr-total-income .hr-grand-total-label,
+.hr-total-income .hr-grand-total-value { color: #166534; }
+
+.hr-total-expense .hr-grand-total-label,
+.hr-total-expense .hr-grand-total-value { color: #991b1b; }
+
+.hr-total-gap .hr-grand-total-label,
+.hr-total-gap .hr-grand-total-value { color: #1e40af; }
+
+.hr-grand-total-value {
+  font-size: 16px;
+  font-weight: 700;
 }
 
 /* Contractor summary */
