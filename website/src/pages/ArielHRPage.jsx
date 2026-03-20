@@ -35,6 +35,7 @@ const COL = {
 const DISPLAY_COLS = [
   { idx: COL.CUSTOMER, label: 'לקוח', type: 'text', narrow: true },
   { idx: COL.SITE, label: 'אתר', type: 'text', narrow: true },
+  { idx: COL.PROFESSION_NUM, label: 'מס מקצוע', type: 'num', narrow: true },
   { idx: COL.PROFESSION, label: 'מקצוע', type: 'text', narrow: true },
   { idx: COL.TARIFF_TYPE, label: 'סוג תעריף', type: 'text', narrow: true },
   { idx: COL.TARIFF_NOTES, label: 'הערות תעריף', type: 'text', narrow: true },
