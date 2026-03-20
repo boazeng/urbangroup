@@ -228,20 +228,6 @@ export default function ArielHRPage() {
             {/* Filters + Save */}
             <div className="hr-filters">
               <div className="hr-filter-group">
-                <label className="hr-filter-label">קבלן</label>
-                <select
-                  className="hr-filter-select"
-                  value={selectedContractor}
-                  onChange={e => setSelectedContractor(e.target.value)}
-                >
-                  <option value="">— בחר קבלן —</option>
-                  {filters.contractors?.map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="hr-filter-group">
                 <label className="hr-filter-label">לקוח</label>
                 <select
                   className="hr-filter-select"
@@ -253,6 +239,9 @@ export default function ArielHRPage() {
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
+                {selectedCustomer && (
+                  <button className="hr-filter-clear-icon" onClick={() => setSelectedCustomer('')} title="נקה לקוח">&#128465;</button>
+                )}
               </div>
 
               <div className="hr-filter-group">
@@ -267,13 +256,27 @@ export default function ArielHRPage() {
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
+                {selectedSite && (
+                  <button className="hr-filter-clear-icon" onClick={() => setSelectedSite('')} title="נקה אתר">&#128465;</button>
+                )}
               </div>
 
-              {hasFilter && (
-                <button className="hr-clear-btn" onClick={clearFilters}>
-                  נקה סינון
-                </button>
-              )}
+              <div className="hr-filter-group">
+                <label className="hr-filter-label">קבלן</label>
+                <select
+                  className="hr-filter-select"
+                  value={selectedContractor}
+                  onChange={e => setSelectedContractor(e.target.value)}
+                >
+                  <option value="">— בחר קבלן —</option>
+                  {filters.contractors?.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                {selectedContractor && (
+                  <button className="hr-filter-clear-icon" onClick={() => setSelectedContractor('')} title="נקה קבלן">&#128465;</button>
+                )}
+              </div>
 
               {hasFilter && (
                 <span className="hr-row-count">{filteredRows.length} שורות</span>
