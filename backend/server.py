@@ -1494,26 +1494,54 @@ def save_hr_changes():
                 sheet, cell_range, empty_row
             )
 
-        # 3. Append new rows — find next empty row after current data
+        # 3. Insert new rows at correct positions
         new_row_indices = []
         if new_rows:
-            # Read sheet and auto-detect table extent
-            data = excel.read(sheet, "A1:V1000")
-            all_rows = data.get("values", [])
-            header_idx, last_data_idx = _find_main_table(all_rows)
-            # Next row after last data row (Excel row = index + 1)
-            next_row = (last_data_idx + 1 if last_data_idx is not None else len(all_rows)) + 1
+            # Parse entries — each can be {data, afterRow} or plain array
+            positioned = []
+            for entry in new_rows:
+                if isinstance(entry, dict):
+                    row_data = entry.get("data", [])
+                    after_row = entry.get("afterRow")
+                else:
+                    row_data = entry
+                    after_row = None
+                positioned.append((after_row, row_data))
 
-            for row_data in new_rows:
-                # Pad to 22 columns if needed
+            # Rows without afterRow go to end of table
+            data = excel.read(sheet, "A1:V1000")
+            all_rows_data = data.get("values", [])
+            header_idx, last_data_idx = _find_main_table(all_rows_data)
+            end_row = (last_data_idx + 1 if last_data_idx is not None else len(all_rows_data)) + 1
+
+            for i, (after, rd) in enumerate(positioned):
+                if after is None:
+                    positioned[i] = (end_row - 1, rd)  # afterRow = last data row
+                    end_row += 1
+
+            # Sort descending by afterRow so inserts don't shift earlier positions
+            indexed = list(enumerate(positioned))
+            indexed.sort(key=lambda x: x[1][0], reverse=True)
+
+            # Track assigned Excel row for each original index
+            assigned = [None] * len(positioned)
+            for orig_idx, (after_row, row_data) in indexed:
+                insert_row = after_row + 1
                 padded = list(row_data) + [''] * (22 - len(row_data))
-                cell_range = f"A{next_row}:V{next_row}"
+                cell_range = f"A{insert_row}:V{insert_row}"
+                # Insert blank row, shifting existing content down
+                sp.insert_excel_range(
+                    excel.drive_id, excel.item_id,
+                    sheet, cell_range, shift="Down"
+                )
+                # Write data into the newly inserted row
                 sp.write_excel_range(
                     excel.drive_id, excel.item_id,
                     sheet, cell_range, [padded[:22]]
                 )
-                new_row_indices.append(next_row)
-                next_row += 1
+                assigned[orig_idx] = insert_row
+
+            new_row_indices = assigned
 
         return jsonify({"ok": True, "updated": updated, "newRowIndices": new_row_indices})
     except Exception as e:

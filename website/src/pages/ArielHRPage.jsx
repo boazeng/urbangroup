@@ -400,12 +400,21 @@ export default function ArielHRPage() {
       }
     }
 
-    // Collect full new rows (columns A-V = indices 0-21)
+    // Collect full new rows with position info (columns A-V = indices 0-21)
     for (const tempId of newRowIds) {
-      const row = editedRows.find(r => r[COL.ROW_INDEX] === tempId)
-      if (row) {
-        newRows.push(row.slice(0, 22))  // columns A-V only
+      const idx = editedRows.findIndex(r => r[COL.ROW_INDEX] === tempId)
+      if (idx === -1) continue
+      const row = editedRows[idx]
+      // Find the row above to determine insert position
+      let afterRow = null
+      for (let j = idx - 1; j >= 0; j--) {
+        const prevId = editedRows[j][COL.ROW_INDEX]
+        if (typeof prevId === 'number') {
+          afterRow = prevId
+          break
+        }
       }
+      newRows.push({ data: row.slice(0, 22), afterRow })
     }
 
     // Collect deleted row indices (only real Excel rows, not new ones)

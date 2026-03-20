@@ -267,6 +267,35 @@ def write_excel_range(drive_id, item_id, sheet_name, cell_range, values):
     }
 
 
+def insert_excel_range(drive_id, item_id, sheet_name, cell_range, shift="Down"):
+    """Insert blank cells, shifting existing content down or right.
+
+    Args:
+        drive_id: Drive ID
+        item_id: File item ID
+        sheet_name: Worksheet name
+        cell_range: Cell range to insert (e.g. 'A50:V50')
+        shift: 'Down' or 'Right'
+
+    Returns:
+        dict: Result info
+    """
+    sheet_encoded = requests.utils.quote(sheet_name, safe="")
+    url = (
+        f"{GRAPH_BASE}/drives/{drive_id}/items/{item_id}"
+        f"/workbook/worksheets('{sheet_encoded}')"
+        f"/range(address='{cell_range}')/insert"
+    )
+    resp = requests.post(
+        url,
+        headers={**_headers(), "Content-Type": "application/json"},
+        json={"shift": shift},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
 def add_excel_rows(drive_id, item_id, sheet_name, table_name, values):
     """Add rows to an Excel table.
 
