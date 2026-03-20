@@ -17,6 +17,7 @@ import AgingReportPage from './pages/AgingReportPage'
 import ArielDebtReportPage from './pages/ArielDebtReportPage'
 import ArielUnchargedDeliveryPage from './pages/ArielUnchargedDeliveryPage'
 import ArielInvoicesPage from './pages/ArielInvoicesPage'
+import ArielHRPage from './pages/ArielHRPage'
 import PdfToolsPage from './pages/PdfToolsPage'
 import SupplierInvoiceEntryPage from './pages/SupplierInvoiceEntryPage'
 import BotScriptsPage from './pages/BotScriptsPage'
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="/ariel/debt-report" element={<ArielDebtReportPage />} />
           <Route path="/ariel/uncharged-delivery" element={<ArielUnchargedDeliveryPage />} />
           <Route path="/ariel/invoices" element={<ArielInvoicesPage />} />
+          <Route path="/ariel/hr" element={<ArielHRPage />} />
           <Route path="/energy" element={<EnergyPage />} />
           <Route path="/energy/invoices" element={<InvoicesPage />} />
           <Route path="/apps" element={<AppsPage />} />
