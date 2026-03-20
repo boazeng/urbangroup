@@ -197,6 +197,22 @@ export default function ArielHRPage() {
     return sum
   }, [filteredRows, selectedContractor])
 
+  const [showContractorSites, setShowContractorSites] = useState(false)
+
+  // Contractor breakdown by site
+  const contractorSiteBreakdown = useMemo(() => {
+    if (!selectedContractor) return []
+    const map = {}
+    for (const row of filteredRows) {
+      const customer = cellVal(row[COL.CUSTOMER])
+      const site = cellVal(row[COL.SITE])
+      const key = `${customer}|${site}`
+      if (!map[key]) map[key] = { customer, site, total: 0 }
+      map[key].total += Number(row[COL.CONT_TOTAL]) || 0
+    }
+    return Object.values(map).filter(r => r.total !== 0).sort((a, b) => b.total - a.total)
+  }, [filteredRows, selectedContractor])
+
   // Grand totals — all data rows (not filtered)
   const grandTotals = useMemo(() => {
     let custTotal = 0
@@ -559,9 +575,43 @@ export default function ArielHRPage() {
         </div>
 
         {contractorTotal !== null && (
-          <div className="hr-contractor-summary">
-            <span className="hr-summary-label">סיכום קבלן:</span>
-            <span className="hr-summary-value">{contractorTotal.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</span>
+          <div className="hr-contractor-block">
+            <div className="hr-contractor-summary">
+              <span className="hr-summary-label">סיכום קבלן:</span>
+              <span className="hr-summary-value">{contractorTotal.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</span>
+              <button
+                className={`hr-toggle-extra-btn${showContractorSites ? ' hr-toggle-active' : ''}`}
+                onClick={() => setShowContractorSites(v => !v)}
+              >
+                {showContractorSites ? 'הסתר חלוקה' : 'הצג חלוקה לאתרים'}
+              </button>
+            </div>
+            {showContractorSites && contractorSiteBreakdown.length > 0 && (
+              <div className="hr-contractor-sites-table">
+                <table className="ariel-table hr-summary-table">
+                  <thead>
+                    <tr>
+                      <th>לקוח</th>
+                      <th>אתר</th>
+                      <th>תשלום לקבלן</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {contractorSiteBreakdown.map((r, i) => (
+                      <tr key={i}>
+                        <td>{r.customer}</td>
+                        <td>{r.site}</td>
+                        <td className="ariel-num">{r.total.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</td>
+                      </tr>
+                    ))}
+                    <tr className="hr-summary-total-row">
+                      <td colSpan={2}><strong>סה&quot;כ</strong></td>
+                      <td className="ariel-num"><strong>{contractorTotal.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</strong></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 

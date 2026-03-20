@@ -178,6 +178,16 @@
   color: #166534;
 }
 
+/* Contractor block with site breakdown */
+.hr-contractor-block {
+  margin-bottom: 16px;
+}
+
+.hr-contractor-sites-table {
+  margin-top: 8px;
+  max-width: 600px;
+}
+
 /* Filters */
 .hr-filters {
   display: flex;
