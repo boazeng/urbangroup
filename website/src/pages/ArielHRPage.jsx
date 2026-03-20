@@ -236,7 +236,7 @@ export default function ArielHRPage() {
 
   // Save changes
   const handleSave = async () => {
-    if (dirtyKeys.size === 0) return
+    if (dirtyKeys.size === 0 && deletedRows.size === 0) return
     setSaving(true)
     setError('')
 
