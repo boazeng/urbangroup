@@ -31,7 +31,7 @@ const COL = {
   ROW_INDEX: 22,  // appended by backend — original Excel row number
 }
 
-// Visible columns to display
+// Visible columns to display — extra: true for overtime columns (hidden by default)
 const DISPLAY_COLS = [
   { idx: COL.CUSTOMER, label: 'לקוח', type: 'text' },
   { idx: COL.SITE, label: 'אתר', type: 'text' },
@@ -44,12 +44,12 @@ const DISPLAY_COLS = [
   { idx: COL.HOURS_125, label: 'שעות 125%', type: 'num' },
   { idx: COL.HOURS_150, label: 'שעות 150%', type: 'num' },
   { idx: COL.CUST_RATE, label: 'תעריף לקוח', type: 'num' },
-  { idx: COL.CUST_125, label: 'לקוח 125%', type: 'num' },
-  { idx: COL.CUST_150, label: 'לקוח 150%', type: 'num' },
+  { idx: COL.CUST_125, label: 'לקוח 125%', type: 'num', extra: true },
+  { idx: COL.CUST_150, label: 'לקוח 150%', type: 'num', extra: true },
   { idx: COL.CUST_TOTAL, label: 'סה"כ לקוח', type: 'num' },
   { idx: COL.CONT_RATE, label: 'תעריף קבלן', type: 'num' },
-  { idx: COL.CONT_125, label: 'קבלן 125%', type: 'num' },
-  { idx: COL.CONT_150, label: 'קבלן 150%', type: 'num' },
+  { idx: COL.CONT_125, label: 'קבלן 125%', type: 'num', extra: true },
+  { idx: COL.CONT_150, label: 'קבלן 150%', type: 'num', extra: true },
   { idx: COL.CONT_TOTAL, label: 'סה"כ קבלן', type: 'num' },
   { idx: COL.GAP, label: 'פער', type: 'num' },
 ]
@@ -72,6 +72,7 @@ export default function ArielHRPage() {
   const [selectedContractor, setSelectedContractor] = useState('')
   const [selectedCustomer, setSelectedCustomer] = useState('')
   const [selectedSite, setSelectedSite] = useState('')
+  const [showExtra, setShowExtra] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -128,6 +129,12 @@ export default function ArielHRPage() {
     setSelectedCustomer('')
     setSelectedSite('')
   }
+
+  // Columns to show (hide overtime extras by default)
+  const visibleCols = useMemo(() =>
+    DISPLAY_COLS.filter(col => !col.extra || showExtra),
+    [showExtra]
+  )
 
   // Handle cell edit
   const handleCellChange = useCallback((excelRow, colIdx, value) => {
@@ -271,6 +278,13 @@ export default function ArielHRPage() {
                 <span className="hr-row-count">{filteredRows.length} שורות</span>
               )}
 
+              <button
+                className="hr-toggle-extra-btn"
+                onClick={() => setShowExtra(v => !v)}
+              >
+                {showExtra ? 'הסתר שעות נוספות' : 'הצג שעות נוספות'}
+              </button>
+
               {hasDirty && (
                 <button
                   className="hr-save-btn"
@@ -293,7 +307,7 @@ export default function ArielHRPage() {
                   <thead>
                     <tr>
                       <th>#</th>
-                      {DISPLAY_COLS.map(col => (
+                      {visibleCols.map(col => (
                         <th key={col.idx} className={col.type === 'num' ? 'ariel-num' : ''}>
                           {col.label}
                         </th>
@@ -306,7 +320,7 @@ export default function ArielHRPage() {
                       return (
                         <tr key={excelRow}>
                           <td className="ariel-num">{i + 1}</td>
-                          {DISPLAY_COLS.map(col => {
+                          {visibleCols.map(col => {
                             const key = `${excelRow}:${col.idx}`
                             const isDirty = dirtyKeys.has(key)
                             return (
