@@ -53,6 +53,18 @@ Parameters:
   RoutingScriptId:
     Type: String
     Default: "flow_1772177781916"
+  SharePointTenantId:
+    Type: String
+    NoEcho: true
+    Default: ""
+  SharePointClientId:
+    Type: String
+    NoEcho: true
+    Default: ""
+  SharePointClientSecret:
+    Type: String
+    NoEcho: true
+    Default: ""
 
 Globals:
   Function:
@@ -118,6 +130,10 @@ Resources:
           KNOWLEDGE_TABLE: !Ref KnowledgeTable
           IS_LAMBDA: "true"
           ROUTING_SCRIPT_ID: !Ref RoutingScriptId
+          SHAREPOINT_TENANT_ID: !Ref SharePointTenantId
+          SHAREPOINT_CLIENT_ID: !Ref SharePointClientId
+          SHAREPOINT_CLIENT_SECRET: !Ref SharePointClientSecret
+          SHAREPOINT_SITE_URL: "https://yaelisrael.sharepoint.com"
       Policies:
         - S3ReadPolicy:
             BucketName: !Sub urbangroup-templates-${Stage}
