@@ -1310,6 +1310,96 @@ def health():
     return jsonify({"ok": True, "service": "urbangroup-backend"})
 
 
+# ── SharePoint / HR Management ──────────────────────────────
+
+_sp_connector = None
+
+def _get_sp_connector():
+    global _sp_connector
+    if _sp_connector is None:
+        sp_path = os.path.join(
+            os.path.dirname(__file__), "..", "agents", "tools-connection",
+            "5100-sharepoint", "5100-sharepoint_connector.py",
+        )
+        sp_path = os.path.normpath(sp_path)
+        spec = importlib.util.spec_from_file_location("sp_connector_5100", sp_path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _sp_connector = mod
+    return _sp_connector
+
+
+HR_SHARE_URL = "https://yaelisrael.sharepoint.com/:x:/g/Realestateproject/IQCk9K_jvlY-S6n0U3Wls4rTAQDvNEL8m9GIHU16NXW-37E"
+
+@app.route("/api/hr/sheet-data", methods=["GET"])
+def get_hr_sheet_data():
+    """Read main table from the HR Excel file on SharePoint.
+
+    Query params:
+        sheet: sheet name (default '2.26')
+    """
+    sheet = request.args.get("sheet", "2.26")
+    try:
+        sp = _get_sp_connector()
+        excel = sp.SharePointExcel(HR_SHARE_URL)
+
+        # Main table starts at row 37 (header) in columns A-V
+        data = excel.read(sheet, "A37:V508")
+        rows = data["values"]
+        if not rows:
+            return jsonify({"ok": True, "headers": [], "rows": [], "filters": {}})
+
+        headers = rows[0]
+
+        # Data rows: skip header, filter out empty rows
+        data_rows = []
+        for row in rows[1:]:
+            # Row must have at least customer (col C=idx 2) or site (col D=idx 3)
+            if row[2] or row[3]:
+                data_rows.append(row)
+
+        # Build unique filter values
+        customers = sorted(set(str(r[2]).strip() for r in data_rows if r[2]))
+        sites = sorted(set(str(r[3]).strip() for r in data_rows if r[3]))
+        contractors = sorted(set(str(r[9]).strip() for r in data_rows if r[9]))
+
+        # Build customer→sites mapping
+        customer_sites = {}
+        for r in data_rows:
+            cust = str(r[2]).strip() if r[2] else ""
+            site = str(r[3]).strip() if r[3] else ""
+            if cust and site:
+                customer_sites.setdefault(cust, set()).add(site)
+        customer_sites = {k: sorted(v) for k, v in customer_sites.items()}
+
+        return jsonify({
+            "ok": True,
+            "headers": headers,
+            "rows": data_rows,
+            "filters": {
+                "customers": customers,
+                "sites": sites,
+                "contractors": contractors,
+                "customer_sites": customer_sites,
+            },
+        })
+    except Exception as e:
+        logger.error(f"HR sheet read failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/hr/sheets", methods=["GET"])
+def get_hr_sheets():
+    """List available worksheets in the HR Excel file."""
+    try:
+        sp = _get_sp_connector()
+        excel = sp.SharePointExcel(HR_SHARE_URL)
+        sheets = excel.sheets()
+        return jsonify({"ok": True, "sheets": sheets})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 if __name__ == "__main__":
     print("Urban Group Backend API")
     print(f"Priority Demo: {PRIORITY_URL_DEMO}")

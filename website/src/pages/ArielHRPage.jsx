@@ -1,15 +1,240 @@
+import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import './ArielPage.css'
+import './ArielHRPage.css'
+
+const API_BASE = import.meta.env.DEV ? 'http://localhost:5000' : ''
+
+// Column indices in the data (A=0, B=1, ... V=21)
+const COL = {
+  TRACKING: 1,    // B - מעקב
+  CUSTOMER: 2,    // C - לקוח
+  SITE: 3,        // D - אתר
+  PROFESSION_NUM: 4, // E - מס מקצוע
+  PROFESSION: 5,  // F - מקצוע
+  TARIFF_TYPE: 6, // G - סוג תעריף
+  TARIFF_NOTES: 7,// H - הערות לסוג תעריף
+  NOTES: 8,       // I - הערות
+  CONTRACTOR: 9,  // J - כינוי קבלן
+  HOURS_REG: 10,  // K - שעות רגילות
+  HOURS_125: 11,  // L - שעות נוספות 125%
+  HOURS_150: 12,  // M - שעות נוספות 150%
+  CUST_RATE: 13,  // N - לקוח תעריף שעה רגילה
+  CUST_125: 14,   // O - לקוח תעריף 125%
+  CUST_150: 15,   // P - לקוח תעריף 150%
+  CUST_TOTAL: 16, // Q - סהכ עלות ללקוח
+  CONT_RATE: 17,  // R - קבלן תעריף שעה רגילה
+  CONT_125: 18,   // S - קבלן תעריף 125%
+  CONT_150: 19,   // T - קבלן תעריף 150%
+  CONT_TOTAL: 20, // U - סהכ תשלום לקבלן
+  GAP: 21,        // V - פער
+}
+
+// Visible columns to display
+const DISPLAY_COLS = [
+  { idx: COL.CUSTOMER, label: 'לקוח', type: 'text' },
+  { idx: COL.SITE, label: 'אתר', type: 'text' },
+  { idx: COL.PROFESSION, label: 'מקצוע', type: 'text' },
+  { idx: COL.TARIFF_TYPE, label: 'סוג תעריף', type: 'text' },
+  { idx: COL.TARIFF_NOTES, label: 'הערות תעריף', type: 'text' },
+  { idx: COL.NOTES, label: 'הערות', type: 'text' },
+  { idx: COL.CONTRACTOR, label: 'כינוי קבלן', type: 'text' },
+  { idx: COL.HOURS_REG, label: 'שעות רגילות', type: 'num' },
+  { idx: COL.HOURS_125, label: 'שעות 125%', type: 'num' },
+  { idx: COL.HOURS_150, label: 'שעות 150%', type: 'num' },
+  { idx: COL.CUST_RATE, label: 'תעריף לקוח', type: 'num' },
+  { idx: COL.CUST_125, label: 'לקוח 125%', type: 'num' },
+  { idx: COL.CUST_150, label: 'לקוח 150%', type: 'num' },
+  { idx: COL.CUST_TOTAL, label: 'סה"כ לקוח', type: 'num' },
+  { idx: COL.CONT_RATE, label: 'תעריף קבלן', type: 'num' },
+  { idx: COL.CONT_125, label: 'קבלן 125%', type: 'num' },
+  { idx: COL.CONT_150, label: 'קבלן 150%', type: 'num' },
+  { idx: COL.CONT_TOTAL, label: 'סה"כ קבלן', type: 'num' },
+  { idx: COL.GAP, label: 'פער', type: 'num' },
+]
+
+function formatNum(v) {
+  if (v === null || v === undefined || v === '') return ''
+  const n = Number(v)
+  if (isNaN(n)) return String(v)
+  return n.toLocaleString('he-IL', { maximumFractionDigits: 2 })
+}
 
 export default function ArielHRPage() {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [allRows, setAllRows] = useState([])
+  const [filters, setFilters] = useState({
+    customers: [], sites: [], contractors: [], customer_sites: {}
+  })
+  const [selectedContractor, setSelectedContractor] = useState('')
+  const [selectedCustomer, setSelectedCustomer] = useState('')
+  const [selectedSite, setSelectedSite] = useState('')
+
+  useEffect(() => {
+    setLoading(true)
+    setError('')
+    fetch(`${API_BASE}/api/hr/sheet-data?sheet=2.26`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          setAllRows(data.rows)
+          setFilters(data.filters)
+        } else {
+          setError(data.error || 'שגיאה בטעינה')
+        }
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
+  }, [])
+
+  // Sites available for selected customer
+  const availableSites = useMemo(() => {
+    if (selectedCustomer && filters.customer_sites?.[selectedCustomer]) {
+      return filters.customer_sites[selectedCustomer]
+    }
+    return filters.sites || []
+  }, [selectedCustomer, filters])
+
+  // Reset site if customer changes and site is no longer valid
+  useEffect(() => {
+    if (selectedSite && !availableSites.includes(selectedSite)) {
+      setSelectedSite('')
+    }
+  }, [availableSites, selectedSite])
+
+  // Filter rows
+  const filteredRows = useMemo(() => {
+    // If nothing selected, show empty table
+    if (!selectedContractor && !selectedCustomer && !selectedSite) return []
+
+    return allRows.filter(row => {
+      const customer = String(row[COL.CUSTOMER] || '').trim()
+      const site = String(row[COL.SITE] || '').trim()
+      const contractor = String(row[COL.CONTRACTOR] || '').trim()
+
+      if (selectedContractor && contractor !== selectedContractor) return false
+      if (selectedCustomer && customer !== selectedCustomer) return false
+      if (selectedSite && site !== selectedSite) return false
+      return true
+    })
+  }, [allRows, selectedContractor, selectedCustomer, selectedSite])
+
+  const clearFilters = () => {
+    setSelectedContractor('')
+    setSelectedCustomer('')
+    setSelectedSite('')
+  }
+
+  const hasFilter = selectedContractor || selectedCustomer || selectedSite
+
   return (
-    <div className="ariel-page">
-      <div className="container">
+    <div className="ariel-page hr-page">
+      <div className="hr-container">
         <Link to="/ariel" className="ariel-back">&rarr; חזרה לאריאל</Link>
 
         <h1 className="ariel-title">ניהול כ&quot;א</h1>
-        <p className="ariel-subtitle">ניהול הצבות באתרים — מאסטר</p>
+        <p className="hr-subtitle">ניהול הצבות באתרים — טבלה ראשית — 2.26</p>
 
+        {error && <div className="ariel-error">{error}</div>}
+
+        {loading ? (
+          <div className="ariel-loading">
+            <div className="ariel-spinner" />
+            <span>טוען נתונים מ-SharePoint...</span>
+          </div>
+        ) : (
+          <>
+            {/* Filters */}
+            <div className="hr-filters">
+              <div className="hr-filter-group">
+                <label className="hr-filter-label">קבלן</label>
+                <select
+                  className="hr-filter-select"
+                  value={selectedContractor}
+                  onChange={e => setSelectedContractor(e.target.value)}
+                >
+                  <option value="">— בחר קבלן —</option>
+                  {filters.contractors?.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="hr-filter-group">
+                <label className="hr-filter-label">לקוח</label>
+                <select
+                  className="hr-filter-select"
+                  value={selectedCustomer}
+                  onChange={e => setSelectedCustomer(e.target.value)}
+                >
+                  <option value="">— בחר לקוח —</option>
+                  {filters.customers?.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="hr-filter-group">
+                <label className="hr-filter-label">אתר</label>
+                <select
+                  className="hr-filter-select"
+                  value={selectedSite}
+                  onChange={e => setSelectedSite(e.target.value)}
+                >
+                  <option value="">— בחר אתר —</option>
+                  {availableSites.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+
+              {hasFilter && (
+                <button className="hr-clear-btn" onClick={clearFilters}>
+                  נקה סינון
+                </button>
+              )}
+
+              {hasFilter && (
+                <span className="hr-row-count">{filteredRows.length} שורות</span>
+              )}
+            </div>
+
+            {/* Table */}
+            {!hasFilter ? (
+              <div className="hr-empty">בחר קבלן, לקוח או אתר כדי להציג נתונים</div>
+            ) : filteredRows.length === 0 ? (
+              <div className="hr-empty">לא נמצאו נתונים לסינון הנבחר</div>
+            ) : (
+              <div className="ariel-card hr-table-wrapper">
+                <table className="ariel-table hr-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      {DISPLAY_COLS.map(col => (
+                        <th key={col.idx} className={col.type === 'num' ? 'ariel-num' : ''}>
+                          {col.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRows.map((row, i) => (
+                      <tr key={i}>
+                        <td className="ariel-num">{i + 1}</td>
+                        {DISPLAY_COLS.map(col => (
+                          <td key={col.idx} className={col.type === 'num' ? 'ariel-num' : ''}>
+                            {col.type === 'num' ? formatNum(row[col.idx]) : (row[col.idx] || '')}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   )
