@@ -159,19 +159,23 @@ export default function ArielHRPage() {
       return true
     })
 
-    const byProfession = {}
+    const byGroup = {}
     let totalCustomer = 0
     let totalContractor = 0
 
     for (const row of siteRows) {
       const profNum = String(row[COL.PROFESSION_NUM] || '').trim()
       const profName = String(row[COL.PROFESSION] || '').trim()
-      const key = profNum || profName || 'ללא'
+      const tariffType = String(row[COL.TARIFF_TYPE] || '').trim()
+      const tariffNotes = String(row[COL.TARIFF_NOTES] || '').trim()
+      const notes = String(row[COL.NOTES] || '').trim()
+      const custRate = Number(row[COL.CUST_RATE]) || 0
+      const key = `${profNum}|${tariffType}|${tariffNotes}|${notes}`
 
-      if (!byProfession[key]) {
-        byProfession[key] = { profNum, profName, hoursReg: 0, hours125: 0, hours150: 0, custTotal: 0, contTotal: 0 }
+      if (!byGroup[key]) {
+        byGroup[key] = { profNum, profName, tariffType, tariffNotes, notes, custRate, hoursReg: 0, hours125: 0, hours150: 0, custTotal: 0, contTotal: 0 }
       }
-      const p = byProfession[key]
+      const p = byGroup[key]
       p.hoursReg += Number(row[COL.HOURS_REG]) || 0
       p.hours125 += Number(row[COL.HOURS_125]) || 0
       p.hours150 += Number(row[COL.HOURS_150]) || 0
@@ -181,8 +185,11 @@ export default function ArielHRPage() {
       totalContractor += Number(row[COL.CONT_TOTAL]) || 0
     }
 
+    // Filter out groups with zero regular hours
+    const professions = Object.values(byGroup).filter(p => p.hoursReg > 0)
+
     return {
-      professions: Object.values(byProfession),
+      professions,
       totalCustomer,
       totalContractor,
     }
@@ -551,9 +558,13 @@ export default function ArielHRPage() {
                       <tr>
                         <th>מס מקצוע</th>
                         <th>מקצוע</th>
+                        <th>סוג תעריף</th>
+                        <th>הערות תעריף</th>
+                        <th>הערות</th>
                         <th>שעות רגילות</th>
                         {showExtra && <th>שעות 125%</th>}
                         {showExtra && <th>שעות 150%</th>}
+                        <th>תעריף לקוח</th>
                         <th>סה&quot;כ לקוח</th>
                         <th>סה&quot;כ קבלן</th>
                       </tr>
@@ -563,9 +574,13 @@ export default function ArielHRPage() {
                         <tr key={i}>
                           <td>{p.profNum}</td>
                           <td>{p.profName}</td>
+                          <td>{p.tariffType}</td>
+                          <td>{p.tariffNotes}</td>
+                          <td>{p.notes}</td>
                           <td>{p.hoursReg.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</td>
                           {showExtra && <td>{p.hours125.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</td>}
                           {showExtra && <td>{p.hours150.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</td>}
+                          <td>{p.custRate.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</td>
                           <td>{p.custTotal.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</td>
                           <td>{p.contTotal.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</td>
                         </tr>
@@ -573,9 +588,13 @@ export default function ArielHRPage() {
                       <tr className="hr-summary-total-row">
                         <td></td>
                         <td><strong>סה&quot;כ</strong></td>
+                        <td></td>
+                        <td></td>
+                        <td></td>
                         <td><strong>{siteSummary.professions.reduce((s, p) => s + p.hoursReg, 0).toLocaleString('he-IL', { maximumFractionDigits: 2 })}</strong></td>
                         {showExtra && <td><strong>{siteSummary.professions.reduce((s, p) => s + p.hours125, 0).toLocaleString('he-IL', { maximumFractionDigits: 2 })}</strong></td>}
                         {showExtra && <td><strong>{siteSummary.professions.reduce((s, p) => s + p.hours150, 0).toLocaleString('he-IL', { maximumFractionDigits: 2 })}</strong></td>}
+                        <td></td>
                         <td><strong>{siteSummary.totalCustomer.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</strong></td>
                         <td><strong>{siteSummary.totalContractor.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</strong></td>
                       </tr>
