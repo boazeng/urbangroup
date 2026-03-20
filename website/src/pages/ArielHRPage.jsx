@@ -39,15 +39,15 @@ const DISPLAY_COLS = [
   { idx: COL.TARIFF_TYPE, label: 'סוג תעריף', type: 'text' },
   { idx: COL.TARIFF_NOTES, label: 'הערות תעריף', type: 'text' },
   { idx: COL.NOTES, label: 'הערות', type: 'text' },
-  { idx: COL.CONTRACTOR, label: 'כינוי קבלן', type: 'text' },
-  { idx: COL.HOURS_REG, label: 'שעות רגילות', type: 'num' },
+  { idx: COL.CONTRACTOR, label: 'כינוי קבלן', type: 'text', narrow: true },
+  { idx: COL.HOURS_REG, label: 'שעות רגילות', type: 'num', narrow: true },
   { idx: COL.HOURS_125, label: 'שעות 125%', type: 'num', extra: true },
   { idx: COL.HOURS_150, label: 'שעות 150%', type: 'num', extra: true },
-  { idx: COL.CUST_RATE, label: 'תעריף לקוח', type: 'num' },
+  { idx: COL.CUST_RATE, label: 'תעריף לקוח', type: 'num', narrow: true },
   { idx: COL.CUST_125, label: 'לקוח 125%', type: 'num', extra: true },
   { idx: COL.CUST_150, label: 'לקוח 150%', type: 'num', extra: true },
-  { idx: COL.CUST_TOTAL, label: 'סה"כ לקוח', type: 'num' },
-  { idx: COL.CONT_RATE, label: 'תעריף קבלן', type: 'num' },
+  { idx: COL.CUST_TOTAL, label: 'סה"כ לקוח', type: 'num', narrow: true },
+  { idx: COL.CONT_RATE, label: 'תעריף קבלן', type: 'num', narrow: true },
   { idx: COL.CONT_125, label: 'קבלן 125%', type: 'num', extra: true },
   { idx: COL.CONT_150, label: 'קבלן 150%', type: 'num', extra: true },
   { idx: COL.CONT_TOTAL, label: 'סה"כ קבלן', type: 'num' },
@@ -326,7 +326,7 @@ export default function ArielHRPage() {
                             return (
                               <td key={col.idx} className={col.type === 'num' ? 'ariel-num' : ''}>
                                 <input
-                                  className={`hr-cell-input${isDirty ? ' hr-cell-dirty' : ''}`}
+                                  className={`hr-cell-input${isDirty ? ' hr-cell-dirty' : ''}${col.narrow ? ' hr-cell-narrow' : ''}`}
                                   type="text"
                                   value={cellVal(row[col.idx])}
                                   onChange={e => handleCellChange(excelRow, col.idx, e.target.value)}

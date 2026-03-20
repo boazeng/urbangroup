@@ -138,6 +138,13 @@
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
 }
 
+/* Narrow columns */
+.hr-cell-input.hr-cell-narrow {
+  min-width: 40px;
+  max-width: 80px;
+  padding: 6px 4px;
+}
+
 /* Dirty (changed) cells — red text */
 .hr-cell-input.hr-cell-dirty {
   color: #dc2626;
