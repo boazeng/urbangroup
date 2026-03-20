@@ -1317,11 +1317,7 @@ _sp_connector = None
 def _get_sp_connector():
     global _sp_connector
     if _sp_connector is None:
-        sp_path = os.path.join(
-            os.path.dirname(__file__), "..", "agents", "tools-connection",
-            "5100-sharepoint", "5100-sharepoint_connector.py",
-        )
-        sp_path = os.path.normpath(sp_path)
+        sp_path = PROJECT_ROOT / "agents" / "tools-connection" / "5100-sharepoint" / "5100-sharepoint_connector.py"
         spec = importlib.util.spec_from_file_location("sp_connector_5100", sp_path)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
