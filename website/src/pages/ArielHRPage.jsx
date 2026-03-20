@@ -93,6 +93,13 @@ export default function ArielHRPage() {
   const [availableSheets, setAvailableSheets] = useState([])
   const [selectedSheet, setSelectedSheet] = useState('2.26')
 
+  // Priority sync state
+  const [priorityCustomers, setPriorityCustomers] = useState([])
+  const [prioritySuppliers, setPrioritySuppliers] = useState([])
+  const [syncing, setSyncing] = useState(false)
+  const [lastSyncTime, setLastSyncTime] = useState('')
+  const [showPriorityTable, setShowPriorityTable] = useState(false)
+
   useEffect(() => {
     fetch(`${API_BASE}/api/hr/sheets`)
       .then(r => r.json())
@@ -101,6 +108,24 @@ export default function ArielHRPage() {
       })
       .catch(() => {})
   }, [])
+
+  const handleSyncPriority = () => {
+    setSyncing(true)
+    fetch(`${API_BASE}/api/hr/sync-priority`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          setPriorityCustomers(data.customers || [])
+          setPrioritySuppliers(data.suppliers || [])
+          setLastSyncTime(data.syncedAt || '')
+          setShowPriorityTable(true)
+        } else {
+          setError(data.error || 'שגיאה בסנכרון')
+        }
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setSyncing(false))
+  }
 
   const loadData = () => {
     setLoading(true)
@@ -487,6 +512,15 @@ export default function ArielHRPage() {
           </div>
         </div>
 
+        <div className="hr-sync-row">
+          <button className="hr-sync-btn" onClick={handleSyncPriority} disabled={syncing}>
+            {syncing ? 'מסנכרן...' : 'סנכרון עם פריורטי'}
+          </button>
+          {lastSyncTime && (
+            <span className="hr-sync-time">סנכרון אחרון: {lastSyncTime}</span>
+          )}
+        </div>
+
         {editedRows.length > 0 && (
           <div className="hr-grand-totals">
             {totalsOrder.map(key => {
@@ -739,6 +773,69 @@ export default function ArielHRPage() {
               </div>
             )}
           </>
+        )}
+
+        {showPriorityTable && (priorityCustomers.length > 0 || prioritySuppliers.length > 0) && (
+          <div className="hr-priority-section">
+            <div className="hr-priority-header">
+              <h3 className="hr-site-summary-title">לקוחות וספקים — פריורטי (סניף 102)</h3>
+              <button className="hr-toggle-extra-btn" onClick={() => setShowPriorityTable(false)}>הסתר</button>
+            </div>
+
+            <div className="hr-priority-tables">
+              {priorityCustomers.length > 0 && (
+                <div className="hr-priority-table-wrap">
+                  <h4 className="hr-priority-table-label">לקוחות ({priorityCustomers.length})</h4>
+                  <div className="hr-table-wrapper">
+                    <table className="ariel-table hr-summary-table">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>מספר לקוח</th>
+                          <th>שם לקוח</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {priorityCustomers.map((c, i) => (
+                          <tr key={c.code}>
+                            <td className="ariel-num">{i + 1}</td>
+                            <td>{c.code}</td>
+                            <td>{c.name}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {prioritySuppliers.length > 0 && (
+                <div className="hr-priority-table-wrap">
+                  <h4 className="hr-priority-table-label">ספקים ({prioritySuppliers.length})</h4>
+                  <div className="hr-table-wrapper">
+                    <table className="ariel-table hr-summary-table">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>מספר ספק</th>
+                          <th>שם ספק</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {prioritySuppliers.map((s, i) => (
+                          <tr key={s.code}>
+                            <td className="ariel-num">{i + 1}</td>
+                            <td>{s.code}</td>
+                            <td>{s.name}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>

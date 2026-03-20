@@ -1549,6 +1549,56 @@ def save_hr_changes():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/api/hr/sync-priority", methods=["GET"])
+def sync_hr_priority():
+    """Fetch customers and suppliers from Priority ERP (real env, branch 102)."""
+    try:
+        url = PRIORITY_URL_REAL
+        auth = HTTPBasicAuth(
+            os.getenv("PRIORITY_USERNAME", ""),
+            os.getenv("PRIORITY_PASSWORD", ""),
+        )
+        headers = {"Accept": "application/json", "OData-Version": "4.0"}
+
+        # 1. Fetch customers
+        customers = []
+        next_url = f"{url}/CUSTOMERS?$select=CUSTNAME,CUSTDES&$orderby=CUSTNAME&$top=500"
+        while next_url:
+            resp = http_requests.get(next_url, headers=headers, auth=auth, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+            for row in data.get("value", []):
+                customers.append({
+                    "code": row.get("CUSTNAME", ""),
+                    "name": row.get("CUSTDES", ""),
+                })
+            next_url = data.get("@odata.nextLink")
+
+        # 2. Fetch suppliers
+        suppliers = []
+        next_url = f"{url}/SUPPLIERS?$select=SUPNAME,SUPDES&$orderby=SUPNAME&$top=500"
+        while next_url:
+            resp = http_requests.get(next_url, headers=headers, auth=auth, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+            for row in data.get("value", []):
+                suppliers.append({
+                    "code": row.get("SUPNAME", ""),
+                    "name": row.get("SUPDES", ""),
+                })
+            next_url = data.get("@odata.nextLink")
+
+        return jsonify({
+            "ok": True,
+            "customers": customers,
+            "suppliers": suppliers,
+            "syncedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        })
+    except Exception as e:
+        logger.error(f"HR Priority sync failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 if __name__ == "__main__":
     print("Urban Group Backend API")
     print(f"Priority Demo: {PRIORITY_URL_DEMO}")
