@@ -447,9 +447,11 @@ export default function ArielHRPage() {
   return (
     <div className="ariel-page hr-page">
       <div className="hr-container">
-        <Link to="/ariel" className="ariel-back">&rarr; חזרה לאריאל</Link>
-
-        <h1 className="ariel-title">ניהול כ&quot;א</h1>
+        <div className="hr-header-row">
+          <Link to="/ariel" className="ariel-back">&rarr; חזרה לאריאל</Link>
+          <h1 className="ariel-title hr-title-center">ניהול כ&quot;א</h1>
+          <div className="hr-header-spacer" />
+        </div>
         <p className="hr-subtitle">ניהול הצבות באתרים — טבלה ראשית — 2.26</p>
 
         <div className="hr-top-actions">

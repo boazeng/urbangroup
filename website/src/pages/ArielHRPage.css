@@ -3,6 +3,23 @@
   padding: 24px 0 80px;
 }
 
+/* Header row — back button left, title center, balanced with spacer */
+.hr-header-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.hr-title-center {
+  flex: 1;
+  text-align: center;
+  margin: 0 !important;
+}
+
+.hr-header-spacer {
+  width: 120px; /* roughly same width as the back link to balance centering */
+}
+
 .hr-container {
   max-width: 1600px;
   margin: 0 auto;
