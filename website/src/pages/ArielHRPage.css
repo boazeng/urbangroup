@@ -97,6 +97,7 @@
   width: 100%;
   table-layout: fixed;
   border-collapse: collapse;
+  direction: rtl;
 }
 
 .hr-table th,
@@ -119,6 +120,12 @@
 .hr-td-narrow {
   width: 65px;
   max-width: 65px;
+}
+
+/* Wide columns (customer, site) */
+.hr-td-wide {
+  width: 130px;
+  max-width: 130px;
 }
 
 /* Editable cell inputs */
