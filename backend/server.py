@@ -1574,19 +1574,19 @@ def sync_hr_priority():
                 })
             next_url = data.get("@odata.nextLink")
 
-        # 2. Fetch suppliers
-        suppliers = []
-        next_url = f"{url}/SUPPLIERS?$select=SUPNAME,SUPDES&$orderby=SUPNAME&$top=500"
+        # 2. Fetch suppliers (from YINVOICES — unique SUPNAME + CDES pairs)
+        sup_map = {}
+        next_url = f"{url}/YINVOICES?$select=SUPNAME,CDES&$top=500"
         while next_url:
             resp = http_requests.get(next_url, headers=headers, auth=auth, timeout=30)
             resp.raise_for_status()
             data = resp.json()
             for row in data.get("value", []):
-                suppliers.append({
-                    "code": row.get("SUPNAME", ""),
-                    "name": row.get("SUPDES", ""),
-                })
+                code = row.get("SUPNAME", "")
+                if code and code not in sup_map:
+                    sup_map[code] = row.get("CDES", "")
             next_url = data.get("@odata.nextLink")
+        suppliers = [{"code": k, "name": v} for k, v in sorted(sup_map.items())]
 
         return jsonify({
             "ok": True,
