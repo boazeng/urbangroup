@@ -33,8 +33,8 @@ const COL = {
 
 // Visible columns to display — extra: true for overtime columns (hidden by default)
 const DISPLAY_COLS = [
-  { idx: COL.CUSTOMER, label: 'לקוח', type: 'text' },
-  { idx: COL.SITE, label: 'אתר', type: 'text' },
+  { idx: COL.CUSTOMER, label: 'לקוח', type: 'text', narrow: true },
+  { idx: COL.SITE, label: 'אתר', type: 'text', narrow: true },
   { idx: COL.PROFESSION, label: 'מקצוע', type: 'text', narrow: true },
   { idx: COL.TARIFF_TYPE, label: 'סוג תעריף', type: 'text', narrow: true },
   { idx: COL.TARIFF_NOTES, label: 'הערות תעריף', type: 'text', narrow: true },
