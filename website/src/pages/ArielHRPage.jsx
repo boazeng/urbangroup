@@ -76,6 +76,7 @@ export default function ArielHRPage() {
   const [selectedSite, setSelectedSite] = useState('')
   const [showExtra, setShowExtra] = useState(false)
   const [activeOnly, setActiveOnly] = useState(false)
+  const [showAll, setShowAll] = useState(false)
   const [nextNewId, setNextNewId] = useState(1)   // counter for new row temp IDs
 
   useEffect(() => {
@@ -114,23 +115,25 @@ export default function ArielHRPage() {
 
   // Filter rows (use editedRows for display)
   const filteredRows = useMemo(() => {
-    if (!selectedContractor && !selectedCustomer && !selectedSite) return []
+    if (!showAll && !selectedContractor && !selectedCustomer && !selectedSite) return []
 
     return editedRows.filter(row => {
-      const customer = String(row[COL.CUSTOMER] || '').trim()
-      const site = String(row[COL.SITE] || '').trim()
-      const contractor = String(row[COL.CONTRACTOR] || '').trim()
+      if (!showAll) {
+        const customer = String(row[COL.CUSTOMER] || '').trim()
+        const site = String(row[COL.SITE] || '').trim()
+        const contractor = String(row[COL.CONTRACTOR] || '').trim()
 
-      if (selectedContractor && contractor !== selectedContractor) return false
-      if (selectedCustomer && customer !== selectedCustomer) return false
-      if (selectedSite && site !== selectedSite) return false
+        if (selectedContractor && contractor !== selectedContractor) return false
+        if (selectedCustomer && customer !== selectedCustomer) return false
+        if (selectedSite && site !== selectedSite) return false
+      }
       if (activeOnly) {
         const hours = row[COL.HOURS_REG]
         if (hours === null || hours === undefined || hours === '' || hours === 0) return false
       }
       return true
     })
-  }, [editedRows, selectedContractor, selectedCustomer, selectedSite, activeOnly])
+  }, [editedRows, selectedContractor, selectedCustomer, selectedSite, activeOnly, showAll])
 
   // Contractor total (sum of CONT_TOTAL) — only when contractor filter is active
   const contractorTotal = useMemo(() => {
@@ -142,6 +145,48 @@ export default function ArielHRPage() {
     }
     return sum
   }, [filteredRows, selectedContractor])
+
+  // Site summary — group by profession, sum hours and totals
+  const siteSummary = useMemo(() => {
+    if (!selectedSite) return null
+
+    // Get rows for this site (from editedRows, respecting filters except site is already set)
+    const siteRows = editedRows.filter(row => {
+      const site = String(row[COL.SITE] || '').trim()
+      if (site !== selectedSite) return false
+      if (selectedContractor && String(row[COL.CONTRACTOR] || '').trim() !== selectedContractor) return false
+      if (selectedCustomer && String(row[COL.CUSTOMER] || '').trim() !== selectedCustomer) return false
+      return true
+    })
+
+    const byProfession = {}
+    let totalCustomer = 0
+    let totalContractor = 0
+
+    for (const row of siteRows) {
+      const profNum = String(row[COL.PROFESSION_NUM] || '').trim()
+      const profName = String(row[COL.PROFESSION] || '').trim()
+      const key = profNum || profName || 'ללא'
+
+      if (!byProfession[key]) {
+        byProfession[key] = { profNum, profName, hoursReg: 0, hours125: 0, hours150: 0, custTotal: 0, contTotal: 0 }
+      }
+      const p = byProfession[key]
+      p.hoursReg += Number(row[COL.HOURS_REG]) || 0
+      p.hours125 += Number(row[COL.HOURS_125]) || 0
+      p.hours150 += Number(row[COL.HOURS_150]) || 0
+      p.custTotal += Number(row[COL.CUST_TOTAL]) || 0
+      p.contTotal += Number(row[COL.CONT_TOTAL]) || 0
+      totalCustomer += Number(row[COL.CUST_TOTAL]) || 0
+      totalContractor += Number(row[COL.CONT_TOTAL]) || 0
+    }
+
+    return {
+      professions: Object.values(byProfession),
+      totalCustomer,
+      totalContractor,
+    }
+  }, [editedRows, selectedSite, selectedContractor, selectedCustomer])
 
   const clearFilters = () => {
     setSelectedContractor('')
@@ -319,7 +364,7 @@ export default function ArielHRPage() {
     }
   }
 
-  const hasFilter = selectedContractor || selectedCustomer || selectedSite
+  const hasFilter = showAll || selectedContractor || selectedCustomer || selectedSite
   const hasDirty = dirtyKeys.size > 0 || deletedRows.size > 0
 
   return (
@@ -329,6 +374,13 @@ export default function ArielHRPage() {
 
         <h1 className="ariel-title">ניהול כ&quot;א</h1>
         <p className="hr-subtitle">ניהול הצבות באתרים — טבלה ראשית — 2.26</p>
+
+        <button
+          className={`hr-toggle-extra-btn hr-show-all-btn${showAll ? ' hr-toggle-active' : ''}`}
+          onClick={() => setShowAll(v => !v)}
+        >
+          {showAll ? 'חזור לסינון' : 'הצג את כל הטבלה'}
+        </button>
 
         {contractorTotal !== null && (
           <div className="hr-contractor-summary">
@@ -482,6 +534,54 @@ export default function ArielHRPage() {
                     })}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {/* Site summary table */}
+            {siteSummary && (
+              <div className="hr-site-summary">
+                <h3 className="hr-site-summary-title">סיכום אתר: {selectedSite}</h3>
+                <div className="hr-contractor-summary">
+                  <span className="hr-summary-label">סה&quot;כ לקוח:</span>
+                  <span className="hr-summary-value">{siteSummary.totalCustomer.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</span>
+                </div>
+                <div className="ariel-card hr-table-wrapper">
+                  <table className="ariel-table hr-table hr-summary-table">
+                    <thead>
+                      <tr>
+                        <th>מס מקצוע</th>
+                        <th>מקצוע</th>
+                        <th>שעות רגילות</th>
+                        {showExtra && <th>שעות 125%</th>}
+                        {showExtra && <th>שעות 150%</th>}
+                        <th>סה&quot;כ לקוח</th>
+                        <th>סה&quot;כ קבלן</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {siteSummary.professions.map((p, i) => (
+                        <tr key={i}>
+                          <td>{p.profNum}</td>
+                          <td>{p.profName}</td>
+                          <td>{p.hoursReg.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</td>
+                          {showExtra && <td>{p.hours125.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</td>}
+                          {showExtra && <td>{p.hours150.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</td>}
+                          <td>{p.custTotal.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</td>
+                          <td>{p.contTotal.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</td>
+                        </tr>
+                      ))}
+                      <tr className="hr-summary-total-row">
+                        <td></td>
+                        <td><strong>סה&quot;כ</strong></td>
+                        <td><strong>{siteSummary.professions.reduce((s, p) => s + p.hoursReg, 0).toLocaleString('he-IL', { maximumFractionDigits: 2 })}</strong></td>
+                        {showExtra && <td><strong>{siteSummary.professions.reduce((s, p) => s + p.hours125, 0).toLocaleString('he-IL', { maximumFractionDigits: 2 })}</strong></td>}
+                        {showExtra && <td><strong>{siteSummary.professions.reduce((s, p) => s + p.hours150, 0).toLocaleString('he-IL', { maximumFractionDigits: 2 })}</strong></td>}
+                        <td><strong>{siteSummary.totalCustomer.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</strong></td>
+                        <td><strong>{siteSummary.totalContractor.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</strong></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </>

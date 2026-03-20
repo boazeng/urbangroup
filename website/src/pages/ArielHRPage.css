@@ -12,7 +12,11 @@
 .hr-subtitle {
   font-size: var(--font-size-sm);
   color: var(--color-text-light);
-  margin-bottom: 24px;
+  margin-bottom: 12px;
+}
+
+.hr-show-all-btn {
+  margin-bottom: 16px;
 }
 
 /* Contractor summary */
@@ -328,4 +332,30 @@
 .hr-save-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Site summary */
+.hr-site-summary {
+  margin-top: 32px;
+}
+
+.hr-site-summary-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.hr-summary-table {
+  table-layout: auto;
+}
+
+.hr-summary-table th,
+.hr-summary-table td {
+  padding: 8px 12px;
+  text-align: right;
+}
+
+.hr-summary-total-row {
+  border-top: 2px solid var(--color-border, #e5e7eb);
+  background: #f9fafb;
 }
