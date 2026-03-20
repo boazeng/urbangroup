@@ -1434,7 +1434,17 @@ def save_hr_changes():
             )
             updated += 1
 
-        # 2. Append new rows — find next empty row after current data
+        # 2. Delete rows — clear content in Excel
+        delete_rows = body.get("deleteRows", [])
+        for row_num in delete_rows:
+            cell_range = f"A{row_num}:V{row_num}"
+            empty_row = [[''] * 22]
+            sp.write_excel_range(
+                excel.drive_id, excel.item_id,
+                sheet, cell_range, empty_row
+            )
+
+        # 3. Append new rows — find next empty row after current data
         new_row_indices = []
         if new_rows:
             # Read current data extent to find the next empty row

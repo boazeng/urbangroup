@@ -67,6 +67,7 @@ export default function ArielHRPage() {
   const [allRows, setAllRows] = useState([])       // original data from server
   const [editedRows, setEditedRows] = useState([])  // working copy with edits
   const [dirtyKeys, setDirtyKeys] = useState(new Set()) // "excelRow:colIdx" keys
+  const [deletedRows, setDeletedRows] = useState(new Set()) // ROW_INDEX values marked for deletion
   const [filters, setFilters] = useState({
     customers: [], sites: [], contractors: [], customer_sites: {}
   })
@@ -220,6 +221,19 @@ export default function ArielHRPage() {
     setDirtyKeys(prev => new Set([...prev, ...dirtyNew]))
   }, [editedRows, nextNewId])
 
+  // Mark row for deletion (toggle)
+  const handleDeleteRow = useCallback((excelRow) => {
+    setDeletedRows(prev => {
+      const next = new Set(prev)
+      if (next.has(excelRow)) {
+        next.delete(excelRow)
+      } else {
+        next.add(excelRow)
+      }
+      return next
+    })
+  }, [])
+
   // Save changes
   const handleSave = async () => {
     if (dirtyKeys.size === 0) return
@@ -258,11 +272,19 @@ export default function ArielHRPage() {
       }
     }
 
+    // Collect deleted row indices (only real Excel rows, not new ones)
+    const deleteRowIndices = []
+    for (const rowId of deletedRows) {
+      if (typeof rowId === 'number') {
+        deleteRowIndices.push(rowId)
+      }
+    }
+
     try {
       const resp = await fetch(`${API_BASE}/api/hr/save-changes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sheet: '2.26', changes, newRows }),
+        body: JSON.stringify({ sheet: '2.26', changes, newRows, deleteRows: deleteRowIndices }),
       })
       const data = await resp.json()
       if (data.ok) {
@@ -279,8 +301,13 @@ export default function ArielHRPage() {
             return r
           }))
         }
-        setAllRows(editedRows.map(r => [...r]))
+        // Remove deleted rows from state
+        if (deletedRows.size > 0) {
+          setEditedRows(prev => prev.filter(r => !deletedRows.has(r[COL.ROW_INDEX])))
+        }
+        setAllRows(editedRows.filter(r => !deletedRows.has(r[COL.ROW_INDEX])).map(r => [...r]))
         setDirtyKeys(new Set())
+        setDeletedRows(new Set())
       } else {
         setError(data.error || 'שגיאה בשמירה')
       }
@@ -292,7 +319,7 @@ export default function ArielHRPage() {
   }
 
   const hasFilter = selectedContractor || selectedCustomer || selectedSite
-  const hasDirty = dirtyKeys.size > 0
+  const hasDirty = dirtyKeys.size > 0 || deletedRows.size > 0
 
   return (
     <div className="ariel-page hr-page">
@@ -427,11 +454,13 @@ export default function ArielHRPage() {
                   <tbody>
                     {filteredRows.map((row, i) => {
                       const excelRow = row[COL.ROW_INDEX]
+                      const isDeleted = deletedRows.has(excelRow)
                       return (
-                        <tr key={excelRow}>
+                        <tr key={excelRow} className={isDeleted ? 'hr-row-deleted' : ''}>
                           <td className="ariel-num hr-td-row-num">
-                            <span>{i + 1}</span>
                             <button className="hr-add-row-btn" onClick={() => handleDuplicateRow(excelRow)} title="שכפל שורה">+</button>
+                            <span>{i + 1}</span>
+                            <button className="hr-delete-row-btn" onClick={() => handleDeleteRow(excelRow)} title={isDeleted ? 'בטל מחיקה' : 'מחק שורה'}>&#128465;</button>
                           </td>
                           {visibleCols.map(col => {
                             const key = `${excelRow}:${col.idx}`

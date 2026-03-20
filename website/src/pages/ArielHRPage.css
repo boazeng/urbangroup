@@ -168,33 +168,73 @@
 
 /* Row number column */
 .hr-td-row-num {
-  width: 45px;
-  max-width: 45px;
-  position: relative;
+  width: 60px;
+  max-width: 60px;
+  white-space: nowrap !important;
 }
 
-.hr-add-row-btn {
+.hr-add-row-btn,
+.hr-delete-row-btn {
   display: inline-block;
-  width: 16px;
-  height: 16px;
-  line-height: 14px;
+  width: 15px;
+  height: 15px;
+  line-height: 13px;
   text-align: center;
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 700;
-  color: #16a34a;
   background: none;
-  border: 1px solid #16a34a;
+  border: 1px solid;
   border-radius: 50%;
   cursor: pointer;
   padding: 0;
-  margin-right: 2px;
-  opacity: 0.4;
+  opacity: 0.3;
   transition: opacity 0.2s;
+  vertical-align: middle;
+}
+
+.hr-add-row-btn {
+  color: #16a34a;
+  border-color: #16a34a;
+  margin-left: 2px;
 }
 
 .hr-add-row-btn:hover {
   opacity: 1;
   background: #16a34a;
+  color: #fff;
+}
+
+.hr-delete-row-btn {
+  color: #dc2626;
+  border-color: #dc2626;
+  margin-right: 2px;
+  font-size: 9px;
+}
+
+.hr-delete-row-btn:hover {
+  opacity: 1;
+  background: #dc2626;
+  color: #fff;
+}
+
+/* Deleted row — red background */
+.hr-row-deleted {
+  background: #fef2f2 !important;
+}
+
+.hr-row-deleted td {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.hr-row-deleted .hr-cell-input {
+  color: #dc2626 !important;
+  text-decoration: line-through;
+}
+
+.hr-row-deleted .hr-delete-row-btn {
+  opacity: 1;
+  background: #dc2626;
   color: #fff;
 }
 
