@@ -221,13 +221,34 @@ export default function ArielHRPage() {
     [showExtra]
   )
 
+  // Columns that trigger auto-recalculation
+  const HOURS_COLS = new Set([COL.HOURS_REG, COL.HOURS_125, COL.HOURS_150])
+  const CUST_RATE_COLS = new Set([COL.CUST_RATE, COL.CUST_125, COL.CUST_150])
+  const CONT_RATE_COLS = new Set([COL.CONT_RATE, COL.CONT_125, COL.CONT_150])
+
+  function recalcRow(row) {
+    const hrs = Number(row[COL.HOURS_REG]) || 0
+    const hrs125 = Number(row[COL.HOURS_125]) || 0
+    const hrs150 = Number(row[COL.HOURS_150]) || 0
+    row[COL.CUST_TOTAL] = (hrs * (Number(row[COL.CUST_RATE]) || 0))
+      + (hrs125 * (Number(row[COL.CUST_125]) || 0))
+      + (hrs150 * (Number(row[COL.CUST_150]) || 0))
+    row[COL.CONT_TOTAL] = (hrs * (Number(row[COL.CONT_RATE]) || 0))
+      + (hrs125 * (Number(row[COL.CONT_125]) || 0))
+      + (hrs150 * (Number(row[COL.CONT_150]) || 0))
+    row[COL.GAP] = row[COL.CUST_TOTAL] - row[COL.CONT_TOTAL]
+  }
+
   // Handle cell edit
   const handleCellChange = useCallback((excelRow, colIdx, value) => {
+    const needsRecalc = HOURS_COLS.has(colIdx) || CUST_RATE_COLS.has(colIdx) || CONT_RATE_COLS.has(colIdx)
+
     setEditedRows(prev => {
       const next = prev.map(r => {
         if (r[COL.ROW_INDEX] === excelRow) {
           const copy = [...r]
           copy[colIdx] = value
+          if (needsRecalc) recalcRow(copy)
           return copy
         }
         return r
@@ -235,7 +256,7 @@ export default function ArielHRPage() {
       return next
     })
 
-    // Find original value
+    // Find original value and mark dirty cells
     const origRow = allRows.find(r => r[COL.ROW_INDEX] === excelRow)
     const origVal = cellVal(origRow ? origRow[colIdx] : '')
     const key = `${excelRow}:${colIdx}`
@@ -246,6 +267,12 @@ export default function ArielHRPage() {
         next.add(key)
       } else {
         next.delete(key)
+      }
+      // Mark calculated fields as dirty too
+      if (needsRecalc) {
+        next.add(`${excelRow}:${COL.CUST_TOTAL}`)
+        next.add(`${excelRow}:${COL.CONT_TOTAL}`)
+        next.add(`${excelRow}:${COL.GAP}`)
       }
       return next
     })
