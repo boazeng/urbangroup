@@ -1348,10 +1348,12 @@ def get_hr_sheet_data():
         headers = rows[0]
 
         # Data rows: skip header, filter out empty rows
+        # Include original Excel row index (header is row 37, first data row is 38)
         data_rows = []
-        for row in rows[1:]:
+        for i, row in enumerate(rows[1:], start=38):
             # Row must have at least customer (col C=idx 2) or site (col D=idx 3)
             if row[2] or row[3]:
+                row.append(i)  # append Excel row number as last element
                 data_rows.append(row)
 
         # Build unique filter values
@@ -1393,6 +1395,48 @@ def get_hr_sheets():
         sheets = excel.sheets()
         return jsonify({"ok": True, "sheets": sheets})
     except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/hr/save-changes", methods=["POST"])
+def save_hr_changes():
+    """Save changed cells back to the HR Excel file on SharePoint.
+
+    Body JSON:
+        sheet: sheet name (e.g. '2.26')
+        changes: list of {row: int, col: int, value: any}
+            row = Excel row number (38+), col = 0-based column index (A=0)
+    """
+    body = request.get_json(force=True)
+    sheet = body.get("sheet", "2.26")
+    changes = body.get("changes", [])
+    if not changes:
+        return jsonify({"ok": True, "updated": 0})
+
+    try:
+        sp = _get_sp_connector()
+        excel = sp.SharePointExcel(HR_SHARE_URL)
+
+        # Group changes by row to minimize API calls
+        # Write each cell individually (Graph API requires rectangular ranges)
+        updated = 0
+        for ch in changes:
+            row_num = ch["row"]   # Excel row number
+            col_idx = ch["col"]   # 0-based column index
+            value = ch["value"]
+
+            # Convert column index to letter (A=0, B=1, ... V=21)
+            col_letter = chr(65 + col_idx)
+            cell = f"{col_letter}{row_num}"
+            sp.write_excel_range(
+                excel.drive_id, excel.item_id,
+                sheet, cell, [[value]]
+            )
+            updated += 1
+
+        return jsonify({"ok": True, "updated": updated})
+    except Exception as e:
+        logger.error(f"HR save failed: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
 

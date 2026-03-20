@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import './ArielPage.css'
 import './ArielHRPage.css'
@@ -28,6 +28,7 @@ const COL = {
   CONT_150: 19,   // T - קבלן תעריף 150%
   CONT_TOTAL: 20, // U - סהכ תשלום לקבלן
   GAP: 21,        // V - פער
+  ROW_INDEX: 22,  // appended by backend — original Excel row number
 }
 
 // Visible columns to display
@@ -53,17 +54,18 @@ const DISPLAY_COLS = [
   { idx: COL.GAP, label: 'פער', type: 'num' },
 ]
 
-function formatNum(v) {
-  if (v === null || v === undefined || v === '') return ''
-  const n = Number(v)
-  if (isNaN(n)) return String(v)
-  return n.toLocaleString('he-IL', { maximumFractionDigits: 2 })
+function cellVal(v) {
+  if (v === null || v === undefined) return ''
+  return String(v)
 }
 
 export default function ArielHRPage() {
   const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [allRows, setAllRows] = useState([])
+  const [allRows, setAllRows] = useState([])       // original data from server
+  const [editedRows, setEditedRows] = useState([])  // working copy with edits
+  const [dirtyKeys, setDirtyKeys] = useState(new Set()) // "excelRow:colIdx" keys
   const [filters, setFilters] = useState({
     customers: [], sites: [], contractors: [], customer_sites: {}
   })
@@ -79,7 +81,9 @@ export default function ArielHRPage() {
       .then(data => {
         if (data.ok) {
           setAllRows(data.rows)
+          setEditedRows(data.rows.map(r => [...r]))
           setFilters(data.filters)
+          setDirtyKeys(new Set())
         } else {
           setError(data.error || 'שגיאה בטעינה')
         }
@@ -103,12 +107,11 @@ export default function ArielHRPage() {
     }
   }, [availableSites, selectedSite])
 
-  // Filter rows
+  // Filter rows (use editedRows for display)
   const filteredRows = useMemo(() => {
-    // If nothing selected, show empty table
     if (!selectedContractor && !selectedCustomer && !selectedSite) return []
 
-    return allRows.filter(row => {
+    return editedRows.filter(row => {
       const customer = String(row[COL.CUSTOMER] || '').trim()
       const site = String(row[COL.SITE] || '').trim()
       const contractor = String(row[COL.CONTRACTOR] || '').trim()
@@ -118,7 +121,7 @@ export default function ArielHRPage() {
       if (selectedSite && site !== selectedSite) return false
       return true
     })
-  }, [allRows, selectedContractor, selectedCustomer, selectedSite])
+  }, [editedRows, selectedContractor, selectedCustomer, selectedSite])
 
   const clearFilters = () => {
     setSelectedContractor('')
@@ -126,7 +129,76 @@ export default function ArielHRPage() {
     setSelectedSite('')
   }
 
+  // Handle cell edit
+  const handleCellChange = useCallback((excelRow, colIdx, value) => {
+    setEditedRows(prev => {
+      const next = prev.map(r => {
+        if (r[COL.ROW_INDEX] === excelRow) {
+          const copy = [...r]
+          copy[colIdx] = value
+          return copy
+        }
+        return r
+      })
+      return next
+    })
+
+    // Find original value
+    const origRow = allRows.find(r => r[COL.ROW_INDEX] === excelRow)
+    const origVal = cellVal(origRow ? origRow[colIdx] : '')
+    const key = `${excelRow}:${colIdx}`
+
+    setDirtyKeys(prev => {
+      const next = new Set(prev)
+      if (cellVal(value) !== origVal) {
+        next.add(key)
+      } else {
+        next.delete(key)
+      }
+      return next
+    })
+  }, [allRows])
+
+  // Save changes
+  const handleSave = async () => {
+    if (dirtyKeys.size === 0) return
+    setSaving(true)
+    setError('')
+
+    const changes = []
+    for (const key of dirtyKeys) {
+      const [rowStr, colStr] = key.split(':')
+      const excelRow = Number(rowStr)
+      const colIdx = Number(colStr)
+      const editedRow = editedRows.find(r => r[COL.ROW_INDEX] === excelRow)
+      if (editedRow) {
+        changes.push({ row: excelRow, col: colIdx, value: editedRow[colIdx] ?? '' })
+      }
+    }
+
+    try {
+      const resp = await fetch(`${API_BASE}/api/hr/save-changes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sheet: '2.26', changes }),
+      })
+      const data = await resp.json()
+      if (data.ok) {
+        // Update allRows to match editedRows (so they're no longer "dirty")
+        setAllRows(editedRows.map(r => [...r]))
+        setDirtyKeys(new Set())
+      } else {
+        setError(data.error || 'שגיאה בשמירה')
+      }
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const hasFilter = selectedContractor || selectedCustomer || selectedSite
+  const hasDirty = dirtyKeys.size > 0
 
   return (
     <div className="ariel-page hr-page">
@@ -145,7 +217,7 @@ export default function ArielHRPage() {
           </div>
         ) : (
           <>
-            {/* Filters */}
+            {/* Filters + Save */}
             <div className="hr-filters">
               <div className="hr-filter-group">
                 <label className="hr-filter-label">קבלן</label>
@@ -198,6 +270,16 @@ export default function ArielHRPage() {
               {hasFilter && (
                 <span className="hr-row-count">{filteredRows.length} שורות</span>
               )}
+
+              {hasDirty && (
+                <button
+                  className="hr-save-btn"
+                  onClick={handleSave}
+                  disabled={saving}
+                >
+                  {saving ? 'שומר...' : `שמור שינויים (${dirtyKeys.size})`}
+                </button>
+              )}
             </div>
 
             {/* Table */}
@@ -219,16 +301,28 @@ export default function ArielHRPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredRows.map((row, i) => (
-                      <tr key={i}>
-                        <td className="ariel-num">{i + 1}</td>
-                        {DISPLAY_COLS.map(col => (
-                          <td key={col.idx} className={col.type === 'num' ? 'ariel-num' : ''}>
-                            {col.type === 'num' ? formatNum(row[col.idx]) : (row[col.idx] || '')}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
+                    {filteredRows.map((row, i) => {
+                      const excelRow = row[COL.ROW_INDEX]
+                      return (
+                        <tr key={excelRow}>
+                          <td className="ariel-num">{i + 1}</td>
+                          {DISPLAY_COLS.map(col => {
+                            const key = `${excelRow}:${col.idx}`
+                            const isDirty = dirtyKeys.has(key)
+                            return (
+                              <td key={col.idx} className={col.type === 'num' ? 'ariel-num' : ''}>
+                                <input
+                                  className={`hr-cell-input${isDirty ? ' hr-cell-dirty' : ''}`}
+                                  type="text"
+                                  value={cellVal(row[col.idx])}
+                                  onChange={e => handleCellChange(excelRow, col.idx, e.target.value)}
+                                />
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
