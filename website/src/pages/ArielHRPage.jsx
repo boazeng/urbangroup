@@ -307,7 +307,7 @@ export default function ArielHRPage() {
                 <table className="ariel-table hr-table">
                   <thead>
                     <tr>
-                      <th>#</th>
+                      <th className="hr-td-row-num">#</th>
                       {visibleCols.map(col => (
                         <th key={col.idx} className={`${col.type === 'num' ? 'ariel-num' : ''}${col.narrow ? ' hr-td-narrow' : ''}${col.wide ? ' hr-td-wide' : ''}`}>
                           {col.label}
@@ -320,7 +320,7 @@ export default function ArielHRPage() {
                       const excelRow = row[COL.ROW_INDEX]
                       return (
                         <tr key={excelRow}>
-                          <td className="ariel-num">{i + 1}</td>
+                          <td className="ariel-num hr-td-row-num">{i + 1}</td>
                           {visibleCols.map(col => {
                             const key = `${excelRow}:${col.idx}`
                             const isDirty = dirtyKeys.has(key)
