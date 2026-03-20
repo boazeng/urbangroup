@@ -17,6 +17,19 @@
 }
 
 /* Sheet (month) selector in header */
+.hr-sheet-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hr-sheet-label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-light);
+  white-space: nowrap;
+}
+
 .hr-sheet-select {
   padding: 6px 12px;
   border: 1px solid var(--color-border);

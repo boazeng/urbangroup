@@ -463,30 +463,19 @@ export default function ArielHRPage() {
         <div className="hr-header-row">
           <Link to="/ariel" className="ariel-back">&rarr; חזרה לאריאל</Link>
           <h1 className="ariel-title hr-title-center">ניהול כ&quot;א חברת אריאל</h1>
-          <select
-            className="hr-sheet-select"
-            value={selectedSheet}
-            onChange={e => setSelectedSheet(e.target.value)}
-          >
-            {availableSheets.length > 0
-              ? availableSheets.map(s => <option key={s} value={s}>{s}</option>)
-              : <option value={selectedSheet}>{selectedSheet}</option>
-            }
-          </select>
-        </div>
-        <p className="hr-subtitle">ניהול הצבות באתרים — טבלה ראשית — {selectedSheet}</p>
-
-        <div className="hr-top-actions">
-          <button className="hr-refresh-btn" onClick={loadData} disabled={loading}>
-            {loading ? 'טוען...' : 'רענן'}
-          </button>
-
-          <button
-            className={`hr-toggle-extra-btn hr-show-all-btn${showAll ? ' hr-toggle-active' : ''}`}
-            onClick={() => setShowAll(v => !v)}
-          >
-            {showAll ? 'חזור לסינון' : 'הצג את כל הטבלה'}
-          </button>
+          <div className="hr-sheet-group">
+            <span className="hr-sheet-label">חודש עבודה:</span>
+            <select
+              className="hr-sheet-select"
+              value={selectedSheet}
+              onChange={e => setSelectedSheet(e.target.value)}
+            >
+              {availableSheets.length > 0
+                ? availableSheets.map(s => <option key={s} value={s}>{s}</option>)
+                : <option value={selectedSheet}>{selectedSheet}</option>
+              }
+            </select>
+          </div>
         </div>
 
         {editedRows.length > 0 && (
@@ -513,6 +502,18 @@ export default function ArielHRPage() {
             })}
           </div>
         )}
+
+        <div className="hr-top-actions">
+          <button className="hr-refresh-btn" onClick={loadData} disabled={loading}>
+            {loading ? 'טוען...' : 'רענן'}
+          </button>
+          <button
+            className={`hr-toggle-extra-btn hr-show-all-btn${showAll ? ' hr-toggle-active' : ''}`}
+            onClick={() => setShowAll(v => !v)}
+          >
+            {showAll ? 'חזור לסינון' : 'הצג את כל הטבלה'}
+          </button>
+        </div>
 
         {contractorTotal !== null && (
           <div className="hr-contractor-summary">
