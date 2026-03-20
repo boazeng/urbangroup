@@ -186,40 +186,41 @@ export default function ArielHRPage() {
   }, [allRows])
 
   // Duplicate row with empty hours
-  const handleDuplicateRow = useCallback((excelRow) => {
-    const sourceRow = editedRows.find(r => r[COL.ROW_INDEX] === excelRow)
-    if (!sourceRow) return
-
-    const newRow = [...sourceRow]
-    const tempId = `new_${nextNewId}`
-    setNextNewId(v => v + 1)
-
-    // Clear hours fields
-    newRow[COL.HOURS_REG] = ''
-    newRow[COL.HOURS_125] = ''
-    newRow[COL.HOURS_150] = ''
-    newRow[COL.CUST_TOTAL] = ''
-    newRow[COL.CONT_TOTAL] = ''
-    newRow[COL.GAP] = ''
-    newRow[COL.ROW_INDEX] = tempId  // temporary ID
-
-    // Insert right after the source row
+  const handleDuplicateRow = (excelRow) => {
     setEditedRows(prev => {
+      const sourceRow = prev.find(r => r[COL.ROW_INDEX] === excelRow)
+      if (!sourceRow) return prev
+
+      const newRow = [...sourceRow]
+      const tempId = `new_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+
+      // Clear hours fields
+      newRow[COL.HOURS_REG] = ''
+      newRow[COL.HOURS_125] = ''
+      newRow[COL.HOURS_150] = ''
+      newRow[COL.CUST_TOTAL] = ''
+      newRow[COL.CONT_TOTAL] = ''
+      newRow[COL.GAP] = ''
+      newRow[COL.ROW_INDEX] = tempId
+
       const idx = prev.findIndex(r => r[COL.ROW_INDEX] === excelRow)
       const next = [...prev]
       next.splice(idx + 1, 0, newRow)
+
+      // Mark non-empty cells as dirty (schedule after state update)
+      const dirtyNew = new Set()
+      for (const col of DISPLAY_COLS) {
+        if (newRow[col.idx] !== '' && newRow[col.idx] !== null && newRow[col.idx] !== undefined) {
+          dirtyNew.add(`${tempId}:${col.idx}`)
+        }
+      }
+      setTimeout(() => setDirtyKeys(p => new Set([...p, ...dirtyNew])), 0)
+
       return next
     })
-
-    // Mark all non-empty cells as dirty
-    const dirtyNew = new Set()
-    for (const col of DISPLAY_COLS) {
-      if (newRow[col.idx] !== '' && newRow[col.idx] !== null && newRow[col.idx] !== undefined) {
-        dirtyNew.add(`${tempId}:${col.idx}`)
-      }
-    }
-    setDirtyKeys(prev => new Set([...prev, ...dirtyNew]))
-  }, [editedRows, nextNewId])
+    // Turn off activeOnly so new row is visible
+    if (activeOnly) setActiveOnly(false)
+  }
 
   // Mark row for deletion (toggle)
   const handleDeleteRow = useCallback((excelRow) => {
