@@ -59,6 +59,19 @@
   padding: 8px 16px;
   border-radius: var(--radius-sm);
   border: 1px solid;
+  cursor: grab;
+  user-select: none;
+  transition: transform 0.15s, opacity 0.15s, box-shadow 0.15s;
+}
+
+.hr-grand-total-item:active {
+  cursor: grabbing;
+}
+
+.hr-total-dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 .hr-total-income {

@@ -79,6 +79,16 @@ export default function ArielHRPage() {
   const [showAll, setShowAll] = useState(false)
   const [nextNewId, setNextNewId] = useState(1)   // counter for new row temp IDs
 
+  // Draggable grand totals order
+  const [totalsOrder, setTotalsOrder] = useState(() => {
+    try {
+      const saved = localStorage.getItem('hr-totals-order')
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return ['income', 'expense', 'gap']
+  })
+  const [dragItem, setDragItem] = useState(null)
+
   const loadData = () => {
     setLoading(true)
     setError('')
@@ -159,6 +169,25 @@ export default function ArielHRPage() {
     }
     return { custTotal, contTotal, gap: custTotal - contTotal }
   }, [editedRows])
+
+  // Drag handlers for grand totals reordering
+  const handleTotalDragStart = (key) => setDragItem(key)
+  const handleTotalDragOver = (e, key) => {
+    e.preventDefault()
+    if (!dragItem || dragItem === key) return
+    setTotalsOrder(prev => {
+      const next = [...prev]
+      const fromIdx = next.indexOf(dragItem)
+      const toIdx = next.indexOf(key)
+      next.splice(fromIdx, 1)
+      next.splice(toIdx, 0, dragItem)
+      return next
+    })
+  }
+  const handleTotalDragEnd = () => {
+    setDragItem(null)
+    localStorage.setItem('hr-totals-order', JSON.stringify(totalsOrder))
+  }
 
   // Site summary — group by profession, sum hours and totals
   const siteSummary = useMemo(() => {
@@ -438,18 +467,26 @@ export default function ArielHRPage() {
 
         {editedRows.length > 0 && (
           <div className="hr-grand-totals">
-            <div className="hr-grand-total-item hr-total-income">
-              <span className="hr-grand-total-label">סה&quot;כ הכנסות מלקוחות:</span>
-              <span className="hr-grand-total-value">{grandTotals.custTotal.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</span>
-            </div>
-            <div className="hr-grand-total-item hr-total-expense">
-              <span className="hr-grand-total-label">סה&quot;כ הוצאות לקבלנים:</span>
-              <span className="hr-grand-total-value">{grandTotals.contTotal.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</span>
-            </div>
-            <div className="hr-grand-total-item hr-total-gap">
-              <span className="hr-grand-total-label">פער (רווח):</span>
-              <span className="hr-grand-total-value">{grandTotals.gap.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</span>
-            </div>
+            {totalsOrder.map(key => {
+              const cfg = {
+                income:  { cls: 'hr-total-income',  label: 'סה"כ הכנסות מלקוחות:', value: grandTotals.custTotal },
+                expense: { cls: 'hr-total-expense', label: 'סה"כ הוצאות לקבלנים:', value: grandTotals.contTotal },
+                gap:     { cls: 'hr-total-gap',     label: 'פער (רווח):',          value: grandTotals.gap },
+              }[key]
+              return (
+                <div
+                  key={key}
+                  className={`hr-grand-total-item ${cfg.cls}${dragItem === key ? ' hr-total-dragging' : ''}`}
+                  draggable
+                  onDragStart={() => handleTotalDragStart(key)}
+                  onDragOver={(e) => handleTotalDragOver(e, key)}
+                  onDragEnd={handleTotalDragEnd}
+                >
+                  <span className="hr-grand-total-label">{cfg.label}</span>
+                  <span className="hr-grand-total-value">{cfg.value.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</span>
+                </div>
+              )
+            })}
           </div>
         )}
 
