@@ -1327,6 +1327,49 @@ def _get_sp_connector():
 
 HR_SHARE_URL = "https://yaelisrael.sharepoint.com/:x:/g/Realestateproject/IQCk9K_jvlY-S6n0U3Wls4rTAQDvNEL8m9GIHU16NXW-37E"
 
+# Known header markers for the main table (column C and D)
+_HR_HEADER_MARKERS = {"לקוח", "אתר"}
+
+
+def _find_main_table(all_rows):
+    """Find header row index and last data row index in the sheet.
+
+    Args:
+        all_rows: 2D list of all cell values (from row 1 onward)
+
+    Returns:
+        (header_idx, last_data_idx) — 0-based indices into all_rows,
+        or (None, None) if not found.
+    """
+    header_idx = None
+    for i, row in enumerate(all_rows):
+        # Header row has "לקוח" in col C (idx 2) and "אתר" in col D (idx 3)
+        c2 = str(row[2]).strip() if len(row) > 2 and row[2] else ""
+        c3 = str(row[3]).strip() if len(row) > 3 and row[3] else ""
+        if c2 in _HR_HEADER_MARKERS and c3 in _HR_HEADER_MARKERS:
+            header_idx = i
+            break
+
+    if header_idx is None:
+        return None, None
+
+    # Find last data row: scan from header+1 until we hit several consecutive empty rows
+    last_data_idx = header_idx
+    empty_streak = 0
+    for i in range(header_idx + 1, len(all_rows)):
+        row = all_rows[i]
+        has_data = any(cell for cell in row[:22] if cell is not None and str(cell).strip())
+        if has_data:
+            last_data_idx = i
+            empty_streak = 0
+        else:
+            empty_streak += 1
+            if empty_streak >= 5:
+                break
+
+    return header_idx, last_data_idx
+
+
 @app.route("/api/hr/sheet-data", methods=["GET"])
 def get_hr_sheet_data():
     """Read main table from the HR Excel file on SharePoint.
@@ -1339,21 +1382,28 @@ def get_hr_sheet_data():
         sp = _get_sp_connector()
         excel = sp.SharePointExcel(HR_SHARE_URL)
 
-        # Main table starts at row 37 (header) in columns A-V
-        data = excel.read(sheet, "A37:V508")
-        rows = data["values"]
-        if not rows:
+        # Read a wide range and auto-detect the main table
+        data = excel.read(sheet, "A1:V1000")
+        all_rows = data["values"]
+        if not all_rows:
             return jsonify({"ok": True, "headers": [], "rows": [], "filters": {}})
 
-        headers = rows[0]
+        header_idx, last_data_idx = _find_main_table(all_rows)
+        if header_idx is None:
+            return jsonify({"ok": False, "error": "לא נמצאה טבלה ראשית בגיליון"})
 
-        # Data rows: skip header, filter out empty rows
-        # Include original Excel row index (header is row 37, first data row is 38)
+        # header_idx is 0-based in all_rows; Excel row = header_idx + 1
+        header_excel_row = header_idx + 1
+        headers = all_rows[header_idx]
+
+        # Data rows: from header+1 to last_data_idx
         data_rows = []
-        for i, row in enumerate(rows[1:], start=38):
+        for i in range(header_idx + 1, last_data_idx + 1):
+            row = all_rows[i]
+            excel_row = i + 1  # Excel row number (1-based)
             # Row must have at least customer (col C=idx 2) or site (col D=idx 3)
             if row[2] or row[3]:
-                row.append(i)  # append Excel row number as last element
+                row.append(excel_row)  # append Excel row number as last element
                 data_rows.append(row)
 
         # Build unique filter values
@@ -1447,15 +1497,12 @@ def save_hr_changes():
         # 3. Append new rows — find next empty row after current data
         new_row_indices = []
         if new_rows:
-            # Read current data extent to find the next empty row
-            data = excel.read(sheet, "A37:V508")
-            existing_rows = data.get("values", [])
-            # Find last non-empty row (header at index 0 = row 37)
-            last_data_row = 37  # header row
-            for i, row in enumerate(existing_rows):
-                if any(cell for cell in row[:22]):
-                    last_data_row = 37 + i
-            next_row = last_data_row + 1
+            # Read sheet and auto-detect table extent
+            data = excel.read(sheet, "A1:V1000")
+            all_rows = data.get("values", [])
+            header_idx, last_data_idx = _find_main_table(all_rows)
+            # Next row after last data row (Excel row = index + 1)
+            next_row = (last_data_idx + 1 if last_data_idx is not None else len(all_rows)) + 1
 
             for row_data in new_rows:
                 # Pad to 22 columns if needed
