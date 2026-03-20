@@ -279,6 +279,12 @@ export default function ArielHRPage() {
               </div>
 
               {hasFilter && (
+                <button className="hr-clear-btn" onClick={clearFilters}>
+                  נקה סינון
+                </button>
+              )}
+
+              {hasFilter && (
                 <span className="hr-row-count">{filteredRows.length} שורות</span>
               )}
 

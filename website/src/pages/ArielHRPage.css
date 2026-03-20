@@ -55,6 +55,24 @@
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
 }
 
+.hr-clear-btn {
+  padding: 8px 16px;
+  border: 1px solid #e53e3e;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: #e53e3e;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.hr-clear-btn:hover {
+  background: #e53e3e;
+  color: #fff;
+}
+
 /* Trash icon to clear individual filter */
 .hr-filter-clear-icon {
   background: none;
@@ -107,7 +125,7 @@
 
 /* Override ariel-num left alignment for RTL table */
 .hr-table .ariel-num {
-  text-align: right;
+  text-align: right !important;
   font-family: inherit;
 }
 
