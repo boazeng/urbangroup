@@ -763,6 +763,17 @@ export default function ArielHRPage() {
                                   type="text"
                                   value={cellVal(row[col.idx])}
                                   onChange={e => handleCellChange(excelRow, col.idx, e.target.value)}
+                                  onKeyDown={e => {
+                                    if (e.key === 'F10') {
+                                      e.preventDefault()
+                                      const rowIdx = filteredRows.indexOf(row)
+                                      if (rowIdx > 0) {
+                                        const aboveRow = filteredRows[rowIdx - 1]
+                                        const aboveVal = cellVal(aboveRow[col.idx])
+                                        handleCellChange(excelRow, col.idx, aboveVal)
+                                      }
+                                    }
+                                  }}
                                 />
                               </td>
                             )
