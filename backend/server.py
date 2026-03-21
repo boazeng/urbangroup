@@ -1588,14 +1588,21 @@ def get_hr_customers():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
-PARTS_CACHE_FILE = Path(__file__).resolve().parent.parent / "output" / "hr_parts_cache.json"
+_is_lambda = os.environ.get("IS_LAMBDA") == "true"
+PARTS_CACHE_FILE = Path("/tmp/hr_parts_cache.json") if _is_lambda else \
+    Path(__file__).resolve().parent.parent / "output" / "hr_parts_cache.json"
 
 
 def _fetch_parts_from_priority():
     """Run read-parts.js and return parts list."""
     import subprocess
-    script = Path(__file__).resolve().parent.parent / "agents" / "specific-mission-agents" / \
-        "priority-specific-agents" / "900-parts" / "read-parts.js"
+    if _is_lambda:
+        script = Path("/var/task/agents/specific-mission-agents/priority-specific-agents/900-parts/read-parts.js")
+    else:
+        script = Path(__file__).resolve().parent.parent / "agents" / "specific-mission-agents" / \
+            "priority-specific-agents" / "900-parts" / "read-parts.js"
+    if not script.exists():
+        raise Exception(f"Script not found: {script}")
     result = subprocess.run(
         ["node", str(script)],
         capture_output=True, text=True, timeout=60,
@@ -1626,15 +1633,18 @@ def _load_parts_cache():
 
 @app.route("/api/hr/parts", methods=["GET"])
 def get_hr_parts():
-    """Return cached parts list. If no cache exists, fetch from Priority."""
+    """Return cached parts list. If no cache, try to fetch from Priority."""
     try:
         cache = _load_parts_cache()
         if cache:
             return jsonify({"ok": True, "parts": cache["parts"], "syncedAt": cache.get("syncedAt", "")})
-        # No cache — fetch live
-        parts = _fetch_parts_from_priority()
-        _save_parts_cache(parts)
-        return jsonify({"ok": True, "parts": parts})
+        # No cache — try fetch live
+        try:
+            parts = _fetch_parts_from_priority()
+            _save_parts_cache(parts)
+            return jsonify({"ok": True, "parts": parts})
+        except Exception:
+            return jsonify({"ok": False, "error": "אין נתונים — יש לבצע סנכרון עם פריורטי קודם"}), 200
     except Exception as e:
         logger.error(f"HR parts fetch failed: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
