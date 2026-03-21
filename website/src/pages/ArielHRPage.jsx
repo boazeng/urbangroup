@@ -35,7 +35,7 @@ const COL = {
 // Visible columns to display — extra: true for overtime columns (hidden by default)
 const DISPLAY_COLS = [
   { idx: COL.TRACKING, label: 'מעקב', type: 'num', tracking: true },
-  { idx: COL.PRIORITY_NUM, label: 'מס פריורטי', type: 'text', xnarrow: true },
+  { idx: COL.PRIORITY_NUM, label: 'מס פריורטי', type: 'text', narrow: true },
   { idx: COL.CUSTOMER, label: 'לקוח', type: 'text', wide: true },
   { idx: COL.SITE, label: 'אתר', type: 'text', wide: true },
   { idx: COL.PROFESSION_NUM, label: 'מס מקצוע', type: 'num', xnarrow: true },
@@ -767,8 +767,9 @@ export default function ArielHRPage() {
                           {visibleCols.map(col => {
                             const key = `${excelRow}:${col.idx}`
                             const isDirty = dirtyKeys.has(key)
+                            const hasHours = col.idx === COL.SITE && Number(row[COL.HOURS_REG]) > 0
                             return (
-                              <td key={col.idx} className={`${col.type === 'num' ? 'ariel-num' : ''}${col.tracking ? ' hr-td-tracking' : col.xnarrow ? ' hr-td-xnarrow' : col.narrow ? ' hr-td-narrow' : ''}${col.wide ? ' hr-td-wide' : ''}`}>
+                              <td key={col.idx} className={`${col.type === 'num' ? 'ariel-num' : ''}${col.tracking ? ' hr-td-tracking' : col.xnarrow ? ' hr-td-xnarrow' : col.narrow ? ' hr-td-narrow' : ''}${col.wide ? ' hr-td-wide' : ''}${hasHours ? ' hr-cell-active-hours' : ''}`}>
                                 {col.tracking && (
                                   <button
                                     className="hr-tracking-toggle-btn"

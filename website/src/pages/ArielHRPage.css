@@ -365,6 +365,11 @@
   color: #fff;
 }
 
+/* Site cell with active hours — green highlight */
+.hr-cell-active-hours {
+  background: #dcfce7 !important;
+}
+
 /* Deleted row — red background */
 .hr-row-deleted {
   background: #fef2f2 !important;
