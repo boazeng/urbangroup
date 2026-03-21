@@ -1,0 +1,9 @@
+{
+  "name": "900-parts",
+  "version": "1.0.0",
+  "description": "Read LOGPART parts catalog from Priority",
+  "dependencies": {
+    "dotenv": "^17.2.4",
+    "priority-web-sdk": "^3.0.37"
+  }
+}
