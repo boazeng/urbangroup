@@ -763,6 +763,7 @@ export default function ArielHRPage() {
                                   type="text"
                                   value={cellVal(row[col.idx])}
                                   onChange={e => handleCellChange(excelRow, col.idx, e.target.value)}
+                                  onFocus={e => e.target.select()}
                                   onKeyDown={e => {
                                     if (e.key === 'F10') {
                                       e.preventDefault()
