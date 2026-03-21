@@ -83,7 +83,7 @@ export default function ArielHRPage() {
   const [showExtra, setShowExtra] = useState(false)
   const [showTotals, setShowTotals] = useState(false)
   const [activeOnly, setActiveOnly] = useState(false)
-  const [showAll, setShowAll] = useState(false)
+  const [showAll, setShowAll] = useState(true)
   const [showUnfilled, setShowUnfilled] = useState(false)
   const [showUnsent, setShowUnsent] = useState(false)
   const [nextNewId, setNextNewId] = useState(1)   // counter for new row temp IDs
@@ -495,7 +495,9 @@ export default function ArielHRPage() {
     .total-row { background: #f0fdf4 !important; border-top: 2px solid #16a34a; }
     .total-row td { padding: 8px 6px; }
     .grand-total { text-align: center; margin-top: 20px; padding: 12px; background: #1e3a5f; color: #fff; border-radius: 8px; font-size: 16px; font-weight: 700; }
-    @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+    .print-btn { display: block; margin: 24px auto 0; padding: 10px 32px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .print-btn:hover { background: #1d4ed8; }
+    @media print { .print-btn { display: none; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
   `
 
   const openReport = (title, body) => {
@@ -508,11 +510,11 @@ export default function ArielHRPage() {
     <div class="subtitle">חודש ${selectedSheet} | הופק: ${new Date().toLocaleDateString('he-IL')}</div>
   </div>
   ${body}
+  <button class="print-btn" onclick="window.print()">הדפס / שמור כ-PDF</button>
 </body></html>`
     const w = window.open('', '_blank')
     w.document.write(html)
     w.document.close()
-    w.onload = () => w.print()
   }
 
   // Generate contractor PDF report
