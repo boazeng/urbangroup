@@ -1562,19 +1562,25 @@ def get_hr_customers():
         headers = {"Accept": "application/json", "OData-Version": "4.0"}
 
         customers = []
-        next_url = f"{url}/CUSTOMERS?$select=CUSTNAME,CUSTDES,PHONE,BRANCHNAME&$orderby=CUSTNAME&$top=500"
-        while next_url:
-            resp = http_requests.get(next_url, headers=headers, auth=auth, timeout=30)
+        skip = 0
+        while True:
+            api_url = f"{url}/CUSTOMERS?$select=CUSTNAME,CUSTDES,PHONE,BRANCHNAME&$orderby=CUSTNAME&$top=500&$skip={skip}"
+            resp = http_requests.get(api_url, headers=headers, auth=auth, timeout=30)
             resp.raise_for_status()
             data = resp.json()
-            for row in data.get("value", []):
+            rows = data.get("value", [])
+            if not rows:
+                break
+            for row in rows:
                 customers.append({
                     "code": row.get("CUSTNAME", ""),
                     "name": row.get("CUSTDES", ""),
                     "phone": row.get("PHONE", ""),
                     "branch": row.get("BRANCHNAME", ""),
                 })
-            next_url = data.get("@odata.nextLink")
+            skip += len(rows)
+            if len(rows) < 500:
+                break
 
         return jsonify({"ok": True, "customers": customers})
     except Exception as e:
@@ -1593,19 +1599,25 @@ def sync_hr_priority():
         )
         headers = {"Accept": "application/json", "OData-Version": "4.0"}
 
-        # 1. Fetch customers
+        # 1. Fetch customers (use $skip — Priority doesn't return nextLink)
         customers = []
-        next_url = f"{url}/CUSTOMERS?$select=CUSTNAME,CUSTDES&$orderby=CUSTNAME&$top=500"
-        while next_url:
-            resp = http_requests.get(next_url, headers=headers, auth=auth, timeout=30)
+        skip = 0
+        while True:
+            api_url = f"{url}/CUSTOMERS?$select=CUSTNAME,CUSTDES&$orderby=CUSTNAME&$top=500&$skip={skip}"
+            resp = http_requests.get(api_url, headers=headers, auth=auth, timeout=30)
             resp.raise_for_status()
             data = resp.json()
-            for row in data.get("value", []):
+            rows = data.get("value", [])
+            if not rows:
+                break
+            for row in rows:
                 customers.append({
                     "code": row.get("CUSTNAME", ""),
                     "name": row.get("CUSTDES", ""),
                 })
-            next_url = data.get("@odata.nextLink")
+            skip += len(rows)
+            if len(rows) < 500:
+                break
 
         # 2. Fetch suppliers (from YINVOICES — unique SUPNAME + CDES pairs)
         sup_map = {}
