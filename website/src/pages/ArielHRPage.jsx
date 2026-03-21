@@ -467,18 +467,59 @@ export default function ArielHRPage() {
     }
   }
 
+  // Shared helpers for PDF reports
+  const fmtNum = v => {
+    const n = Number(v)
+    if (!v && v !== 0) return ''
+    return isNaN(n) ? String(v) : n.toLocaleString('he-IL', { maximumFractionDigits: 2 })
+  }
+
+  const getActiveRows = () =>
+    filteredRows.filter(r => !deletedRows.has(r[COL.ROW_INDEX]) && Number(r[COL.HOURS_REG]) > 0)
+
+  const reportStyles = `
+    @page { size: landscape; margin: 15mm; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; direction: rtl; color: #1a1a1a; padding: 0; margin: 0; }
+    .header { text-align: center; margin-bottom: 24px; border-bottom: 3px solid #2563eb; padding-bottom: 16px; }
+    .header h1 { font-size: 22px; color: #1e3a5f; margin: 0 0 4px; }
+    .header .subtitle { font-size: 13px; color: #6b7280; }
+    .section { margin-bottom: 28px; }
+    .section h2 { font-size: 16px; color: #2563eb; margin: 0 0 8px; padding: 6px 12px; background: #eff6ff; border-radius: 6px; border-right: 4px solid #2563eb; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th { background: #1e3a5f; color: #fff; padding: 8px 6px; text-align: right; font-weight: 600; }
+    td { padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb; }
+    tbody tr:nth-child(even) { background: #f9fafb; }
+    tbody tr:hover { background: #eff6ff; }
+    .num { text-align: left; font-variant-numeric: tabular-nums; }
+    .total-row { background: #f0fdf4 !important; border-top: 2px solid #16a34a; }
+    .total-row td { padding: 8px 6px; }
+    .grand-total { text-align: center; margin-top: 20px; padding: 12px; background: #1e3a5f; color: #fff; border-radius: 8px; font-size: 16px; font-weight: 700; }
+    @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  `
+
+  const openReport = (title, body) => {
+    const html = `<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head><meta charset="utf-8"><title>${title}</title><style>${reportStyles}</style></head>
+<body>
+  <div class="header">
+    <h1>${title}</h1>
+    <div class="subtitle">חודש ${selectedSheet} | הופק: ${new Date().toLocaleDateString('he-IL')}</div>
+  </div>
+  ${body}
+</body></html>`
+    const w = window.open('', '_blank')
+    w.document.write(html)
+    w.document.close()
+    w.onload = () => w.print()
+  }
+
   // Generate contractor PDF report
   const generateContractorReport = () => {
-    const rows = filteredRows.filter(r => !deletedRows.has(r[COL.ROW_INDEX]))
+    const rows = getActiveRows()
     if (rows.length === 0) return
 
-    const fmt = v => {
-      const n = Number(v)
-      if (!v && v !== 0) return ''
-      return isNaN(n) ? String(v) : n.toLocaleString('he-IL', { maximumFractionDigits: 2 })
-    }
-
-    // Group by contractor
     const byContractor = {}
     for (const r of rows) {
       const cont = cellVal(r[COL.CONTRACTOR]) || 'ללא קבלן'
@@ -505,17 +546,17 @@ export default function ArielHRPage() {
     for (const [contractor, cRows] of Object.entries(byContractor)) {
       const total = cRows.reduce((s, r) => s + (Number(r[COL.CONT_TOTAL]) || 0), 0)
       tablesHtml += `
-        <div class="contractor-section">
+        <div class="section">
           <h2>${contractor}</h2>
           <table>
             <thead><tr>${cols.map(c => `<th>${c.label}</th>`).join('')}</tr></thead>
             <tbody>
               ${cRows.map(r => `<tr>${cols.map(c =>
-                `<td class="${c.type === 'num' ? 'num' : ''}">${c.type === 'num' ? fmt(r[c.key]) : cellVal(r[c.key])}</td>`
+                `<td class="${c.type === 'num' ? 'num' : ''}">${c.type === 'num' ? fmtNum(r[c.key]) : cellVal(r[c.key])}</td>`
               ).join('')}</tr>`).join('')}
               <tr class="total-row">
                 <td colspan="${cols.length - 1}"><strong>סה"כ ${contractor}</strong></td>
-                <td class="num"><strong>${fmt(total)}</strong></td>
+                <td class="num"><strong>${fmtNum(total)}</strong></td>
               </tr>
             </tbody>
           </table>
@@ -523,47 +564,77 @@ export default function ArielHRPage() {
     }
 
     const grandTotal = rows.reduce((s, r) => s + (Number(r[COL.CONT_TOTAL]) || 0), 0)
+    tablesHtml += `<div class="grand-total">סה"כ כללי: ${fmtNum(grandTotal)}</div>`
 
-    const html = `<!DOCTYPE html>
-<html dir="rtl" lang="he">
-<head>
-<meta charset="utf-8">
-<title>דוח קבלן - ${selectedSheet}</title>
-<style>
-  @page { size: landscape; margin: 15mm; }
-  * { box-sizing: border-box; }
-  body { font-family: Arial, sans-serif; direction: rtl; color: #1a1a1a; padding: 0; margin: 0; }
-  .header { text-align: center; margin-bottom: 24px; border-bottom: 3px solid #2563eb; padding-bottom: 16px; }
-  .header h1 { font-size: 22px; color: #1e3a5f; margin: 0 0 4px; }
-  .header .subtitle { font-size: 13px; color: #6b7280; }
-  .contractor-section { margin-bottom: 28px; }
-  .contractor-section h2 { font-size: 16px; color: #2563eb; margin: 0 0 8px; padding: 6px 12px; background: #eff6ff; border-radius: 6px; border-right: 4px solid #2563eb; }
-  table { width: 100%; border-collapse: collapse; font-size: 11px; }
-  th { background: #1e3a5f; color: #fff; padding: 8px 6px; text-align: right; font-weight: 600; }
-  td { padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb; }
-  tbody tr:nth-child(even) { background: #f9fafb; }
-  tbody tr:hover { background: #eff6ff; }
-  .num { text-align: left; font-variant-numeric: tabular-nums; }
-  .total-row { background: #f0fdf4 !important; border-top: 2px solid #16a34a; }
-  .total-row td { padding: 8px 6px; }
-  .grand-total { text-align: center; margin-top: 20px; padding: 12px; background: #1e3a5f; color: #fff; border-radius: 8px; font-size: 16px; font-weight: 700; }
-  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-</style>
-</head>
-<body>
-  <div class="header">
-    <h1>דוח קבלן - חברת אריאל</h1>
-    <div class="subtitle">חודש ${selectedSheet} | הופק: ${new Date().toLocaleDateString('he-IL')}</div>
-  </div>
-  ${tablesHtml}
-  <div class="grand-total">סה"כ כללי: ${fmt(grandTotal)}</div>
-</body>
-</html>`
+    openReport('דוח קבלן - חברת אריאל', tablesHtml)
+  }
 
-    const w = window.open('', '_blank')
-    w.document.write(html)
-    w.document.close()
-    w.onload = () => w.print()
+  // Generate site PDF report
+  const generateSiteReport = () => {
+    const rows = getActiveRows()
+    if (rows.length === 0) return
+
+    const bySite = {}
+    for (const r of rows) {
+      const site = cellVal(r[COL.SITE]) || 'ללא אתר'
+      if (!bySite[site]) bySite[site] = { customer: cellVal(r[COL.CUSTOMER]), rows: [] }
+      bySite[site].rows.push(r)
+    }
+
+    const cols = [
+      { key: COL.PRIORITY_NUM, label: 'מס\' לקוח', type: 'text' },
+      { key: COL.CUSTOMER, label: 'שם לקוח', type: 'text' },
+      { key: COL.PROFESSION_NUM, label: 'מס\' מקצוע', type: 'num' },
+      { key: COL.PROFESSION, label: 'מקצוע', type: 'text' },
+      { key: COL.TARIFF_TYPE, label: 'סוג תעריף', type: 'text' },
+      { key: COL.TARIFF_NOTES, label: 'הערות תעריף', type: 'text' },
+      { key: COL.NOTES, label: 'הערות', type: 'text' },
+      { key: COL.CONTRACTOR, label: 'כינוי קבלן', type: 'text' },
+      { key: COL.HOURS_REG, label: 'שעות רגילות', type: 'num' },
+      { key: COL.CUST_RATE, label: 'תעריף לקוח', type: 'num' },
+      { key: COL.CUST_TOTAL, label: 'סה"כ לקוח', type: 'num' },
+      { key: COL.CONT_RATE, label: 'תעריף קבלן', type: 'num' },
+      { key: COL.CONT_TOTAL, label: 'סה"כ לקבלן', type: 'num' },
+      { key: COL.GAP, label: 'פער', type: 'num' },
+    ]
+
+    let tablesHtml = ''
+    let grandCustTotal = 0
+    let grandContTotal = 0
+    let grandGap = 0
+
+    for (const [site, data] of Object.entries(bySite)) {
+      const custTotal = data.rows.reduce((s, r) => s + (Number(r[COL.CUST_TOTAL]) || 0), 0)
+      const contTotal = data.rows.reduce((s, r) => s + (Number(r[COL.CONT_TOTAL]) || 0), 0)
+      const gap = custTotal - contTotal
+      grandCustTotal += custTotal
+      grandContTotal += contTotal
+      grandGap += gap
+
+      tablesHtml += `
+        <div class="section">
+          <h2>${site} (${data.customer})</h2>
+          <table>
+            <thead><tr>${cols.map(c => `<th>${c.label}</th>`).join('')}</tr></thead>
+            <tbody>
+              ${data.rows.map(r => `<tr>${cols.map(c =>
+                `<td class="${c.type === 'num' ? 'num' : ''}">${c.type === 'num' ? fmtNum(r[c.key]) : cellVal(r[c.key])}</td>`
+              ).join('')}</tr>`).join('')}
+              <tr class="total-row">
+                <td colspan="${cols.length - 3}"><strong>סה"כ ${site}</strong></td>
+                <td class="num"><strong>${fmtNum(custTotal)}</strong></td>
+                <td></td>
+                <td class="num"><strong>${fmtNum(contTotal)}</strong></td>
+                <td class="num"><strong>${fmtNum(gap)}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>`
+    }
+
+    tablesHtml += `<div class="grand-total">סה"כ לקוח: ${fmtNum(grandCustTotal)} | סה"כ קבלן: ${fmtNum(grandContTotal)} | פער: ${fmtNum(grandGap)}</div>`
+
+    openReport('דוח אתר - חברת אריאל', tablesHtml)
   }
 
   // Save changes
@@ -892,7 +963,7 @@ export default function ArielHRPage() {
                 <button className="hr-report-btn" onClick={generateContractorReport}>
                   הפק דוח קבלן
                 </button>
-                <button className="hr-report-btn" disabled>
+                <button className="hr-report-btn" onClick={generateSiteReport}>
                   הפק דוח אתר
                 </button>
               </div>
