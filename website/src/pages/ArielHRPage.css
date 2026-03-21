@@ -283,7 +283,7 @@
 }
 
 .hr-table {
-  table-layout: fixed;
+  table-layout: auto;
   border-collapse: collapse;
   direction: rtl;
 }
