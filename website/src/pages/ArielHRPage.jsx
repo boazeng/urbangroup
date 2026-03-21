@@ -467,6 +467,105 @@ export default function ArielHRPage() {
     }
   }
 
+  // Generate contractor PDF report
+  const generateContractorReport = () => {
+    const rows = filteredRows.filter(r => !deletedRows.has(r[COL.ROW_INDEX]))
+    if (rows.length === 0) return
+
+    const fmt = v => {
+      const n = Number(v)
+      if (!v && v !== 0) return ''
+      return isNaN(n) ? String(v) : n.toLocaleString('he-IL', { maximumFractionDigits: 2 })
+    }
+
+    // Group by contractor
+    const byContractor = {}
+    for (const r of rows) {
+      const cont = cellVal(r[COL.CONTRACTOR]) || 'ללא קבלן'
+      if (!byContractor[cont]) byContractor[cont] = []
+      byContractor[cont].push(r)
+    }
+
+    const cols = [
+      { key: COL.PRIORITY_NUM, label: 'מס\' לקוח', type: 'text' },
+      { key: COL.CUSTOMER, label: 'שם לקוח', type: 'text' },
+      { key: COL.SITE, label: 'אתר', type: 'text' },
+      { key: COL.PROFESSION_NUM, label: 'מס\' מקצוע', type: 'num' },
+      { key: COL.PROFESSION, label: 'מקצוע', type: 'text' },
+      { key: COL.TARIFF_TYPE, label: 'סוג תעריף', type: 'text' },
+      { key: COL.TARIFF_NOTES, label: 'הערות תעריף', type: 'text' },
+      { key: COL.NOTES, label: 'הערות', type: 'text' },
+      { key: COL.CONTRACTOR, label: 'כינוי קבלן', type: 'text' },
+      { key: COL.HOURS_REG, label: 'שעות רגילות', type: 'num' },
+      { key: COL.CONT_RATE, label: 'תעריף קבלן', type: 'num' },
+      { key: COL.CONT_TOTAL, label: 'סה"כ לקבלן', type: 'num' },
+    ]
+
+    let tablesHtml = ''
+    for (const [contractor, cRows] of Object.entries(byContractor)) {
+      const total = cRows.reduce((s, r) => s + (Number(r[COL.CONT_TOTAL]) || 0), 0)
+      tablesHtml += `
+        <div class="contractor-section">
+          <h2>${contractor}</h2>
+          <table>
+            <thead><tr>${cols.map(c => `<th>${c.label}</th>`).join('')}</tr></thead>
+            <tbody>
+              ${cRows.map(r => `<tr>${cols.map(c =>
+                `<td class="${c.type === 'num' ? 'num' : ''}">${c.type === 'num' ? fmt(r[c.key]) : cellVal(r[c.key])}</td>`
+              ).join('')}</tr>`).join('')}
+              <tr class="total-row">
+                <td colspan="${cols.length - 1}"><strong>סה"כ ${contractor}</strong></td>
+                <td class="num"><strong>${fmt(total)}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>`
+    }
+
+    const grandTotal = rows.reduce((s, r) => s + (Number(r[COL.CONT_TOTAL]) || 0), 0)
+
+    const html = `<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+<meta charset="utf-8">
+<title>דוח קבלן - ${selectedSheet}</title>
+<style>
+  @page { size: landscape; margin: 15mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; direction: rtl; color: #1a1a1a; padding: 0; margin: 0; }
+  .header { text-align: center; margin-bottom: 24px; border-bottom: 3px solid #2563eb; padding-bottom: 16px; }
+  .header h1 { font-size: 22px; color: #1e3a5f; margin: 0 0 4px; }
+  .header .subtitle { font-size: 13px; color: #6b7280; }
+  .contractor-section { margin-bottom: 28px; }
+  .contractor-section h2 { font-size: 16px; color: #2563eb; margin: 0 0 8px; padding: 6px 12px; background: #eff6ff; border-radius: 6px; border-right: 4px solid #2563eb; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th { background: #1e3a5f; color: #fff; padding: 8px 6px; text-align: right; font-weight: 600; }
+  td { padding: 6px; text-align: right; border-bottom: 1px solid #e5e7eb; }
+  tbody tr:nth-child(even) { background: #f9fafb; }
+  tbody tr:hover { background: #eff6ff; }
+  .num { text-align: left; font-variant-numeric: tabular-nums; }
+  .total-row { background: #f0fdf4 !important; border-top: 2px solid #16a34a; }
+  .total-row td { padding: 8px 6px; }
+  .grand-total { text-align: center; margin-top: 20px; padding: 12px; background: #1e3a5f; color: #fff; border-radius: 8px; font-size: 16px; font-weight: 700; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>דוח קבלן - חברת אריאל</h1>
+    <div class="subtitle">חודש ${selectedSheet} | הופק: ${new Date().toLocaleDateString('he-IL')}</div>
+  </div>
+  ${tablesHtml}
+  <div class="grand-total">סה"כ כללי: ${fmt(grandTotal)}</div>
+</body>
+</html>`
+
+    const w = window.open('', '_blank')
+    w.document.write(html)
+    w.document.close()
+    w.onload = () => w.print()
+  }
+
   // Save changes
   const handleSave = async () => {
     if (dirtyKeys.size === 0 && deletedRows.size === 0) return
@@ -638,7 +737,7 @@ export default function ArielHRPage() {
             className={`hr-toggle-extra-btn${showUnfilled ? ' hr-toggle-active' : ''}`}
             onClick={() => { setShowUnfilled(v => !v); if (!showUnfilled) { setShowAll(true) } }}
           >
-            נתונים לא מולאו
+            לא מולאו
           </button>
         </div>
 
@@ -786,6 +885,18 @@ export default function ArielHRPage() {
                 </button>
               )}
             </div>
+
+            {/* Report buttons */}
+            {hasFilter && (
+              <div className="hr-report-actions">
+                <button className="hr-report-btn" onClick={generateContractorReport}>
+                  הפק דוח קבלן
+                </button>
+                <button className="hr-report-btn" disabled>
+                  הפק דוח אתר
+                </button>
+              </div>
+            )}
 
             {/* Table */}
             {!hasFilter ? (

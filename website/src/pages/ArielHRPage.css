@@ -606,6 +606,36 @@
   color: var(--color-text-light);
 }
 
+/* Report buttons */
+.hr-report-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.hr-report-btn {
+  padding: 8px 20px;
+  border: 1px solid #0d9488;
+  border-radius: var(--radius-sm);
+  background: #0d9488;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.hr-report-btn:hover {
+  background: #0f766e;
+}
+
+.hr-report-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Priority tables section */
 .hr-priority-section {
   margin-top: 32px;
