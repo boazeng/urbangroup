@@ -1730,8 +1730,9 @@ def get_hr_parts():
             parts = _fetch_parts_from_priority()
             _save_parts_cache(parts)
             return jsonify({"ok": True, "parts": parts})
-        except Exception:
-            return jsonify({"ok": False, "error": "אין נתונים — יש לבצע סנכרון עם פריורטי קודם"}), 200
+        except Exception as ex:
+            logger.error(f"Parts live fetch failed: {ex}")
+            return jsonify({"ok": False, "error": f"שגיאה בטעינת מקטים: {ex}"}), 200
     except Exception as e:
         logger.error(f"HR parts fetch failed: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500

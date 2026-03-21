@@ -109,8 +109,6 @@ export default function ArielHRPage() {
   const [selectedSheet, setSelectedSheet] = useState('2.26')
 
   // Priority sync state
-  const [priorityCustomers, setPriorityCustomers] = useState([])
-  const [prioritySuppliers, setPrioritySuppliers] = useState([])
   const [syncing, setSyncing] = useState(false)
   const [arielCustomers, setArielCustomers] = useState([])
   const [showArielCustomers, setShowArielCustomers] = useState(false)
@@ -121,7 +119,6 @@ export default function ArielHRPage() {
   const [loadingParts, setLoadingParts] = useState(false)
   const [partSearch, setPartSearch] = useState('')
   const [lastSyncTime, setLastSyncTime] = useState(() => localStorage.getItem('hr-last-sync-time') || '')
-  const [showPriorityTable, setShowPriorityTable] = useState(false)
   const [localSaveStatus, setLocalSaveStatus] = useState('') // '', 'saving', 'saved', 'error'
   const autoSaveTimer = useRef(null)
 
@@ -165,13 +162,10 @@ export default function ArielHRPage() {
       .then(safeJson)
       .then(data => {
         if (data.ok) {
-          setPriorityCustomers(data.customers || [])
-          setPrioritySuppliers(data.suppliers || [])
           setArielParts([]) // clear cache so next click reloads updated parts
           const syncTime = data.syncedAt || new Date().toLocaleString('he-IL')
           setLastSyncTime(syncTime)
           localStorage.setItem('hr-last-sync-time', syncTime)
-          setShowPriorityTable(true)
         } else {
           setError(data.error || 'שגיאה בסנכרון')
         }
@@ -1423,68 +1417,6 @@ export default function ArielHRPage() {
           </>
         )}
 
-        {showPriorityTable && (priorityCustomers.length > 0 || prioritySuppliers.length > 0) && (
-          <div className="hr-priority-section">
-            <div className="hr-priority-header">
-              <h3 className="hr-site-summary-title">לקוחות וספקים — פריורטי (סניף 102)</h3>
-              <button className="hr-toggle-extra-btn" onClick={() => setShowPriorityTable(false)}>הסתר</button>
-            </div>
-
-            <div className="hr-priority-tables">
-              {priorityCustomers.length > 0 && (
-                <div className="hr-priority-table-wrap">
-                  <h4 className="hr-priority-table-label">לקוחות ({priorityCustomers.length})</h4>
-                  <div className="hr-table-wrapper">
-                    <table className="ariel-table hr-summary-table">
-                      <thead>
-                        <tr>
-                          <th>#</th>
-                          <th>מספר לקוח</th>
-                          <th>שם לקוח</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {priorityCustomers.map((c, i) => (
-                          <tr key={c.code}>
-                            <td className="ariel-num">{i + 1}</td>
-                            <td>{c.code}</td>
-                            <td>{c.name}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {prioritySuppliers.length > 0 && (
-                <div className="hr-priority-table-wrap">
-                  <h4 className="hr-priority-table-label">ספקים ({prioritySuppliers.length})</h4>
-                  <div className="hr-table-wrapper">
-                    <table className="ariel-table hr-summary-table">
-                      <thead>
-                        <tr>
-                          <th>#</th>
-                          <th>מספר ספק</th>
-                          <th>שם ספק</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {prioritySuppliers.map((s, i) => (
-                          <tr key={s.code}>
-                            <td className="ariel-num">{i + 1}</td>
-                            <td>{s.code}</td>
-                            <td>{s.name}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )
