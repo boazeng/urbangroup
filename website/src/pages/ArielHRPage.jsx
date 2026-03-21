@@ -34,7 +34,7 @@ const COL = {
 
 // Visible columns to display — extra: true for overtime columns (hidden by default)
 const DISPLAY_COLS = [
-  { idx: COL.TRACKING, label: 'מעקב', type: 'num', xnarrow: true },
+  { idx: COL.TRACKING, label: 'מעקב', type: 'num', tracking: true },
   { idx: COL.PRIORITY_NUM, label: 'מס פריורטי', type: 'text', xnarrow: true },
   { idx: COL.CUSTOMER, label: 'לקוח', type: 'text', wide: true },
   { idx: COL.SITE, label: 'אתר', type: 'text', wide: true },
@@ -416,6 +416,17 @@ export default function ArielHRPage() {
     })
   }, [])
 
+  // Toggle tracking for all rows of a specific site
+  const handleToggleSiteTracking = (site) => {
+    // Check if all rows of this site already have tracking=1
+    const siteRows = editedRows.filter(r => cellVal(r[COL.SITE]) === site)
+    const allOn = siteRows.every(r => String(r[COL.TRACKING]) === '1')
+    const newVal = allOn ? '0' : '1'
+    for (const r of siteRows) {
+      handleCellChange(r[COL.ROW_INDEX], COL.TRACKING, newVal)
+    }
+  }
+
   // Save changes
   const handleSave = async () => {
     if (dirtyKeys.size === 0 && deletedRows.size === 0) return
@@ -757,7 +768,14 @@ export default function ArielHRPage() {
                             const key = `${excelRow}:${col.idx}`
                             const isDirty = dirtyKeys.has(key)
                             return (
-                              <td key={col.idx} className={`${col.type === 'num' ? 'ariel-num' : ''}${col.xnarrow ? ' hr-td-xnarrow' : col.narrow ? ' hr-td-narrow' : ''}${col.wide ? ' hr-td-wide' : ''}`}>
+                              <td key={col.idx} className={`${col.type === 'num' ? 'ariel-num' : ''}${col.tracking ? ' hr-td-tracking' : col.xnarrow ? ' hr-td-xnarrow' : col.narrow ? ' hr-td-narrow' : ''}${col.wide ? ' hr-td-wide' : ''}`}>
+                                {col.tracking && (
+                                  <button
+                                    className="hr-tracking-toggle-btn"
+                                    onClick={() => handleToggleSiteTracking(cellVal(row[COL.SITE]))}
+                                    title="סמן/בטל מעקב לכל האתר"
+                                  >&#9998;</button>
+                                )}
                                 <input
                                   className={`hr-cell-input${isDirty ? ' hr-cell-dirty' : ''}`}
                                   type="text"

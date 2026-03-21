@@ -386,6 +386,45 @@
   color: #fff;
 }
 
+/* Tracking column */
+.hr-td-tracking {
+  width: 50px;
+  max-width: 50px;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.hr-td-tracking .hr-cell-input {
+  width: 20px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.hr-tracking-toggle-btn {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  line-height: 14px;
+  text-align: center;
+  font-size: 10px;
+  background: none;
+  border: 1px solid #9ca3af;
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.4;
+  transition: opacity 0.2s;
+  flex-shrink: 0;
+}
+
+.hr-tracking-toggle-btn:hover {
+  opacity: 1;
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #fff;
+}
+
 /* Extra narrow columns */
 .hr-td-xnarrow {
   width: 35px;
