@@ -1550,6 +1550,37 @@ def save_hr_changes():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/api/hr/customers", methods=["GET"])
+def get_hr_customers():
+    """Fetch customers list from Priority ERP (real env) — filtered to branch 102."""
+    try:
+        url = PRIORITY_URL_REAL
+        auth = HTTPBasicAuth(
+            os.getenv("PRIORITY_USERNAME", ""),
+            os.getenv("PRIORITY_PASSWORD", ""),
+        )
+        headers = {"Accept": "application/json", "OData-Version": "4.0"}
+
+        customers = []
+        next_url = f"{url}/CUSTOMERS?$select=CUSTNAME,CUSTDES,PHONE&$filter=endswith(CUSTNAME,'102')&$orderby=CUSTNAME&$top=500"
+        while next_url:
+            resp = http_requests.get(next_url, headers=headers, auth=auth, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+            for row in data.get("value", []):
+                customers.append({
+                    "code": row.get("CUSTNAME", ""),
+                    "name": row.get("CUSTDES", ""),
+                    "phone": row.get("PHONE", ""),
+                })
+            next_url = data.get("@odata.nextLink")
+
+        return jsonify({"ok": True, "customers": customers})
+    except Exception as e:
+        logger.error(f"HR customers fetch failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/hr/sync-priority", methods=["GET"])
 def sync_hr_priority():
     """Fetch customers and suppliers from Priority ERP (real env, branch 102)."""

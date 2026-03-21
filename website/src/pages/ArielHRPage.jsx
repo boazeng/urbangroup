@@ -106,6 +106,9 @@ export default function ArielHRPage() {
   const [priorityCustomers, setPriorityCustomers] = useState([])
   const [prioritySuppliers, setPrioritySuppliers] = useState([])
   const [syncing, setSyncing] = useState(false)
+  const [arielCustomers, setArielCustomers] = useState([])
+  const [showArielCustomers, setShowArielCustomers] = useState(false)
+  const [loadingCustomers, setLoadingCustomers] = useState(false)
   const [lastSyncTime, setLastSyncTime] = useState(() => localStorage.getItem('hr-last-sync-time') || '')
   const [showPriorityTable, setShowPriorityTable] = useState(false)
 
@@ -832,18 +835,63 @@ export default function ArielHRPage() {
             {syncing ? 'מסנכרן...' : 'סנכרון עם פריורטי'}
           </button>
           <button
-            className={`hr-toggle-extra-btn${showPriorityTable ? ' hr-toggle-active' : ''}`}
+            className={`hr-toggle-extra-btn${showArielCustomers ? ' hr-toggle-active' : ''}`}
+            disabled={loadingCustomers}
             onClick={() => {
-              if (priorityCustomers.length === 0 && !syncing) handleSyncPriority()
-              else setShowPriorityTable(v => !v)
+              if (arielCustomers.length === 0) {
+                setLoadingCustomers(true)
+                fetch(`${API_BASE}/api/hr/customers`)
+                  .then(r => r.json())
+                  .then(data => {
+                    if (data.ok) { setArielCustomers(data.customers || []); setShowArielCustomers(true) }
+                    else setError(data.error || 'שגיאה בטעינת לקוחות')
+                  })
+                  .catch(e => setError(e.message))
+                  .finally(() => setLoadingCustomers(false))
+              } else {
+                setShowArielCustomers(v => !v)
+              }
             }}
           >
-            רשימת לקוחות (סניף 102)
+            {loadingCustomers ? 'טוען...' : 'רשימת לקוחות (סניף 102)'}
           </button>
           {lastSyncTime && (
             <span className="hr-sync-time">סנכרון אחרון: {lastSyncTime}</span>
           )}
         </div>
+
+        {showArielCustomers && arielCustomers.length > 0 && (
+          <div className="hr-priority-section">
+            <div className="hr-priority-header">
+              <h3 className="hr-site-summary-title">רשימת לקוחות — סניף 102 ({arielCustomers.length})</h3>
+              <button className="hr-toggle-extra-btn" onClick={() => setShowArielCustomers(false)}>הסתר</button>
+            </div>
+            <div className="hr-priority-table-wrap">
+              <div className="hr-table-wrapper">
+                <table className="ariel-table hr-summary-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>מספר פריורטי</th>
+                      <th>שם לקוח</th>
+                      <th>טלפון</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {arielCustomers.map((c, i) => (
+                      <tr key={c.code}>
+                        <td className="ariel-num">{i + 1}</td>
+                        <td>{c.code}</td>
+                        <td>{c.name}</td>
+                        <td>{c.phone}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
 
         {editedRows.length > 0 && (
           <div className="hr-grand-totals">
