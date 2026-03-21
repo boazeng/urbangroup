@@ -641,6 +641,81 @@ export default function ArielHRPage() {
     openReport('דוח אתר - חברת אריאל', tablesHtml)
   }
 
+  // Generate unfilled sites report
+  const generateUnfilledReport = () => {
+    const allActive = editedRows.filter(r => !deletedRows.has(r[COL.ROW_INDEX]))
+    if (allActive.length === 0) return
+
+    // Group by site, find sites with at least one unfilled row
+    const bySite = {}
+    for (const r of allActive) {
+      const site = cellVal(r[COL.SITE]) || 'ללא אתר'
+      if (!bySite[site]) bySite[site] = { customer: cellVal(r[COL.CUSTOMER]), rows: [], filledCount: 0 }
+      bySite[site].rows.push(r)
+      if (Number(r[COL.FILLING]) >= 1) bySite[site].filledCount++
+    }
+
+    const unfilledSites = Object.entries(bySite).filter(([, d]) => d.filledCount < d.rows.length)
+    if (unfilledSites.length === 0) {
+      alert('כל האתרים מולאו!')
+      return
+    }
+
+    let tablesHtml = `<div class="section"><h2>סה"כ ${unfilledSites.length} אתרים לא מולאו</h2>
+      <table>
+        <thead><tr><th>#</th><th>לקוח</th><th>אתר</th><th>שורות מולאו</th><th>סה"כ שורות</th><th>סטטוס</th></tr></thead>
+        <tbody>${unfilledSites.map(([site, d], i) => `<tr>
+          <td class="num">${i + 1}</td>
+          <td>${d.customer}</td>
+          <td>${site}</td>
+          <td class="num">${d.filledCount}</td>
+          <td class="num">${d.rows.length}</td>
+          <td>${d.filledCount === 0 ? 'לא התחיל' : 'חלקי'}</td>
+        </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`
+
+    openReport('דוח שלא מולאו - חברת אריאל', tablesHtml)
+  }
+
+  // Generate unsent sites report
+  const generateUnsentReport = () => {
+    const allActive = editedRows.filter(r => !deletedRows.has(r[COL.ROW_INDEX]))
+    if (allActive.length === 0) return
+
+    const bySite = {}
+    for (const r of allActive) {
+      const site = cellVal(r[COL.SITE]) || 'ללא אתר'
+      if (!bySite[site]) bySite[site] = { customer: cellVal(r[COL.CUSTOMER]), rows: [], sentCount: 0 }
+      bySite[site].rows.push(r)
+      if (Number(r[COL.TRACKING]) >= 1) bySite[site].sentCount++
+    }
+
+    const unsentSites = Object.entries(bySite).filter(([, d]) => d.sentCount < d.rows.length)
+    if (unsentSites.length === 0) {
+      alert('כל האתרים נשלחו!')
+      return
+    }
+
+    let tablesHtml = `<div class="section"><h2>סה"כ ${unsentSites.length} אתרים לא נשלחו</h2>
+      <table>
+        <thead><tr><th>#</th><th>לקוח</th><th>אתר</th><th>שורות נשלחו</th><th>סה"כ שורות</th><th>סטטוס</th></tr></thead>
+        <tbody>${unsentSites.map(([site, d], i) => `<tr>
+          <td class="num">${i + 1}</td>
+          <td>${d.customer}</td>
+          <td>${site}</td>
+          <td class="num">${d.sentCount}</td>
+          <td class="num">${d.rows.length}</td>
+          <td>${d.sentCount === 0 ? 'לא נשלח' : 'חלקי'}</td>
+        </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`
+
+    openReport('לא נשלחו - חברת אריאל', tablesHtml)
+  }
+
   // Save changes
   const handleSave = async () => {
     if (dirtyKeys.size === 0 && deletedRows.size === 0) return
@@ -969,6 +1044,12 @@ export default function ArielHRPage() {
                 </button>
                 <button className="hr-report-btn" onClick={generateSiteReport}>
                   הפק דוח אתר
+                </button>
+                <button className="hr-report-btn" onClick={generateUnfilledReport}>
+                  לא מולאו
+                </button>
+                <button className="hr-report-btn" onClick={generateUnsentReport}>
+                  לא נשלחו
                 </button>
               </div>
             )}
