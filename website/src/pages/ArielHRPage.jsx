@@ -872,10 +872,8 @@ export default function ArielHRPage() {
                   <thead>
                     <tr>
                       <th>#</th>
-                      <th>מספר פריורטי</th>
+                      <th>מספר חשבון</th>
                       <th>שם לקוח</th>
-                      <th>סניף</th>
-                      <th>טלפון</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -884,8 +882,6 @@ export default function ArielHRPage() {
                         <td className="ariel-num">{i + 1}</td>
                         <td>{c.code}</td>
                         <td>{c.name}</td>
-                        <td>{c.branch}</td>
-                        <td>{c.phone}</td>
                       </tr>
                     ))}
                   </tbody>

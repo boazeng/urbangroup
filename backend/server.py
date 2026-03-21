@@ -1564,7 +1564,7 @@ def get_hr_customers():
         customers = []
         skip = 0
         while True:
-            api_url = f"{url}/CUSTOMERS?$select=CUSTNAME,CUSTDES,PHONE,BRANCHNAME&$orderby=CUSTNAME&$top=500&$skip={skip}"
+            api_url = f"{url}/ACCOUNTS_RECEIVABLE?$select=ACCNAME,ACCDES&$orderby=ACCNAME&$top=500&$skip={skip}"
             resp = http_requests.get(api_url, headers=headers, auth=auth, timeout=30)
             resp.raise_for_status()
             data = resp.json()
@@ -1572,12 +1572,12 @@ def get_hr_customers():
             if not rows:
                 break
             for row in rows:
-                customers.append({
-                    "code": row.get("CUSTNAME", ""),
-                    "name": row.get("CUSTDES", ""),
-                    "phone": row.get("PHONE", ""),
-                    "branch": row.get("BRANCHNAME", ""),
-                })
+                acc = row.get("ACCNAME", "")
+                if acc.endswith("-102"):
+                    customers.append({
+                        "code": acc,
+                        "name": row.get("ACCDES", ""),
+                    })
             skip += len(rows)
             if len(rows) < 500:
                 break
