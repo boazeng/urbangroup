@@ -6,31 +6,32 @@ import './ArielHRPage.css'
 const API_BASE = import.meta.env.DEV ? 'http://localhost:5000' : ''
 
 // Column indices in the data (A=0, B=1, ... V=21)
+// Column indices matching Excel: A=0, B=1, ... X=23
 const COL = {
-  TRACKING: 1,    // B - מעקב
-  CUSTOMER: 2,    // C - לקוח
-  SITE: 3,        // D - אתר
-  PROFESSION_NUM: 4, // E - מס מקצוע
-  PROFESSION: 5,  // F - מקצוע
-  TARIFF_TYPE: 6, // G - סוג תעריף
-  TARIFF_NOTES: 7,// H - הערות לסוג תעריף
-  NOTES: 8,       // I - הערות
-  CONTRACTOR: 9,  // J - כינוי קבלן
-  HOURS_REG: 10,  // K - שעות רגילות
-  HOURS_125: 11,  // L - שעות נוספות 125%
-  HOURS_150: 12,  // M - שעות נוספות 150%
-  CUST_RATE: 13,  // N - לקוח תעריף שעה רגילה
-  CUST_125: 14,   // O - לקוח תעריף 125%
-  CUST_150: 15,   // P - לקוח תעריף 150%
-  CUST_TOTAL: 16, // Q - סהכ עלות ללקוח
-  CONT_RATE: 17,  // R - קבלן תעריף שעה רגילה
-  CONT_125: 18,   // S - קבלן תעריף 125%
-  CONT_150: 19,   // T - קבלן תעריף 150%
-  CONT_TOTAL: 20, // U - סהכ תשלום לקבלן
-  GAP: 21,        // V - פער
-  PRIORITY_NUM: 22, // W - מספר פריורטי
-  FILLING: 23,     // X - מילוי
-  ROW_INDEX: 24,  // appended by backend — original Excel row number
+  TRACKING: 1,      // B - מעקב
+  PRIORITY_NUM: 2,  // C - מספר פריורטי
+  CUSTOMER: 3,      // D - לקוח
+  FILLING: 4,       // E - מילוי
+  SITE: 5,          // F - אתר
+  PROFESSION_NUM: 6,// G - מס מקצוע
+  PROFESSION: 7,    // H - מקצוע
+  TARIFF_TYPE: 8,   // I - סוג תעריף
+  TARIFF_NOTES: 9,  // J - הערות לסוג תעריף
+  NOTES: 10,        // K - הערות
+  CONTRACTOR: 11,   // L - כינוי קבלן
+  HOURS_REG: 12,    // M - שעות רגילות
+  HOURS_125: 13,    // N - שעות נוספות 125%
+  HOURS_150: 14,    // O - שעות נוספות 150%
+  CUST_RATE: 15,    // P - לקוח תעריף שעה רגילה
+  CUST_125: 16,     // Q - לקוח תעריף 125%
+  CUST_150: 17,     // R - לקוח תעריף 150%
+  CUST_TOTAL: 18,   // S - סהכ עלות ללקוח
+  CONT_RATE: 19,    // T - קבלן תעריף שעה רגילה
+  CONT_125: 20,     // U - קבלן תעריף 125%
+  CONT_150: 21,     // V - קבלן תעריף 150%
+  CONT_TOTAL: 22,   // W - סהכ תשלום לקבלן
+  GAP: 23,          // X - פער
+  ROW_INDEX: 24,    // appended by backend — original Excel row number
 }
 
 // Visible columns to display — extra: true for overtime columns (hidden by default)

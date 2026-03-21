@@ -1343,19 +1343,14 @@ def _find_main_table(all_rows):
     """
     header_idx = None
     for i, row in enumerate(all_rows):
-        # Header row has "לקוח" in col C (idx 2) and "אתר" in col D (idx 3)
-        c2 = str(row[2]).strip() if len(row) > 2 and row[2] else ""
+        # Header row has "לקוח" in col D (idx 3) and "אתר" in col F (idx 5)
         c3 = str(row[3]).strip() if len(row) > 3 and row[3] else ""
-        if c2 in _HR_HEADER_MARKERS and c3 in _HR_HEADER_MARKERS:
+        c5 = str(row[5]).strip() if len(row) > 5 and row[5] else ""
+        if c3 in _HR_HEADER_MARKERS and c5 in _HR_HEADER_MARKERS:
             header_idx = i
             break
-        # Also log first few rows for debugging
-        if i < 5:
-            cols_preview = [str(row[j]).strip() if len(row) > j and row[j] else "" for j in range(min(6, len(row)))]
-            logger.info(f"[HR] Row {i}: cols={cols_preview}, len={len(row)}")
 
     if header_idx is None:
-        logger.error(f"[HR] Header not found. Scanned {len(all_rows)} rows. Markers={_HR_HEADER_MARKERS}")
         return None, None
 
     # Find last data row: scan from header+1 until we hit several consecutive empty rows
@@ -1406,21 +1401,21 @@ def get_hr_sheet_data():
         for i in range(header_idx + 1, last_data_idx + 1):
             row = all_rows[i]
             excel_row = i + 1  # Excel row number (1-based)
-            # Row must have at least customer (col C=idx 2) or site (col D=idx 3)
-            if row[2] or row[3]:
+            # Row must have at least customer (col D=idx 3) or site (col F=idx 5)
+            if row[3] or row[5]:
                 row.append(excel_row)  # append Excel row number as last element
                 data_rows.append(row)
 
         # Build unique filter values
-        customers = sorted(set(str(r[2]).strip() for r in data_rows if r[2]))
-        sites = sorted(set(str(r[3]).strip() for r in data_rows if r[3]))
-        contractors = sorted(set(str(r[9]).strip() for r in data_rows if r[9]))
+        customers = sorted(set(str(r[3]).strip() for r in data_rows if r[3]))
+        sites = sorted(set(str(r[5]).strip() for r in data_rows if r[5]))
+        contractors = sorted(set(str(r[11]).strip() for r in data_rows if r[11]))
 
         # Build customer→sites mapping
         customer_sites = {}
         for r in data_rows:
-            cust = str(r[2]).strip() if r[2] else ""
-            site = str(r[3]).strip() if r[3] else ""
+            cust = str(r[3]).strip() if r[3] else ""
+            site = str(r[5]).strip() if r[5] else ""
             if cust and site:
                 customer_sites.setdefault(cust, set()).add(site)
         customer_sites = {k: sorted(v) for k, v in customer_sites.items()}
