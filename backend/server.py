@@ -12,6 +12,17 @@ import importlib.util
 import logging
 from pathlib import Path
 from datetime import datetime
+try:
+    from zoneinfo import ZoneInfo
+    _IL_TZ = ZoneInfo("Asia/Jerusalem")
+except ImportError:
+    from datetime import timezone, timedelta
+    _IL_TZ = timezone(timedelta(hours=2))
+
+
+def _now_il():
+    """Return current datetime in Israel timezone."""
+    return datetime.now(_IL_TZ)
 
 # Use logging (writes to stderr, works in Lambda where stdout is broken)
 logger = logging.getLogger("urbangroup")
@@ -321,7 +332,7 @@ def parse_excel_invoices(filepath):
         elif date_val:
             date_str = str(date_val)
         else:
-            date_str = datetime.now().strftime("%Y-%m-%d")
+            date_str = _now_il().strftime("%Y-%m-%d")
 
         # Always calculate price from column L (with VAT)
         price_no_vat = round(price_with_vat / 1.18, 2) if price_with_vat else 0
@@ -1425,7 +1436,7 @@ def hr_local_save():
             "rows": body.get("rows", []),
             "dirtyKeys": body.get("dirtyKeys", []),
             "deletedRows": body.get("deletedRows", []),
-            "savedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "savedAt": _now_il().strftime("%Y-%m-%d %H:%M:%S"),
         })
         return jsonify({"ok": True})
     except Exception as e:
@@ -1696,7 +1707,7 @@ def _save_parts_cache(parts):
     """Save parts to local cache file."""
     PARTS_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(PARTS_CACHE_FILE, "w", encoding="utf-8") as f:
-        json.dump({"parts": parts, "syncedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}, f, ensure_ascii=False)
+        json.dump({"parts": parts, "syncedAt": _now_il().strftime("%Y-%m-%d %H:%M:%S")}, f, ensure_ascii=False)
 
 
 def _load_parts_cache():
@@ -1786,7 +1797,7 @@ def sync_hr_priority():
             "suppliers": suppliers,
             "partsCount": len(parts) if not parts_error else 0,
             "partsError": parts_error,
-            "syncedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "syncedAt": _now_il().strftime("%Y-%m-%d %H:%M:%S"),
         })
     except Exception as e:
         logger.error(f"HR Priority sync failed: {e}")
