@@ -49,11 +49,11 @@ const DISPLAY_COLS = [
   { idx: COL.CUST_RATE, label: 'תעריף לקוח', type: 'num', narrow: true },
   { idx: COL.CUST_125, label: 'לקוח 125%', type: 'num', extra: true },
   { idx: COL.CUST_150, label: 'לקוח 150%', type: 'num', extra: true },
-  { idx: COL.CUST_TOTAL, label: 'סה"כ לקוח', type: 'num', narrow: true },
+  { idx: COL.CUST_TOTAL, label: 'סה"כ לקוח', type: 'num', narrow: true, totals: true },
   { idx: COL.CONT_RATE, label: 'תעריף קבלן', type: 'num', narrow: true },
   { idx: COL.CONT_125, label: 'קבלן 125%', type: 'num', extra: true },
   { idx: COL.CONT_150, label: 'קבלן 150%', type: 'num', extra: true },
-  { idx: COL.CONT_TOTAL, label: 'סה"כ קבלן', type: 'num', narrow: true },
+  { idx: COL.CONT_TOTAL, label: 'סה"כ קבלן', type: 'num', narrow: true, totals: true },
   { idx: COL.GAP, label: 'פער', type: 'num', narrow: true },
 ]
 
@@ -77,6 +77,7 @@ export default function ArielHRPage() {
   const [selectedCustomer, setSelectedCustomer] = useState('')
   const [selectedSite, setSelectedSite] = useState('')
   const [showExtra, setShowExtra] = useState(false)
+  const [showTotals, setShowTotals] = useState(false)
   const [activeOnly, setActiveOnly] = useState(false)
   const [showAll, setShowAll] = useState(false)
   const [nextNewId, setNextNewId] = useState(1)   // counter for new row temp IDs
@@ -300,10 +301,10 @@ export default function ArielHRPage() {
     setSelectedSite('')
   }
 
-  // Columns to show (hide overtime extras by default)
+  // Columns to show (hide overtime extras and totals by default)
   const visibleCols = useMemo(() =>
-    DISPLAY_COLS.filter(col => !col.extra || showExtra),
-    [showExtra]
+    DISPLAY_COLS.filter(col => (!col.extra || showExtra) && (!col.totals || showTotals)),
+    [showExtra, showTotals]
   )
 
   // Columns that trigger auto-recalculation
@@ -694,6 +695,13 @@ export default function ArielHRPage() {
                 onClick={() => setShowExtra(v => !v)}
               >
                 {showExtra ? 'הסתר שעות נוספות' : 'הצג שעות נוספות'}
+              </button>
+
+              <button
+                className={`hr-toggle-extra-btn${showTotals ? ' hr-toggle-active' : ''}`}
+                onClick={() => setShowTotals(v => !v)}
+              >
+                {showTotals ? 'הסתר סיכומי לקוח קבלן' : 'הצג סיכומי לקוח קבלן'}
               </button>
 
               <button
