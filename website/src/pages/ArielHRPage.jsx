@@ -773,7 +773,18 @@ export default function ArielHRPage() {
                                         handleCellChange(excelRow, col.idx, aboveVal)
                                       }
                                     }
+                                    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                                      e.preventDefault()
+                                      const rowIdx = filteredRows.indexOf(row)
+                                      const targetIdx = e.key === 'ArrowUp' ? rowIdx - 1 : rowIdx + 1
+                                      if (targetIdx >= 0 && targetIdx < filteredRows.length) {
+                                        const targetExcelRow = filteredRows[targetIdx][COL.ROW_INDEX]
+                                        const targetInput = document.querySelector(`input[data-cell="${targetExcelRow}:${col.idx}"]`)
+                                        if (targetInput) targetInput.focus()
+                                      }
+                                    }
                                   }}
+                                  data-cell={`${excelRow}:${col.idx}`}
                                 />
                               </td>
                             )
