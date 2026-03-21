@@ -316,9 +316,10 @@
 
 /* Row number column */
 .hr-td-row-num {
-  width: 60px;
-  max-width: 60px;
+  width: 50px;
+  max-width: 50px;
   white-space: nowrap !important;
+  padding: 3px 0 !important;
 }
 
 .hr-add-row-btn,
@@ -343,7 +344,7 @@
 .hr-add-row-btn {
   color: #16a34a;
   border-color: #16a34a;
-  margin-left: 2px;
+  margin-left: 0;
 }
 
 .hr-add-row-btn:hover {
@@ -355,7 +356,7 @@
 .hr-delete-row-btn {
   color: #dc2626;
   border-color: #dc2626;
-  margin-right: 2px;
+  margin-right: 0;
   font-size: 9px;
 }
 

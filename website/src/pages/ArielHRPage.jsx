@@ -84,6 +84,8 @@ export default function ArielHRPage() {
   const [showTotals, setShowTotals] = useState(false)
   const [activeOnly, setActiveOnly] = useState(false)
   const [showAll, setShowAll] = useState(false)
+  const [showUnfilled, setShowUnfilled] = useState(false)
+  const [showUnsent, setShowUnsent] = useState(false)
   const [nextNewId, setNextNewId] = useState(1)   // counter for new row temp IDs
 
   // Draggable grand totals order
@@ -173,10 +175,10 @@ export default function ArielHRPage() {
 
   // Filter rows (use editedRows for display)
   const filteredRows = useMemo(() => {
-    if (!showAll && !selectedContractor && !selectedCustomer && !selectedSite) return []
+    if (!showAll && !showUnfilled && !showUnsent && !selectedContractor && !selectedCustomer && !selectedSite) return []
 
     return editedRows.filter(row => {
-      if (!showAll) {
+      if (!showAll && !showUnfilled && !showUnsent) {
         const customer = String(row[COL.CUSTOMER] || '').trim()
         const site = String(row[COL.SITE] || '').trim()
         const contractor = String(row[COL.CONTRACTOR] || '').trim()
@@ -189,9 +191,17 @@ export default function ArielHRPage() {
         const hours = row[COL.HOURS_REG]
         if (hours === null || hours === undefined || hours === '' || hours === 0) return false
       }
+      if (showUnfilled) {
+        const filling = String(row[COL.FILLING] || '').trim()
+        if (filling === '1') return false
+      }
+      if (showUnsent) {
+        const tracking = String(row[COL.TRACKING] || '').trim()
+        if (tracking === '1') return false
+      }
       return true
     })
-  }, [editedRows, selectedContractor, selectedCustomer, selectedSite, activeOnly, showAll])
+  }, [editedRows, selectedContractor, selectedCustomer, selectedSite, activeOnly, showAll, showUnfilled, showUnsent])
 
   // Contractor total (sum of CONT_TOTAL) — only when contractor filter is active
   const contractorTotal = useMemo(() => {
@@ -532,7 +542,7 @@ export default function ArielHRPage() {
     }
   }
 
-  const hasFilter = showAll || selectedContractor || selectedCustomer || selectedSite
+  const hasFilter = showAll || showUnfilled || showUnsent || selectedContractor || selectedCustomer || selectedSite
   const hasDirty = dirtyKeys.size > 0 || deletedRows.size > 0
 
   return (
@@ -599,6 +609,18 @@ export default function ArielHRPage() {
             onClick={() => setShowAll(v => !v)}
           >
             {showAll ? 'חזור לסינון' : 'הצג את כל הטבלה'}
+          </button>
+          <button
+            className={`hr-toggle-extra-btn${showUnfilled ? ' hr-toggle-active' : ''}`}
+            onClick={() => { setShowUnfilled(v => !v); if (!showUnfilled) { setShowAll(true) } }}
+          >
+            נתונים לא מולאו
+          </button>
+          <button
+            className={`hr-toggle-extra-btn${showUnsent ? ' hr-toggle-active' : ''}`}
+            onClick={() => { setShowUnsent(v => !v); if (!showUnsent) { setShowAll(true) } }}
+          >
+            לא נשלחו
           </button>
         </div>
 
