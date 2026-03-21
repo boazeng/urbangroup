@@ -182,7 +182,7 @@ export default function ArielHRPage() {
       if (!site) continue
       if (!siteRows[site]) siteRows[site] = { total: 0, filled: 0 }
       siteRows[site].total++
-      if (String(row[COL.FILLING] || '').trim() === '1') siteRows[site].filled++
+      if (Number(row[COL.FILLING]) >= 1) siteRows[site].filled++
     }
     const filled = new Set()
     for (const [site, counts] of Object.entries(siteRows)) {
@@ -629,16 +629,16 @@ export default function ArielHRPage() {
             {showAll ? 'חזור לסינון' : 'הצג את כל הטבלה'}
           </button>
           <button
-            className={`hr-toggle-extra-btn${showUnfilled ? ' hr-toggle-active' : ''}`}
-            onClick={() => { setShowUnfilled(v => !v); if (!showUnfilled) { setShowAll(true) } }}
-          >
-            נתונים לא מולאו
-          </button>
-          <button
             className={`hr-toggle-extra-btn${showUnsent ? ' hr-toggle-active' : ''}`}
             onClick={() => { setShowUnsent(v => !v); if (!showUnsent) { setShowAll(true) } }}
           >
             לא נשלחו
+          </button>
+          <button
+            className={`hr-toggle-extra-btn${showUnfilled ? ' hr-toggle-active' : ''}`}
+            onClick={() => { setShowUnfilled(v => !v); if (!showUnfilled) { setShowAll(true) } }}
+          >
+            נתונים לא מולאו
           </button>
         </div>
 
