@@ -316,10 +316,11 @@
 
 /* Row number column */
 .hr-td-row-num {
-  width: 50px;
-  max-width: 50px;
+  width: 42px;
+  max-width: 42px;
   white-space: nowrap !important;
   padding: 3px 0 !important;
+  text-align: center !important;
 }
 
 .hr-add-row-btn,
@@ -382,6 +383,11 @@
   background: #bbf7d0 !important;
 }
 
+/* Customer cell when tracking=1 — brown highlight */
+.hr-cell-tracked {
+  background: #f5e6d3 !important;
+}
+
 /* Deleted row — red background */
 .hr-row-deleted {
   background: #fef2f2 !important;
@@ -408,6 +414,7 @@
   width: 38px;
   max-width: 38px;
   white-space: nowrap !important;
+  padding: 3px 0 !important;
 }
 
 .hr-td-tracking .hr-cell-input {

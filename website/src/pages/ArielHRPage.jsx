@@ -173,6 +173,24 @@ export default function ArielHRPage() {
     }
   }, [availableSites, selectedSite])
 
+  // Build set of fully-filled sites (all rows have filling=1) for unfilled filter
+  const fullyFilledSites = useMemo(() => {
+    if (!showUnfilled) return null
+    const siteRows = {}
+    for (const row of editedRows) {
+      const site = String(row[COL.SITE] || '').trim()
+      if (!site) continue
+      if (!siteRows[site]) siteRows[site] = { total: 0, filled: 0 }
+      siteRows[site].total++
+      if (String(row[COL.FILLING] || '').trim() === '1') siteRows[site].filled++
+    }
+    const filled = new Set()
+    for (const [site, counts] of Object.entries(siteRows)) {
+      if (counts.filled === counts.total) filled.add(site)
+    }
+    return filled
+  }, [editedRows, showUnfilled])
+
   // Filter rows (use editedRows for display)
   const filteredRows = useMemo(() => {
     if (!showAll && !showUnfilled && !showUnsent && !selectedContractor && !selectedCustomer && !selectedSite) return []
@@ -191,9 +209,9 @@ export default function ArielHRPage() {
         const hours = row[COL.HOURS_REG]
         if (hours === null || hours === undefined || hours === '' || hours === 0) return false
       }
-      if (showUnfilled) {
-        const filling = String(row[COL.FILLING] || '').trim()
-        if (filling === '1') return false
+      if (showUnfilled && fullyFilledSites) {
+        const site = String(row[COL.SITE] || '').trim()
+        if (fullyFilledSites.has(site)) return false
       }
       if (showUnsent) {
         const tracking = String(row[COL.TRACKING] || '').trim()
@@ -201,7 +219,7 @@ export default function ArielHRPage() {
       }
       return true
     })
-  }, [editedRows, selectedContractor, selectedCustomer, selectedSite, activeOnly, showAll, showUnfilled, showUnsent])
+  }, [editedRows, selectedContractor, selectedCustomer, selectedSite, activeOnly, showAll, showUnfilled, showUnsent, fullyFilledSites])
 
   // Contractor total (sum of CONT_TOTAL) — only when contractor filter is active
   const contractorTotal = useMemo(() => {
@@ -803,8 +821,9 @@ export default function ArielHRPage() {
                             const isDirty = dirtyKeys.has(key)
                             const siteName = cellVal(row[COL.SITE])
                             const siteHighlighted = col.siteCol && Number(row[COL.FILLING]) >= 1
+                            const customerTracked = col.idx === COL.CUSTOMER && String(row[COL.TRACKING]) === '1'
                             return (
-                              <td key={col.idx} className={`${col.type === 'num' ? 'ariel-num' : ''}${col.tracking ? ' hr-td-tracking' : col.xnarrow ? ' hr-td-xnarrow' : col.narrow ? ' hr-td-narrow' : ''}${col.wide ? ' hr-td-wide' : ''}${col.siteCol ? ' hr-td-site' : ''}${siteHighlighted ? ' hr-cell-active-hours' : ''}`}>
+                              <td key={col.idx} className={`${col.type === 'num' ? 'ariel-num' : ''}${col.tracking ? ' hr-td-tracking' : col.xnarrow ? ' hr-td-xnarrow' : col.narrow ? ' hr-td-narrow' : ''}${col.wide ? ' hr-td-wide' : ''}${col.siteCol ? ' hr-td-site' : ''}${siteHighlighted ? ' hr-cell-active-hours' : ''}${customerTracked ? ' hr-cell-tracked' : ''}`}>
                                 {col.tracking && (
                                   <button
                                     className="hr-tracking-toggle-btn"
