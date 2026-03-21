@@ -701,7 +701,7 @@ export default function ArielHRPage() {
                 className={`hr-toggle-extra-btn${showTotals ? ' hr-toggle-active' : ''}`}
                 onClick={() => setShowTotals(v => !v)}
               >
-                {showTotals ? 'הסתר סיכומי לקוח קבלן' : 'הצג סיכומי לקוח קבלן'}
+                הצג סיכומי לקוח קבלן
               </button>
 
               <button
