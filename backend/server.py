@@ -1327,6 +1327,44 @@ def _get_sp_connector():
 
 HR_SHARE_URL = "https://yaelisrael.sharepoint.com/:x:/g/Realestateproject/IQCk9K_jvlY-S6n0U3Wls4rTAQDvNEL8m9GIHU16NXW-37E"
 
+# ── Local HR persistence ──────────────────────────────────────────────
+HR_LOCAL_DIR = Path("/tmp/hr_local") if IS_LAMBDA else \
+    PROJECT_ROOT / "output" / "hr_local"
+
+
+def _hr_local_path(sheet):
+    """Return path to local JSON file for a given sheet."""
+    safe = sheet.replace("/", "_").replace("\\", "_")
+    return HR_LOCAL_DIR / f"{safe}.json"
+
+
+def _read_local_hr(sheet):
+    """Read local HR data for a sheet. Returns dict or None."""
+    p = _hr_local_path(sheet)
+    if p.exists():
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return None
+    return None
+
+
+def _write_local_hr(sheet, data):
+    """Write local HR data for a sheet."""
+    HR_LOCAL_DIR.mkdir(parents=True, exist_ok=True)
+    p = _hr_local_path(sheet)
+    with open(p, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False)
+
+
+def _clear_local_hr(sheet):
+    """Remove local HR data for a sheet (after successful SharePoint save)."""
+    p = _hr_local_path(sheet)
+    if p.exists():
+        p.unlink()
+
+
 # Known header markers for the main table (column C and D)
 _HR_HEADER_MARKERS = {"לקוח", "אתר"}
 
@@ -1368,6 +1406,41 @@ def _find_main_table(all_rows):
                 break
 
     return header_idx, last_data_idx
+
+
+@app.route("/api/hr/local-save", methods=["POST"])
+def hr_local_save():
+    """Auto-save HR table state locally so edits survive server/network issues.
+
+    Body JSON:
+        sheet: sheet name
+        rows: full edited rows array
+        dirtyKeys: list of "excelRow:colIdx" strings
+        deletedRows: list of ROW_INDEX values
+    """
+    body = request.get_json(force=True)
+    sheet = body.get("sheet", "2.26")
+    try:
+        _write_local_hr(sheet, {
+            "rows": body.get("rows", []),
+            "dirtyKeys": body.get("dirtyKeys", []),
+            "deletedRows": body.get("deletedRows", []),
+            "savedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        })
+        return jsonify({"ok": True})
+    except Exception as e:
+        logger.error(f"HR local save failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/hr/local-data", methods=["GET"])
+def hr_local_data():
+    """Return locally saved HR data for a sheet, if any."""
+    sheet = request.args.get("sheet", "2.26")
+    local = _read_local_hr(sheet)
+    if local:
+        return jsonify({"ok": True, "hasLocal": True, **local})
+    return jsonify({"ok": True, "hasLocal": False})
 
 
 @app.route("/api/hr/sheet-data", methods=["GET"])
@@ -1543,6 +1616,9 @@ def save_hr_changes():
                 assigned[orig_idx] = insert_row
 
             new_row_indices = assigned
+
+        # Clear local pending data after successful SharePoint save
+        _clear_local_hr(sheet)
 
         return jsonify({"ok": True, "updated": updated, "newRowIndices": new_row_indices})
     except Exception as e:

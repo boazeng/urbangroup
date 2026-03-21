@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import './ArielPage.css'
 import './ArielHRPage.css'
@@ -122,6 +122,33 @@ export default function ArielHRPage() {
   const [partSearch, setPartSearch] = useState('')
   const [lastSyncTime, setLastSyncTime] = useState(() => localStorage.getItem('hr-last-sync-time') || '')
   const [showPriorityTable, setShowPriorityTable] = useState(false)
+  const [localSaveStatus, setLocalSaveStatus] = useState('') // '', 'saving', 'saved', 'error'
+  const autoSaveTimer = useRef(null)
+
+  // Auto-save to local backend (debounced)
+  const autoSaveLocal = useCallback((rows, dirty, deleted) => {
+    if (dirty.size === 0 && deleted.size === 0) {
+      setLocalSaveStatus('')
+      return
+    }
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current)
+    autoSaveTimer.current = setTimeout(() => {
+      setLocalSaveStatus('saving')
+      fetch(`${API_BASE}/api/hr/local-save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sheet: selectedSheet,
+          rows,
+          dirtyKeys: [...dirty],
+          deletedRows: [...deleted],
+        }),
+      })
+        .then(r => r.ok ? r.json() : Promise.reject(new Error('local save failed')))
+        .then(d => setLocalSaveStatus(d.ok ? 'saved' : 'error'))
+        .catch(() => setLocalSaveStatus('error'))
+    }, 1500)
+  }, [selectedSheet])
 
   useEffect(() => {
     fetch(`${API_BASE}/api/hr/sheets`)
@@ -153,27 +180,54 @@ export default function ArielHRPage() {
       .finally(() => setSyncing(false))
   }
 
-  const loadData = () => {
+  const loadData = async () => {
     setLoading(true)
     setError('')
-    fetch(`${API_BASE}/api/hr/sheet-data?sheet=${encodeURIComponent(selectedSheet)}`)
-      .then(safeJson)
-      .then(data => {
-        if (data.ok) {
-          setAllRows(data.rows)
-          setEditedRows(data.rows.map(r => [...r]))
-          setFilters(data.filters)
-          setDirtyKeys(new Set())
-          setDeletedRows(new Set())
-        } else {
-          setError(data.error || 'שגיאה בטעינה')
+    try {
+      // 1. Load from SharePoint
+      const resp = await fetch(`${API_BASE}/api/hr/sheet-data?sheet=${encodeURIComponent(selectedSheet)}`)
+      const data = await safeJson(resp)
+      if (!data.ok) {
+        setError(data.error || 'שגיאה בטעינה')
+        return
+      }
+      setAllRows(data.rows)
+      setFilters(data.filters)
+
+      // 2. Check for locally saved pending changes
+      try {
+        const localResp = await fetch(`${API_BASE}/api/hr/local-data?sheet=${encodeURIComponent(selectedSheet)}`)
+        const localData = await localResp.json()
+        if (localData.ok && localData.hasLocal && localData.dirtyKeys?.length > 0) {
+          // Restore local edits on top of fresh SharePoint data
+          setEditedRows(localData.rows.map(r => [...r]))
+          setDirtyKeys(new Set(localData.dirtyKeys))
+          setDeletedRows(new Set(localData.deletedRows || []))
+          setLocalSaveStatus('saved')
+          return
         }
-      })
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false))
+      } catch {
+        // Local data unavailable — proceed with clean SharePoint data
+      }
+
+      // No local pending — use clean SharePoint data
+      setEditedRows(data.rows.map(r => [...r]))
+      setDirtyKeys(new Set())
+      setDeletedRows(new Set())
+      setLocalSaveStatus('')
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { loadData() }, [selectedSheet])
+
+  // Auto-save locally whenever edits change
+  useEffect(() => {
+    autoSaveLocal(editedRows, dirtyKeys, deletedRows)
+  }, [editedRows, dirtyKeys, deletedRows, autoSaveLocal])
 
   // Sites available for selected customer
   const availableSites = useMemo(() => {
@@ -808,6 +862,7 @@ export default function ArielHRPage() {
         setAllRows(editedRows.filter(r => !deletedRows.has(r[COL.ROW_INDEX])).map(r => [...r]))
         setDirtyKeys(new Set())
         setDeletedRows(new Set())
+        setLocalSaveStatus('') // local cleared by backend
       } else {
         setError(data.error || 'שגיאה בשמירה')
       }
@@ -1073,6 +1128,16 @@ export default function ArielHRPage() {
 
         {error && <div className="ariel-error">{error}</div>}
 
+        {localSaveStatus === 'saved' && !saving && hasDirty && !loading && (
+          <div style={{
+            padding: '8px 16px', marginBottom: 12, borderRadius: 6,
+            background: '#fef3c7', border: '1px solid #fbbf24', fontSize: 13,
+            color: '#92400e', direction: 'rtl',
+          }}>
+            יש שינויים שלא נשמרו ב-SharePoint — לחץ &quot;שמור שינויים&quot; כדי לסנכרן
+          </div>
+        )}
+
         {loading ? (
           <div className="ariel-loading">
             <div className="ariel-spinner" />
@@ -1165,13 +1230,25 @@ export default function ArielHRPage() {
               </button>
 
               {hasDirty && (
-                <button
-                  className="hr-save-btn"
-                  onClick={handleSave}
-                  disabled={saving}
-                >
-                  {saving ? 'שומר...' : `שמור שינויים (${dirtyKeys.size})`}
-                </button>
+                <>
+                  <button
+                    className="hr-save-btn"
+                    onClick={handleSave}
+                    disabled={saving}
+                  >
+                    {saving ? 'שומר...' : `שמור שינויים (${dirtyKeys.size})`}
+                  </button>
+                  <span className="hr-local-status" style={{
+                    fontSize: '12px',
+                    color: localSaveStatus === 'saved' ? '#16a34a'
+                         : localSaveStatus === 'error' ? '#dc2626'
+                         : localSaveStatus === 'saving' ? '#9ca3af' : '#9ca3af',
+                  }}>
+                    {localSaveStatus === 'saved' && 'נשמר מקומית'}
+                    {localSaveStatus === 'saving' && 'שומר מקומית...'}
+                    {localSaveStatus === 'error' && 'שגיאה בשמירה מקומית'}
+                  </span>
+                </>
               )}
             </div>
 
