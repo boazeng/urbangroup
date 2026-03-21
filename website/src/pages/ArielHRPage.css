@@ -367,8 +367,8 @@
 
 /* Site column */
 .hr-td-site {
-  width: 70px;
-  max-width: 70px;
+  width: 90px;
+  max-width: 90px;
 }
 
 .hr-td-site .hr-cell-input {
@@ -451,10 +451,10 @@
   max-width: 65px;
 }
 
-/* Wide columns (customer, site) */
+/* Wide columns (customer) */
 .hr-td-wide {
-  width: 120px;
-  max-width: 120px;
+  width: 100px;
+  max-width: 100px;
 }
 
 /* Editable cell inputs */
