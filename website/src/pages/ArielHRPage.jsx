@@ -34,6 +34,7 @@ const COL = {
 
 // Visible columns to display — extra: true for overtime columns (hidden by default)
 const DISPLAY_COLS = [
+  { idx: COL.TRACKING, label: 'מעקב', type: 'num', xnarrow: true },
   { idx: COL.PRIORITY_NUM, label: 'מס פריורטי', type: 'text', xnarrow: true },
   { idx: COL.CUSTOMER, label: 'לקוח', type: 'text', wide: true },
   { idx: COL.SITE, label: 'אתר', type: 'text', wide: true },
@@ -373,7 +374,8 @@ export default function ArielHRPage() {
       const newRow = [...sourceRow]
       const tempId = `new_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 
-      // Clear hours fields
+      // Set defaults for new row
+      newRow[COL.TRACKING] = 0
       newRow[COL.HOURS_REG] = ''
       newRow[COL.HOURS_125] = ''
       newRow[COL.HOURS_150] = ''
