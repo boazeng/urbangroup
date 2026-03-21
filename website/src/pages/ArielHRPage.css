@@ -386,6 +386,12 @@
   color: #fff;
 }
 
+/* Extra narrow columns */
+.hr-td-xnarrow {
+  width: 45px;
+  max-width: 45px;
+}
+
 /* Narrow columns — constrain td/th width */
 .hr-td-narrow {
   width: 65px;
