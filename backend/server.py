@@ -1588,6 +1588,28 @@ def get_hr_customers():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/api/hr/parts", methods=["GET"])
+def get_hr_parts():
+    """Fetch parts 100-199 from Priority via Web SDK (LOGPART screen)."""
+    try:
+        import subprocess
+        script = Path(__file__).resolve().parent.parent / "agents" / "specific-mission-agents" / \
+            "priority-specific-agents" / "900-parts" / "read-parts.js"
+        result = subprocess.run(
+            ["node", str(script)],
+            capture_output=True, text=True, timeout=60,
+            cwd=str(script.parent),
+        )
+        if result.returncode != 0:
+            logger.error(f"read-parts.js failed: {result.stderr}")
+            return jsonify({"ok": False, "error": result.stderr or "Script failed"}), 500
+        data = json.loads(result.stdout.strip().split("\n")[-1])
+        return jsonify(data)
+    except Exception as e:
+        logger.error(f"HR parts fetch failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/hr/sync-priority", methods=["GET"])
 def sync_hr_priority():
     """Fetch customers and suppliers from Priority ERP (real env, branch 102)."""

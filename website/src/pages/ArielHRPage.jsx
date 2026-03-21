@@ -116,6 +116,10 @@ export default function ArielHRPage() {
   const [showArielCustomers, setShowArielCustomers] = useState(false)
   const [loadingCustomers, setLoadingCustomers] = useState(false)
   const [customerSearch, setCustomerSearch] = useState('')
+  const [arielParts, setArielParts] = useState([])
+  const [showArielParts, setShowArielParts] = useState(false)
+  const [loadingParts, setLoadingParts] = useState(false)
+  const [partSearch, setPartSearch] = useState('')
   const [lastSyncTime, setLastSyncTime] = useState(() => localStorage.getItem('hr-last-sync-time') || '')
   const [showPriorityTable, setShowPriorityTable] = useState(false)
 
@@ -862,6 +866,27 @@ export default function ArielHRPage() {
           >
             {loadingCustomers ? 'טוען...' : 'רשימת לקוחות (סניף 102)'}
           </button>
+          <button
+            className={`hr-toggle-extra-btn${showArielParts ? ' hr-toggle-active' : ''}`}
+            disabled={loadingParts}
+            onClick={() => {
+              if (arielParts.length === 0) {
+                setLoadingParts(true)
+                fetch(`${API_BASE}/api/hr/parts`)
+                  .then(safeJson)
+                  .then(data => {
+                    if (data.ok) { setArielParts(data.parts || []); setShowArielParts(true) }
+                    else setError(data.error || 'שגיאה בטעינת מקטים')
+                  })
+                  .catch(e => setError(e.message))
+                  .finally(() => setLoadingParts(false))
+              } else {
+                setShowArielParts(v => !v)
+              }
+            }}
+          >
+            {loadingParts ? 'טוען...' : 'רשימת מקטים (100-199)'}
+          </button>
           {lastSyncTime && (
             <span className="hr-sync-time">סנכרון אחרון: {lastSyncTime}</span>
           )}
@@ -901,6 +926,50 @@ export default function ArielHRPage() {
                           <td className="ariel-num">{i + 1}</td>
                           <td>{c.code}</td>
                           <td>{c.name}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
+
+        {showArielParts && arielParts.length > 0 && (() => {
+          const filtered = partSearch
+            ? arielParts.filter(p => p.code.includes(partSearch) || p.name.includes(partSearch))
+            : arielParts
+          return (
+            <div className="hr-priority-section">
+              <div className="hr-priority-header">
+                <h3 className="hr-site-summary-title">רשימת מקטים ({filtered.length})</h3>
+                <input
+                  className="hr-filter-select"
+                  type="text"
+                  placeholder="חיפוש מקט..."
+                  value={partSearch}
+                  onChange={e => setPartSearch(e.target.value)}
+                  style={{ maxWidth: 200 }}
+                />
+                <button className="hr-toggle-extra-btn" onClick={() => setShowArielParts(false)}>הסתר</button>
+              </div>
+              <div className="hr-priority-table-wrap" style={{ maxWidth: 500 }}>
+                <div className="hr-table-wrapper">
+                  <table className="ariel-table hr-summary-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>מקט</th>
+                        <th>תיאור</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((p, i) => (
+                        <tr key={p.code}>
+                          <td className="ariel-num">{i + 1}</td>
+                          <td>{p.code}</td>
+                          <td>{p.name}</td>
                         </tr>
                       ))}
                     </tbody>
