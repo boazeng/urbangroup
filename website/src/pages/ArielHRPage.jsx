@@ -831,6 +831,15 @@ export default function ArielHRPage() {
           <button className="hr-sync-btn" onClick={handleSyncPriority} disabled={syncing}>
             {syncing ? 'מסנכרן...' : 'סנכרון עם פריורטי'}
           </button>
+          <button
+            className={`hr-toggle-extra-btn${showPriorityTable ? ' hr-toggle-active' : ''}`}
+            onClick={() => {
+              if (priorityCustomers.length === 0 && !syncing) handleSyncPriority()
+              else setShowPriorityTable(v => !v)
+            }}
+          >
+            רשימת לקוחות (סניף 102)
+          </button>
           {lastSyncTime && (
             <span className="hr-sync-time">סנכרון אחרון: {lastSyncTime}</span>
           )}
