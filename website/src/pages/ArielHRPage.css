@@ -388,8 +388,8 @@
 
 /* Extra narrow columns */
 .hr-td-xnarrow {
-  width: 45px;
-  max-width: 45px;
+  width: 55px;
+  max-width: 55px;
 }
 
 /* Narrow columns — constrain td/th width */
@@ -400,8 +400,8 @@
 
 /* Wide columns (customer, site) */
 .hr-td-wide {
-  width: 130px;
-  max-width: 130px;
+  width: 120px;
+  max-width: 120px;
 }
 
 /* Editable cell inputs */
