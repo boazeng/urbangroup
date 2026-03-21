@@ -66,6 +66,12 @@ function cellVal(v) {
   return String(v)
 }
 
+function safeJson(r) {
+  const ct = r.headers.get('content-type') || ''
+  if (!ct.includes('application/json')) throw new Error('השרת לא זמין')
+  return r.json()
+}
+
 export default function ArielHRPage() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -109,12 +115,13 @@ export default function ArielHRPage() {
   const [arielCustomers, setArielCustomers] = useState([])
   const [showArielCustomers, setShowArielCustomers] = useState(false)
   const [loadingCustomers, setLoadingCustomers] = useState(false)
+  const [customerSearch, setCustomerSearch] = useState('')
   const [lastSyncTime, setLastSyncTime] = useState(() => localStorage.getItem('hr-last-sync-time') || '')
   const [showPriorityTable, setShowPriorityTable] = useState(false)
 
   useEffect(() => {
     fetch(`${API_BASE}/api/hr/sheets`)
-      .then(r => r.json())
+      .then(safeJson)
       .then(data => {
         if (data.ok) setAvailableSheets(data.sheets)
       })
@@ -124,7 +131,7 @@ export default function ArielHRPage() {
   const handleSyncPriority = () => {
     setSyncing(true)
     fetch(`${API_BASE}/api/hr/sync-priority`)
-      .then(r => r.json())
+      .then(safeJson)
       .then(data => {
         if (data.ok) {
           setPriorityCustomers(data.customers || [])
@@ -145,7 +152,7 @@ export default function ArielHRPage() {
     setLoading(true)
     setError('')
     fetch(`${API_BASE}/api/hr/sheet-data?sheet=${encodeURIComponent(selectedSheet)}`)
-      .then(r => r.json())
+      .then(safeJson)
       .then(data => {
         if (data.ok) {
           setAllRows(data.rows)
@@ -774,7 +781,7 @@ export default function ArielHRPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sheet: selectedSheet, changes, newRows, deleteRows: deleteRowIndices }),
       })
-      const data = await resp.json()
+      const data = await safeJson(resp)
       if (data.ok) {
         // Update new rows with their real Excel row indices
         if (data.newRowIndices && data.newRowIndices.length > 0) {
@@ -841,7 +848,7 @@ export default function ArielHRPage() {
               if (arielCustomers.length === 0) {
                 setLoadingCustomers(true)
                 fetch(`${API_BASE}/api/hr/customers`)
-                  .then(r => r.json())
+                  .then(safeJson)
                   .then(data => {
                     if (data.ok) { setArielCustomers(data.customers || []); setShowArielCustomers(true) }
                     else setError(data.error || 'שגיאה בטעינת לקוחות')
@@ -860,36 +867,49 @@ export default function ArielHRPage() {
           )}
         </div>
 
-        {showArielCustomers && arielCustomers.length > 0 && (
-          <div className="hr-priority-section">
-            <div className="hr-priority-header">
-              <h3 className="hr-site-summary-title">רשימת לקוחות ({arielCustomers.length})</h3>
-              <button className="hr-toggle-extra-btn" onClick={() => setShowArielCustomers(false)}>הסתר</button>
-            </div>
-            <div className="hr-priority-table-wrap">
-              <div className="hr-table-wrapper">
-                <table className="ariel-table hr-summary-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>מספר חשבון</th>
-                      <th>שם לקוח</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {arielCustomers.map((c, i) => (
-                      <tr key={c.code}>
-                        <td className="ariel-num">{i + 1}</td>
-                        <td>{c.code}</td>
-                        <td>{c.name}</td>
+        {showArielCustomers && arielCustomers.length > 0 && (() => {
+          const filtered = customerSearch
+            ? arielCustomers.filter(c => c.code.includes(customerSearch) || c.name.includes(customerSearch))
+            : arielCustomers
+          return (
+            <div className="hr-priority-section">
+              <div className="hr-priority-header">
+                <h3 className="hr-site-summary-title">רשימת לקוחות ({filtered.length})</h3>
+                <input
+                  className="hr-filter-select"
+                  type="text"
+                  placeholder="חיפוש לקוח..."
+                  value={customerSearch}
+                  onChange={e => setCustomerSearch(e.target.value)}
+                  style={{ maxWidth: 200 }}
+                />
+                <button className="hr-toggle-extra-btn" onClick={() => setShowArielCustomers(false)}>הסתר</button>
+              </div>
+              <div className="hr-priority-table-wrap" style={{ maxWidth: 500 }}>
+                <div className="hr-table-wrapper">
+                  <table className="ariel-table hr-summary-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>מספר חשבון</th>
+                        <th>שם לקוח</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {filtered.map((c, i) => (
+                        <tr key={c.code}>
+                          <td className="ariel-num">{i + 1}</td>
+                          <td>{c.code}</td>
+                          <td>{c.name}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
 
         {editedRows.length > 0 && (
           <div className="hr-grand-totals">
