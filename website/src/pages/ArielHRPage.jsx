@@ -416,19 +416,7 @@ export default function ArielHRPage() {
     })
   }, [])
 
-  // Sites manually highlighted green
-  const [highlightedSites, setHighlightedSites] = useState(new Set())
-
-  const handleToggleSiteHighlight = (site) => {
-    setHighlightedSites(prev => {
-      const next = new Set(prev)
-      if (next.has(site)) next.delete(site)
-      else next.add(site)
-      return next
-    })
-  }
-
-  // Toggle tracking for all rows of a specific site
+  // Toggle tracking for all rows of a specific site (also controls green highlight)
   const handleToggleSiteTracking = (site) => {
     // Check if all rows of this site already have tracking=1
     const siteRows = editedRows.filter(r => cellVal(r[COL.SITE]) === site)
@@ -780,7 +768,7 @@ export default function ArielHRPage() {
                             const key = `${excelRow}:${col.idx}`
                             const isDirty = dirtyKeys.has(key)
                             const siteName = cellVal(row[COL.SITE])
-                            const siteHighlighted = col.siteCol && (Number(row[COL.HOURS_REG]) > 0 || highlightedSites.has(siteName))
+                            const siteHighlighted = col.siteCol && (Number(row[COL.HOURS_REG]) > 0 || Number(row[COL.TRACKING]) >= 1)
                             return (
                               <td key={col.idx} className={`${col.type === 'num' ? 'ariel-num' : ''}${col.tracking ? ' hr-td-tracking' : col.xnarrow ? ' hr-td-xnarrow' : col.narrow ? ' hr-td-narrow' : ''}${col.wide ? ' hr-td-wide' : ''}${col.siteCol ? ' hr-td-site' : ''}${siteHighlighted ? ' hr-cell-active-hours' : ''}`}>
                                 {col.tracking && (
@@ -793,8 +781,8 @@ export default function ArielHRPage() {
                                 {col.siteCol && (
                                   <button
                                     className="hr-tracking-toggle-btn"
-                                    onClick={() => handleToggleSiteHighlight(siteName)}
-                                    title="סמן/בטל רקע ירוק לכל האתר"
+                                    onClick={() => handleToggleSiteTracking(siteName)}
+                                    title="סמן/בטל מעקב ורקע ירוק לכל האתר"
                                   >&#9998;</button>
                                 )}
                                 <input

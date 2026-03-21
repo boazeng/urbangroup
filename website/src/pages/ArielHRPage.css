@@ -366,12 +366,8 @@
 }
 
 /* Site column */
-.hr-td-site {
-  min-width: 100px;
-}
-
 .hr-td-site .hr-cell-input {
-  width: calc(100% - 20px);
+  width: calc(100% - 18px);
   display: inline-block;
 }
 
