@@ -365,9 +365,14 @@
   color: #fff;
 }
 
+/* Site column — slightly narrower than wide */
+.hr-td-site {
+  white-space: nowrap !important;
+}
+
 /* Site cell with active hours — green highlight */
 .hr-cell-active-hours {
-  background: #dcfce7 !important;
+  background: #bbf7d0 !important;
 }
 
 /* Deleted row — red background */

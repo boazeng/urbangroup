@@ -37,7 +37,7 @@ const DISPLAY_COLS = [
   { idx: COL.TRACKING, label: 'מעקב', type: 'num', tracking: true },
   { idx: COL.PRIORITY_NUM, label: 'מס פריורטי', type: 'text', narrow: true },
   { idx: COL.CUSTOMER, label: 'לקוח', type: 'text', wide: true },
-  { idx: COL.SITE, label: 'אתר', type: 'text', wide: true },
+  { idx: COL.SITE, label: 'אתר', type: 'text', siteCol: true },
   { idx: COL.PROFESSION_NUM, label: 'מס מקצוע', type: 'num', xnarrow: true },
   { idx: COL.PROFESSION, label: 'מקצוע', type: 'text', narrow: true },
   { idx: COL.TARIFF_TYPE, label: 'סוג תעריף', type: 'text', narrow: true },
@@ -416,6 +416,18 @@ export default function ArielHRPage() {
     })
   }, [])
 
+  // Sites manually highlighted green
+  const [highlightedSites, setHighlightedSites] = useState(new Set())
+
+  const handleToggleSiteHighlight = (site) => {
+    setHighlightedSites(prev => {
+      const next = new Set(prev)
+      if (next.has(site)) next.delete(site)
+      else next.add(site)
+      return next
+    })
+  }
+
   // Toggle tracking for all rows of a specific site
   const handleToggleSiteTracking = (site) => {
     // Check if all rows of this site already have tracking=1
@@ -767,14 +779,22 @@ export default function ArielHRPage() {
                           {visibleCols.map(col => {
                             const key = `${excelRow}:${col.idx}`
                             const isDirty = dirtyKeys.has(key)
-                            const hasHours = col.idx === COL.SITE && Number(row[COL.HOURS_REG]) > 0
+                            const siteName = cellVal(row[COL.SITE])
+                            const siteHighlighted = col.siteCol && (Number(row[COL.HOURS_REG]) > 0 || highlightedSites.has(siteName))
                             return (
-                              <td key={col.idx} className={`${col.type === 'num' ? 'ariel-num' : ''}${col.tracking ? ' hr-td-tracking' : col.xnarrow ? ' hr-td-xnarrow' : col.narrow ? ' hr-td-narrow' : ''}${col.wide ? ' hr-td-wide' : ''}${hasHours ? ' hr-cell-active-hours' : ''}`}>
+                              <td key={col.idx} className={`${col.type === 'num' ? 'ariel-num' : ''}${col.tracking ? ' hr-td-tracking' : col.xnarrow ? ' hr-td-xnarrow' : col.narrow ? ' hr-td-narrow' : ''}${col.wide ? ' hr-td-wide' : ''}${col.siteCol ? ' hr-td-site' : ''}${siteHighlighted ? ' hr-cell-active-hours' : ''}`}>
                                 {col.tracking && (
                                   <button
                                     className="hr-tracking-toggle-btn"
-                                    onClick={() => handleToggleSiteTracking(cellVal(row[COL.SITE]))}
+                                    onClick={() => handleToggleSiteTracking(siteName)}
                                     title="סמן/בטל מעקב לכל האתר"
+                                  >&#9998;</button>
+                                )}
+                                {col.siteCol && (
+                                  <button
+                                    className="hr-tracking-toggle-btn"
+                                    onClick={() => handleToggleSiteHighlight(siteName)}
+                                    title="סמן/בטל רקע ירוק לכל האתר"
                                   >&#9998;</button>
                                 )}
                                 <input
