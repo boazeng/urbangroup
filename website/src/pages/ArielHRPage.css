@@ -388,8 +388,8 @@
 
 /* Extra narrow columns */
 .hr-td-xnarrow {
-  width: 55px;
-  max-width: 55px;
+  width: 35px;
+  max-width: 35px;
 }
 
 /* Narrow columns — constrain td/th width */
