@@ -106,7 +106,7 @@ export default function ArielHRPage() {
   const [priorityCustomers, setPriorityCustomers] = useState([])
   const [prioritySuppliers, setPrioritySuppliers] = useState([])
   const [syncing, setSyncing] = useState(false)
-  const [lastSyncTime, setLastSyncTime] = useState('')
+  const [lastSyncTime, setLastSyncTime] = useState(() => localStorage.getItem('hr-last-sync-time') || '')
   const [showPriorityTable, setShowPriorityTable] = useState(false)
 
   useEffect(() => {
@@ -126,7 +126,9 @@ export default function ArielHRPage() {
         if (data.ok) {
           setPriorityCustomers(data.customers || [])
           setPrioritySuppliers(data.suppliers || [])
-          setLastSyncTime(data.syncedAt || '')
+          const syncTime = data.syncedAt || new Date().toLocaleString('he-IL')
+          setLastSyncTime(syncTime)
+          localStorage.setItem('hr-last-sync-time', syncTime)
           setShowPriorityTable(true)
         } else {
           setError(data.error || 'שגיאה בסנכרון')
