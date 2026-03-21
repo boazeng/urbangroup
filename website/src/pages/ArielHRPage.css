@@ -390,14 +390,12 @@
 .hr-td-tracking {
   width: 50px;
   max-width: 50px;
-  display: flex;
-  align-items: center;
-  gap: 1px;
+  white-space: nowrap !important;
 }
 
 .hr-td-tracking .hr-cell-input {
   width: 20px;
-  min-width: 20px;
+  display: inline-block;
   text-align: center;
 }
 
