@@ -1588,23 +1588,53 @@ def get_hr_customers():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+PARTS_CACHE_FILE = Path(__file__).resolve().parent.parent / "output" / "hr_parts_cache.json"
+
+
+def _fetch_parts_from_priority():
+    """Run read-parts.js and return parts list."""
+    import subprocess
+    script = Path(__file__).resolve().parent.parent / "agents" / "specific-mission-agents" / \
+        "priority-specific-agents" / "900-parts" / "read-parts.js"
+    result = subprocess.run(
+        ["node", str(script)],
+        capture_output=True, text=True, timeout=60,
+        cwd=str(script.parent),
+    )
+    if result.returncode != 0:
+        raise Exception(result.stderr or "read-parts.js failed")
+    data = json.loads(result.stdout.strip().split("\n")[-1])
+    if not data.get("ok"):
+        raise Exception(data.get("error", "Unknown error"))
+    return data.get("parts", [])
+
+
+def _save_parts_cache(parts):
+    """Save parts to local cache file."""
+    PARTS_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(PARTS_CACHE_FILE, "w", encoding="utf-8") as f:
+        json.dump({"parts": parts, "syncedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}, f, ensure_ascii=False)
+
+
+def _load_parts_cache():
+    """Load parts from local cache file."""
+    if PARTS_CACHE_FILE.exists():
+        with open(PARTS_CACHE_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return None
+
+
 @app.route("/api/hr/parts", methods=["GET"])
 def get_hr_parts():
-    """Fetch parts 100-199 from Priority via Web SDK (LOGPART screen)."""
+    """Return cached parts list. If no cache exists, fetch from Priority."""
     try:
-        import subprocess
-        script = Path(__file__).resolve().parent.parent / "agents" / "specific-mission-agents" / \
-            "priority-specific-agents" / "900-parts" / "read-parts.js"
-        result = subprocess.run(
-            ["node", str(script)],
-            capture_output=True, text=True, timeout=60,
-            cwd=str(script.parent),
-        )
-        if result.returncode != 0:
-            logger.error(f"read-parts.js failed: {result.stderr}")
-            return jsonify({"ok": False, "error": result.stderr or "Script failed"}), 500
-        data = json.loads(result.stdout.strip().split("\n")[-1])
-        return jsonify(data)
+        cache = _load_parts_cache()
+        if cache:
+            return jsonify({"ok": True, "parts": cache["parts"], "syncedAt": cache.get("syncedAt", "")})
+        # No cache — fetch live
+        parts = _fetch_parts_from_priority()
+        _save_parts_cache(parts)
+        return jsonify({"ok": True, "parts": parts})
     except Exception as e:
         logger.error(f"HR parts fetch failed: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -1655,10 +1685,21 @@ def sync_hr_priority():
             next_url = data.get("@odata.nextLink")
         suppliers = [{"code": k, "name": v} for k, v in sorted(sup_map.items())]
 
+        # 3. Fetch parts 100-199 via Web SDK and cache locally
+        parts_error = None
+        try:
+            parts = _fetch_parts_from_priority()
+            _save_parts_cache(parts)
+        except Exception as pe:
+            logger.error(f"Parts sync failed (non-fatal): {pe}")
+            parts_error = str(pe)
+
         return jsonify({
             "ok": True,
             "customers": customers,
             "suppliers": suppliers,
+            "partsCount": len(parts) if not parts_error else 0,
+            "partsError": parts_error,
             "syncedAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         })
     except Exception as e:

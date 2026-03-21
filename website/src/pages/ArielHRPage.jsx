@@ -140,6 +140,7 @@ export default function ArielHRPage() {
         if (data.ok) {
           setPriorityCustomers(data.customers || [])
           setPrioritySuppliers(data.suppliers || [])
+          setArielParts([]) // clear cache so next click reloads updated parts
           const syncTime = data.syncedAt || new Date().toLocaleString('he-IL')
           setLastSyncTime(syncTime)
           localStorage.setItem('hr-last-sync-time', syncTime)
