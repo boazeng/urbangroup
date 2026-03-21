@@ -1463,8 +1463,10 @@ def save_hr_changes():
     changes = body.get("changes", [])
     new_rows = body.get("newRows", [])
 
-    if not changes and not new_rows:
+    delete_rows_list = body.get("deleteRows", [])
+    if not changes and not new_rows and not delete_rows_list:
         return jsonify({"ok": True, "updated": 0, "newRowIndices": []})
+    logger.info(f"HR save: {len(changes)} changes, {len(new_rows)} new, {len(delete_rows_list)} deletes")
 
     try:
         sp = _get_sp_connector()
@@ -1485,8 +1487,7 @@ def save_hr_changes():
             updated += 1
 
         # 2. Delete rows — clear content in Excel
-        delete_rows = body.get("deleteRows", [])
-        for row_num in delete_rows:
+        for row_num in delete_rows_list:
             cell_range = f"A{row_num}:W{row_num}"
             empty_row = [[''] * 23]
             sp.write_excel_range(
