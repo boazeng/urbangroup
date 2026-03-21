@@ -1349,8 +1349,13 @@ def _find_main_table(all_rows):
         if c2 in _HR_HEADER_MARKERS and c3 in _HR_HEADER_MARKERS:
             header_idx = i
             break
+        # Also log first few rows for debugging
+        if i < 5:
+            cols_preview = [str(row[j]).strip() if len(row) > j and row[j] else "" for j in range(min(6, len(row)))]
+            logger.info(f"[HR] Row {i}: cols={cols_preview}, len={len(row)}")
 
     if header_idx is None:
+        logger.error(f"[HR] Header not found. Scanned {len(all_rows)} rows. Markers={_HR_HEADER_MARKERS}")
         return None, None
 
     # Find last data row: scan from header+1 until we hit several consecutive empty rows
