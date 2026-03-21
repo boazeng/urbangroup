@@ -29,12 +29,14 @@ const COL = {
   CONT_TOTAL: 20, // U - סהכ תשלום לקבלן
   GAP: 21,        // V - פער
   PRIORITY_NUM: 22, // W - מספר פריורטי
-  ROW_INDEX: 23,  // appended by backend — original Excel row number
+  FILLING: 23,     // X - מילוי
+  ROW_INDEX: 24,  // appended by backend — original Excel row number
 }
 
 // Visible columns to display — extra: true for overtime columns (hidden by default)
 const DISPLAY_COLS = [
   { idx: COL.TRACKING, label: 'מעקב', type: 'num', tracking: true },
+  { idx: COL.FILLING, label: 'מילוי', type: 'num', tracking: true },
   { idx: COL.PRIORITY_NUM, label: 'מס פריורטי', type: 'text', narrow: true },
   { idx: COL.CUSTOMER, label: 'לקוח', type: 'text', wide: true },
   { idx: COL.SITE, label: 'אתר', type: 'text', siteCol: true },
@@ -376,6 +378,7 @@ export default function ArielHRPage() {
 
       // Set defaults for new row
       newRow[COL.TRACKING] = 0
+      newRow[COL.FILLING] = 0
       newRow[COL.HOURS_REG] = ''
       newRow[COL.HOURS_125] = ''
       newRow[COL.HOURS_150] = ''
@@ -471,7 +474,7 @@ export default function ArielHRPage() {
           break
         }
       }
-      newRows.push({ data: row.slice(0, 23), afterRow })
+      newRows.push({ data: row.slice(0, 24), afterRow })
     }
 
     // Collect deleted row indices (only real Excel rows, not new ones)
@@ -768,7 +771,7 @@ export default function ArielHRPage() {
                             const key = `${excelRow}:${col.idx}`
                             const isDirty = dirtyKeys.has(key)
                             const siteName = cellVal(row[COL.SITE])
-                            const siteHighlighted = col.siteCol && (Number(row[COL.HOURS_REG]) > 0 || Number(row[COL.TRACKING]) >= 1)
+                            const siteHighlighted = col.siteCol && (Number(row[COL.FILLING]) >= 1 || Number(row[COL.HOURS_REG]) > 0)
                             return (
                               <td key={col.idx} className={`${col.type === 'num' ? 'ariel-num' : ''}${col.tracking ? ' hr-td-tracking' : col.xnarrow ? ' hr-td-xnarrow' : col.narrow ? ' hr-td-narrow' : ''}${col.wide ? ' hr-td-wide' : ''}${col.siteCol ? ' hr-td-site' : ''}${siteHighlighted ? ' hr-cell-active-hours' : ''}`}>
                                 {col.tracking && (

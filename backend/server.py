@@ -1358,7 +1358,7 @@ def _find_main_table(all_rows):
     empty_streak = 0
     for i in range(header_idx + 1, len(all_rows)):
         row = all_rows[i]
-        has_data = any(cell for cell in row[:23] if cell is not None and str(cell).strip())
+        has_data = any(cell for cell in row[:24] if cell is not None and str(cell).strip())
         if has_data:
             last_data_idx = i
             empty_streak = 0
@@ -1383,7 +1383,7 @@ def get_hr_sheet_data():
         excel = sp.SharePointExcel(HR_SHARE_URL)
 
         # Read a wide range and auto-detect the main table
-        data = excel.read(sheet, "A1:W1000")
+        data = excel.read(sheet, "A1:X1000")
         all_rows = data["values"]
         if not all_rows:
             return jsonify({"ok": True, "headers": [], "rows": [], "filters": {}})
@@ -1488,8 +1488,8 @@ def save_hr_changes():
 
         # 2. Delete rows — clear content in Excel
         for row_num in delete_rows_list:
-            cell_range = f"A{row_num}:W{row_num}"
-            empty_row = [[''] * 23]
+            cell_range = f"A{row_num}:X{row_num}"
+            empty_row = [[''] * 24]
             sp.write_excel_range(
                 excel.drive_id, excel.item_id,
                 sheet, cell_range, empty_row
@@ -1510,7 +1510,7 @@ def save_hr_changes():
                 positioned.append((after_row, row_data))
 
             # Rows without afterRow go to end of table
-            data = excel.read(sheet, "A1:W1000")
+            data = excel.read(sheet, "A1:X1000")
             all_rows_data = data.get("values", [])
             header_idx, last_data_idx = _find_main_table(all_rows_data)
             end_row = (last_data_idx + 1 if last_data_idx is not None else len(all_rows_data)) + 1
@@ -1528,8 +1528,8 @@ def save_hr_changes():
             assigned = [None] * len(positioned)
             for orig_idx, (after_row, row_data) in indexed:
                 insert_row = after_row + 1
-                padded = list(row_data) + [''] * (23 - len(row_data))
-                cell_range = f"A{insert_row}:W{insert_row}"
+                padded = list(row_data) + [''] * (24 - len(row_data))
+                cell_range = f"A{insert_row}:X{insert_row}"
                 # Insert blank row, shifting existing content down
                 sp.insert_excel_range(
                     excel.drive_id, excel.item_id,
@@ -1538,7 +1538,7 @@ def save_hr_changes():
                 # Write data into the newly inserted row
                 sp.write_excel_range(
                     excel.drive_id, excel.item_id,
-                    sheet, cell_range, [padded[:23]]
+                    sheet, cell_range, [padded[:24]]
                 )
                 assigned[orig_idx] = insert_row
 
