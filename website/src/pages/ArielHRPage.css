@@ -365,9 +365,10 @@
   color: #fff;
 }
 
-/* Site column — slightly narrower than wide */
+/* Site column */
 .hr-td-site {
-  white-space: nowrap !important;
+  width: 100px;
+  max-width: 100px;
 }
 
 /* Site cell with active hours — green highlight */
