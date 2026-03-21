@@ -286,6 +286,19 @@ export default function ArielHRPage() {
     })
   }, [editedRows, selectedContractor, selectedCustomer, selectedSite, activeOnly, showAll, showUnfilled, showUnsent, fullyFilledSites])
 
+  // Totals for displayed (filtered) rows only
+  const filteredTotals = useMemo(() => {
+    let custTotal = 0
+    let contTotal = 0
+    for (const row of filteredRows) {
+      if (!deletedRows.has(row[COL.ROW_INDEX])) {
+        custTotal += Number(row[COL.CUST_TOTAL]) || 0
+        contTotal += Number(row[COL.CONT_TOTAL]) || 0
+      }
+    }
+    return { custTotal, contTotal }
+  }, [filteredRows, deletedRows])
+
   // Contractor total (sum of CONT_TOTAL) — only when contractor filter is active
   const contractorTotal = useMemo(() => {
     if (!selectedContractor) return null
@@ -1052,6 +1065,19 @@ export default function ArielHRPage() {
                 </div>
               )
             })}
+          </div>
+        )}
+
+        {filteredRows.length > 0 && filteredRows.length !== editedRows.length && (
+          <div className="hr-grand-totals" style={{ marginTop: 0 }}>
+            <div className="hr-grand-total-item hr-total-income">
+              <span className="hr-grand-total-label">סה&quot;כ הכנסות לקוח מוצגות:</span>
+              <span className="hr-grand-total-value">{filteredTotals.custTotal.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</span>
+            </div>
+            <div className="hr-grand-total-item hr-total-expense">
+              <span className="hr-grand-total-label">סה&quot;כ הוצאות קבלן מוצגות:</span>
+              <span className="hr-grand-total-value">{filteredTotals.contTotal.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</span>
+            </div>
           </div>
         )}
 
