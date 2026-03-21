@@ -367,8 +367,12 @@
 
 /* Site column */
 .hr-td-site {
-  width: 100px;
-  max-width: 100px;
+  min-width: 100px;
+}
+
+.hr-td-site .hr-cell-input {
+  width: calc(100% - 20px);
+  display: inline-block;
 }
 
 /* Site cell with active hours — green highlight */
