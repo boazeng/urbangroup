@@ -663,14 +663,11 @@ export default function ArielHRPage() {
 
     let tablesHtml = `<div class="section"><h2>סה"כ ${unfilledSites.length} אתרים לא מולאו</h2>
       <table>
-        <thead><tr><th>#</th><th>לקוח</th><th>אתר</th><th>שורות מולאו</th><th>סה"כ שורות</th><th>סטטוס</th></tr></thead>
+        <thead><tr><th>#</th><th>שם לקוח</th><th>שם אתר</th></tr></thead>
         <tbody>${unfilledSites.map(([site, d], i) => `<tr>
           <td class="num">${i + 1}</td>
           <td>${d.customer}</td>
           <td>${site}</td>
-          <td class="num">${d.filledCount}</td>
-          <td class="num">${d.rows.length}</td>
-          <td>${d.filledCount === 0 ? 'לא התחיל' : 'חלקי'}</td>
         </tr>`).join('')}
         </tbody>
       </table>
@@ -700,14 +697,11 @@ export default function ArielHRPage() {
 
     let tablesHtml = `<div class="section"><h2>סה"כ ${unsentSites.length} אתרים לא נשלחו</h2>
       <table>
-        <thead><tr><th>#</th><th>לקוח</th><th>אתר</th><th>שורות נשלחו</th><th>סה"כ שורות</th><th>סטטוס</th></tr></thead>
+        <thead><tr><th>#</th><th>שם לקוח</th><th>שם אתר</th></tr></thead>
         <tbody>${unsentSites.map(([site, d], i) => `<tr>
           <td class="num">${i + 1}</td>
           <td>${d.customer}</td>
           <td>${site}</td>
-          <td class="num">${d.sentCount}</td>
-          <td class="num">${d.rows.length}</td>
-          <td>${d.sentCount === 0 ? 'לא נשלח' : 'חלקי'}</td>
         </tr>`).join('')}
         </tbody>
       </table>
