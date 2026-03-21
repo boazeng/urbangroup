@@ -1562,19 +1562,18 @@ def get_hr_customers():
         headers = {"Accept": "application/json", "OData-Version": "4.0"}
 
         customers = []
-        next_url = f"{url}/CUSTOMERS?$select=CUSTNAME,CUSTDES,PHONE&$orderby=CUSTNAME&$top=500"
+        next_url = f"{url}/CUSTOMERS?$select=CUSTNAME,CUSTDES,PHONE,BRANCHNAME&$orderby=CUSTNAME&$top=500"
         while next_url:
             resp = http_requests.get(next_url, headers=headers, auth=auth, timeout=30)
             resp.raise_for_status()
             data = resp.json()
             for row in data.get("value", []):
-                code = row.get("CUSTNAME", "")
-                if code.endswith("102"):
-                    customers.append({
-                        "code": code,
-                        "name": row.get("CUSTDES", ""),
-                        "phone": row.get("PHONE", ""),
-                    })
+                customers.append({
+                    "code": row.get("CUSTNAME", ""),
+                    "name": row.get("CUSTDES", ""),
+                    "phone": row.get("PHONE", ""),
+                    "branch": row.get("BRANCHNAME", ""),
+                })
             next_url = data.get("@odata.nextLink")
 
         return jsonify({"ok": True, "customers": customers})

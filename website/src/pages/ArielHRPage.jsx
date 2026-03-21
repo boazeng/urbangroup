@@ -863,7 +863,7 @@ export default function ArielHRPage() {
         {showArielCustomers && arielCustomers.length > 0 && (
           <div className="hr-priority-section">
             <div className="hr-priority-header">
-              <h3 className="hr-site-summary-title">רשימת לקוחות — סניף 102 ({arielCustomers.length})</h3>
+              <h3 className="hr-site-summary-title">רשימת לקוחות ({arielCustomers.length})</h3>
               <button className="hr-toggle-extra-btn" onClick={() => setShowArielCustomers(false)}>הסתר</button>
             </div>
             <div className="hr-priority-table-wrap">
@@ -874,6 +874,7 @@ export default function ArielHRPage() {
                       <th>#</th>
                       <th>מספר פריורטי</th>
                       <th>שם לקוח</th>
+                      <th>סניף</th>
                       <th>טלפון</th>
                     </tr>
                   </thead>
@@ -883,6 +884,7 @@ export default function ArielHRPage() {
                         <td className="ariel-num">{i + 1}</td>
                         <td>{c.code}</td>
                         <td>{c.name}</td>
+                        <td>{c.branch}</td>
                         <td>{c.phone}</td>
                       </tr>
                     ))}
