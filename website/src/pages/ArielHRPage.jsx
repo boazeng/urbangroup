@@ -37,7 +37,7 @@ const COL = {
 // Visible columns to display — extra: true for overtime columns (hidden by default)
 const DISPLAY_COLS = [
   { idx: COL.TRACKING, label: 'מעקב', type: 'num', tracking: true },
-  { idx: COL.FILLING, label: 'מילוי', type: 'num', tracking: true },
+  { idx: COL.FILLING, label: 'מילוי', type: 'num', xnarrow: true },
   { idx: COL.PRIORITY_NUM, label: 'מס פריורטי', type: 'text', narrow: true },
   { idx: COL.CUSTOMER, label: 'לקוח', type: 'text', wide: true },
   { idx: COL.SITE, label: 'אתר', type: 'text', siteCol: true },
@@ -422,12 +422,20 @@ export default function ArielHRPage() {
 
   // Toggle tracking for all rows of a specific site (also controls green highlight)
   const handleToggleSiteTracking = (site) => {
-    // Check if all rows of this site already have tracking=1
     const siteRows = editedRows.filter(r => cellVal(r[COL.SITE]) === site)
     const allOn = siteRows.every(r => String(r[COL.TRACKING]) === '1')
     const newVal = allOn ? '0' : '1'
     for (const r of siteRows) {
       handleCellChange(r[COL.ROW_INDEX], COL.TRACKING, newVal)
+    }
+  }
+
+  const handleToggleSiteFilling = (site) => {
+    const siteRows = editedRows.filter(r => cellVal(r[COL.SITE]) === site)
+    const allOn = siteRows.every(r => String(r[COL.FILLING]) === '1')
+    const newVal = allOn ? '0' : '1'
+    for (const r of siteRows) {
+      handleCellChange(r[COL.ROW_INDEX], COL.FILLING, newVal)
     }
   }
 
@@ -785,8 +793,8 @@ export default function ArielHRPage() {
                                 {col.siteCol && (
                                   <button
                                     className="hr-tracking-toggle-btn"
-                                    onClick={() => handleToggleSiteTracking(siteName)}
-                                    title="סמן/בטל מעקב ורקע ירוק לכל האתר"
+                                    onClick={() => handleToggleSiteFilling(siteName)}
+                                    title="סמן/בטל מילוי ורקע ירוק לכל האתר"
                                   >&#9998;</button>
                                 )}
                                 <input
