@@ -737,7 +737,6 @@ export default function ArielHRPage() {
   }
 
   const openSitePicker = async (excelRow, custNum) => {
-    if (sitePickerRow === excelRow) { setSitePickerRow(null); return }
     setSitePickerRow(excelRow)
     setSitePickerSites([])
     setSitePickerLoading(true)
@@ -1829,16 +1828,46 @@ export default function ArielHRPage() {
                                     title="סמן/בטל מילוי ורקע ירוק לכל האתר"
                                   >&#9998;</button>
                                 )}
-                                {col.siteCol && (
+                                {col.siteCol ? (
                                   <>
-                                    <button
-                                      className="hr-tracking-toggle-btn"
-                                      onClick={() => openSitePicker(excelRow, cellVal(row[COL.PRIORITY_NUM]))}
-                                      title="בחר אתר מרשימה"
-                                      style={{ fontSize: '10px' }}
-                                    >&#9660;</button>
+                                    <input
+                                      className={`hr-cell-input${isDirty ? ' hr-cell-dirty' : ''}`}
+                                      type="text"
+                                      value={cellVal(row[col.idx])}
+                                      onChange={e => handleCellChange(excelRow, col.idx, e.target.value)}
+                                      onFocus={() => openSitePicker(excelRow, cellVal(row[COL.PRIORITY_NUM]))}
+                                      onBlur={() => setTimeout(() => setSitePickerRow(null), 200)}
+                                      data-cell={`${excelRow}:${col.idx}`}
+                                    />
+                                    {sitePickerRow === excelRow && (
+                                      <div style={{
+                                        position: 'absolute', zIndex: 100, background: '#fff', border: '1px solid #1976d2',
+                                        borderRadius: '6px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', padding: '4px 0',
+                                        maxHeight: '200px', overflowY: 'auto', minWidth: '220px', right: 0, top: '100%',
+                                      }}>
+                                        {sitePickerLoading ? (
+                                          <div style={{ padding: '8px 12px', color: '#888' }}>טוען...</div>
+                                        ) : sitePickerSites.length === 0 ? (
+                                          <div style={{ padding: '8px 12px', color: '#888' }}>לא נמצאו אתרים</div>
+                                        ) : sitePickerSites
+                                          .filter(s => {
+                                            const typed = cellVal(row[col.idx]).toLowerCase()
+                                            return !typed || s.name.toLowerCase().includes(typed) || s.code.includes(typed)
+                                          })
+                                          .map(s => (
+                                          <div key={s.code}
+                                            onMouseDown={() => selectSite(excelRow, s.name)}
+                                            style={{ padding: '4px 12px', cursor: 'pointer', fontSize: '13px', direction: 'rtl' }}
+                                            onMouseEnter={e => e.target.style.background = '#e3f2fd'}
+                                            onMouseLeave={e => e.target.style.background = ''}
+                                          >
+                                            {s.code} - {s.name}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
                                   </>
-                                )}
+                                ) : (
                                 <input
                                   className={`hr-cell-input${isDirty ? ' hr-cell-dirty' : ''}`}
                                   type="text"
@@ -1868,27 +1897,6 @@ export default function ArielHRPage() {
                                   }}
                                   data-cell={`${excelRow}:${col.idx}`}
                                 />
-                                {col.siteCol && sitePickerRow === excelRow && (
-                                  <div style={{
-                                    position: 'absolute', zIndex: 100, background: '#fff', border: '1px solid #1976d2',
-                                    borderRadius: '6px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', padding: '4px 0',
-                                    maxHeight: '200px', overflowY: 'auto', minWidth: '220px', right: 0, top: '100%',
-                                  }}>
-                                    {sitePickerLoading ? (
-                                      <div style={{ padding: '8px 12px', color: '#888' }}>טוען...</div>
-                                    ) : sitePickerSites.length === 0 ? (
-                                      <div style={{ padding: '8px 12px', color: '#888' }}>לא נמצאו אתרים</div>
-                                    ) : sitePickerSites.map(s => (
-                                      <div key={s.code}
-                                        onClick={() => selectSite(excelRow, s.name)}
-                                        style={{ padding: '4px 12px', cursor: 'pointer', fontSize: '13px', direction: 'rtl' }}
-                                        onMouseEnter={e => e.target.style.background = '#e3f2fd'}
-                                        onMouseLeave={e => e.target.style.background = ''}
-                                      >
-                                        {s.code} - {s.name}
-                                      </div>
-                                    ))}
-                                  </div>
                                 )}
                               </td>
                             )
