@@ -1849,8 +1849,12 @@ def create_delivery_note():
         }
 
         logger.info(f"[550-delivery-note] Creating for customer {customer_num} with {len(subform_items)} items")
+        logger.info(f"[550-delivery-note] Body: {json.dumps(body, ensure_ascii=False)}")
         resp = http_requests.post(f"{url}/DOCUMENTS_D", json=body, headers=headers, auth=auth, timeout=30)
-        resp.raise_for_status()
+        if not resp.ok:
+            error_text = resp.text[:500]
+            logger.error(f"[550-delivery-note] Priority error {resp.status_code}: {error_text}")
+            return jsonify({"ok": False, "error": f"Priority error {resp.status_code}: {error_text}"}), 500
 
         result = resp.json()
         docno = result.get("DOCNO", result.get("DOCNUM", ""))
