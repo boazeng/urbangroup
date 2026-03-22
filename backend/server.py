@@ -1683,8 +1683,6 @@ def get_hr_customers():
 
 
 _is_lambda = os.environ.get("IS_LAMBDA") == "true"
-PARTS_CACHE_FILE = Path("/tmp/hr_parts_cache.json") if _is_lambda else \
-    Path(__file__).resolve().parent.parent / "output" / "hr_parts_cache.json"
 
 
 def _fetch_parts_from_priority():
@@ -1727,17 +1725,15 @@ def _fetch_parts_from_priority():
 
 
 def _save_parts_cache(parts):
-    """Save parts to local cache file."""
-    PARTS_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(PARTS_CACHE_FILE, "w", encoding="utf-8") as f:
-        json.dump({"parts": parts, "syncedAt": _now_il().strftime("%Y-%m-%d %H:%M:%S")}, f, ensure_ascii=False)
+    """Save parts to DynamoDB cache."""
+    delivery_notes_db.save_parts_cache(parts)
 
 
 def _load_parts_cache():
-    """Load parts from local cache file."""
-    if PARTS_CACHE_FILE.exists():
-        with open(PARTS_CACHE_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+    """Load parts from DynamoDB cache."""
+    data = delivery_notes_db.load_parts_cache()
+    if data:
+        return {"parts": data["parts"], "syncedAt": data.get("synced_at", "")}
     return None
 
 

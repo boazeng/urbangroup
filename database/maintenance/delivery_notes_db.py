@@ -158,7 +158,7 @@ def _prepare_item(data):
 
 def _deserialize_item(item):
     """Deserialize DynamoDB item back to Python types."""
-    _JSON_FIELDS = ("items",)
+    _JSON_FIELDS = ("items", "parts")
     data = {}
     for k, v in item.items():
         if isinstance(v, Decimal):
@@ -171,3 +171,33 @@ def _deserialize_item(item):
         else:
             data[k] = v
     return data
+
+
+# ── Parts Cache (stored as a special record in the same table) ────────
+
+PARTS_CACHE_ID = "PARTS_CACHE"
+
+
+def save_parts_cache(parts):
+    """Save parts list to DB cache."""
+    now = datetime.utcnow().isoformat() + "Z"
+    item = _prepare_item({
+        "id": PARTS_CACHE_ID,
+        "status": "_cache",
+        "parts": parts,
+        "synced_at": now,
+        "created_at": now,
+        "updated_at": now,
+    })
+    _table.put_item(Item=item)
+    logger.info(f"Saved {len(parts)} parts to cache")
+
+
+def load_parts_cache():
+    """Load parts list from DB cache. Returns {parts, synced_at} or None."""
+    resp = _table.get_item(Key={"id": PARTS_CACHE_ID})
+    item = resp.get("Item")
+    if not item:
+        return None
+    data = _deserialize_item(item)
+    return {"parts": data.get("parts", []), "synced_at": data.get("synced_at", "")}
