@@ -262,3 +262,66 @@ def load_hr_sheet(sheet_name):
         "filters": data.get("filters", {}),
         "synced_at": data.get("synced_at", ""),
     }
+
+
+# ── Tasks (מטלות) ────────────────────────────────────────────
+
+
+def save_task(description):
+    """Create a new task."""
+    now = datetime.utcnow().isoformat() + "Z"
+    task_id = f"TASK_{str(uuid.uuid4())[:8]}"
+    item = _prepare_item({
+        "id": task_id,
+        "status": "open",
+        "description": description,
+        "created_at": now,
+        "updated_at": now,
+    })
+    _table.put_item(Item=item)
+    logger.info(f"Saved task {task_id}")
+    return {"id": task_id}
+
+
+def list_tasks(status=None):
+    """List tasks, optionally filtered by status (open/done)."""
+    resp = _table.scan()
+    items = resp.get("Items", [])
+    tasks = []
+    for item in items:
+        if not item.get("id", "").startswith("TASK_"):
+            continue
+        t = _deserialize_item(item)
+        if status and t.get("status") != status:
+            continue
+        tasks.append(t)
+    tasks.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    return tasks
+
+
+def update_task(task_id, updates):
+    """Update a task (description, status)."""
+    now = datetime.utcnow().isoformat() + "Z"
+    updates["updated_at"] = now
+    expr_parts = []
+    expr_names = {}
+    expr_values = {}
+    for i, (key, val) in enumerate(updates.items()):
+        attr = f"#k{i}"
+        placeholder = f":v{i}"
+        expr_parts.append(f"{attr} = {placeholder}")
+        expr_names[attr] = key
+        expr_values[placeholder] = val
+    _table.update_item(
+        Key={"id": task_id},
+        UpdateExpression="SET " + ", ".join(expr_parts),
+        ExpressionAttributeNames=expr_names,
+        ExpressionAttributeValues=expr_values,
+    )
+    logger.info(f"Updated task {task_id}")
+
+
+def delete_task(task_id):
+    """Delete a task."""
+    _table.delete_item(Key={"id": task_id})
+    logger.info(f"Deleted task {task_id}")

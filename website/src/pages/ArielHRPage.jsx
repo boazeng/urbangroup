@@ -95,6 +95,9 @@ export default function ArielHRPage() {
   const [deliveryNoteLoading, setDeliveryNoteLoading] = useState(false)
   const [deliveryNote, setDeliveryNote] = useState(null) // current draft/sent note
   const [dnSending, setDnSending] = useState(false)
+  const [tasks, setTasks] = useState([])
+  const [showTasks, setShowTasks] = useState(false)
+  const [newTaskText, setNewTaskText] = useState('')
   const [nextNewId, setNextNewId] = useState(1)   // counter for new row temp IDs
 
   // Draggable grand totals order
@@ -573,6 +576,39 @@ export default function ArielHRPage() {
     } catch (err) {
       alert(`שגיאה: ${err.message}`)
     }
+  }
+
+  const loadTasks = async () => {
+    try {
+      const resp = await fetch(`${API_BASE}/api/hr/tasks?status=open`)
+      const data = await resp.json()
+      if (data.ok) setTasks(data.tasks || [])
+    } catch {}
+  }
+
+  const handleAddTask = async () => {
+    if (!newTaskText.trim()) return
+    await fetch(`${API_BASE}/api/hr/tasks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: newTaskText.trim() }),
+    })
+    setNewTaskText('')
+    loadTasks()
+  }
+
+  const handleToggleTask = async (taskId) => {
+    await fetch(`${API_BASE}/api/hr/tasks/${taskId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'done' }),
+    })
+    loadTasks()
+  }
+
+  const handleDeleteTask = async (taskId) => {
+    await fetch(`${API_BASE}/api/hr/tasks/${taskId}`, { method: 'DELETE' })
+    loadTasks()
   }
 
   const clearFilters = () => {
@@ -1481,6 +1517,65 @@ export default function ArielHRPage() {
                 <button className="hr-report-btn" onClick={generateUnsentReport}>
                   לא נשלחו
                 </button>
+                <button
+                  className={`hr-report-btn${showTasks ? ' hr-toggle-active' : ''}`}
+                  onClick={() => { setShowTasks(v => !v); if (!showTasks) loadTasks() }}
+                >
+                  מטלות{tasks.length > 0 ? ` (${tasks.length})` : ''}
+                </button>
+              </div>
+            )}
+
+            {/* Tasks table */}
+            {showTasks && (
+              <div className="hr-site-summary" style={{ marginBottom: '12px', borderBottom: '2px solid #1976d2', paddingBottom: '12px' }}>
+                <h3 className="hr-site-summary-title">מטלות</h3>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                  <input
+                    type="text"
+                    value={newTaskText}
+                    onChange={e => setNewTaskText(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddTask()}
+                    placeholder="מטלה חדשה..."
+                    style={{ flex: 1, padding: '6px 10px', borderRadius: '4px', border: '1px solid #ccc' }}
+                  />
+                  <button className="hr-toggle-extra-btn" onClick={handleAddTask}>הוסף</button>
+                </div>
+                {tasks.length === 0 ? (
+                  <div style={{ color: '#888', fontSize: '13px' }}>אין מטלות פתוחות</div>
+                ) : (
+                  <div className="ariel-card hr-table-wrapper">
+                    <table className="ariel-table hr-summary-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '40px' }}>#</th>
+                          <th>תאור מטלה</th>
+                          <th style={{ width: '80px' }}>פעולות</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tasks.map((t, i) => (
+                          <tr key={t.id}>
+                            <td>{i + 1}</td>
+                            <td>{t.description}</td>
+                            <td style={{ display: 'flex', gap: '4px' }}>
+                              <button
+                                onClick={() => handleToggleTask(t.id)}
+                                title="סמן כבוצע"
+                                style={{ background: '#4caf50', color: '#fff', border: 'none', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer' }}
+                              >&#10003;</button>
+                              <button
+                                onClick={() => handleDeleteTask(t.id)}
+                                title="מחק"
+                                style={{ background: '#f44336', color: '#fff', border: 'none', borderRadius: '4px', padding: '2px 8px', cursor: 'pointer' }}
+                              >&#10005;</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
 

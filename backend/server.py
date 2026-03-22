@@ -1881,6 +1881,62 @@ def sync_hr_priority():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/api/hr/tasks", methods=["GET"])
+def list_tasks():
+    """List tasks, optionally filtered by status."""
+    try:
+        status = request.args.get("status")
+        tasks = delivery_notes_db.list_tasks(status=status)
+        return jsonify({"ok": True, "tasks": tasks})
+    except Exception as e:
+        logger.error(f"List tasks failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/hr/tasks", methods=["POST"])
+def create_task():
+    """Create a new task."""
+    try:
+        data = request.get_json(force=True)
+        description = data.get("description", "").strip()
+        if not description:
+            return jsonify({"ok": False, "error": "Missing description"}), 400
+        result = delivery_notes_db.save_task(description)
+        return jsonify({"ok": True, "id": result["id"]})
+    except Exception as e:
+        logger.error(f"Create task failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/hr/tasks/<task_id>", methods=["PUT"])
+def update_task(task_id):
+    """Update a task (toggle status, edit description)."""
+    try:
+        data = request.get_json(force=True)
+        updates = {}
+        if "status" in data:
+            updates["status"] = data["status"]
+        if "description" in data:
+            updates["description"] = data["description"]
+        if updates:
+            delivery_notes_db.update_task(task_id, updates)
+        return jsonify({"ok": True})
+    except Exception as e:
+        logger.error(f"Update task failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/hr/tasks/<task_id>", methods=["DELETE"])
+def delete_task(task_id):
+    """Delete a task."""
+    try:
+        delivery_notes_db.delete_task(task_id)
+        return jsonify({"ok": True})
+    except Exception as e:
+        logger.error(f"Delete task failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/hr/delivery-note", methods=["POST"])
 def create_delivery_note():
     """Save a delivery note to DB (draft). Does NOT send to Priority yet."""
