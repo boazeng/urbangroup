@@ -95,6 +95,9 @@ export default function ArielHRPage() {
   const [deliveryNoteLoading, setDeliveryNoteLoading] = useState(false)
   const [deliveryNote, setDeliveryNote] = useState(null) // current draft/sent note
   const [dnSending, setDnSending] = useState(false)
+  const [cinvoiceLoading, setCinvoiceLoading] = useState(false)
+  const [cinvoice, setCinvoice] = useState(null)
+  const [cinvSending, setCinvSending] = useState(false)
   const [tasks, setTasks] = useState([])
   const [showTasks, setShowTasks] = useState(false)
   const [newTaskText, setNewTaskText] = useState('')
@@ -509,6 +512,122 @@ export default function ArielHRPage() {
       alert(`שגיאה: ${err.message}`)
     } finally {
       setDeliveryNoteLoading(false)
+    }
+  }
+
+  const handleCreateCinvoice = async () => {
+    if (!siteSummary || !siteSummary.customerNum) {
+      alert('לא נמצא מספר לקוח לאתר זה')
+      return
+    }
+    setCinvoiceLoading(true)
+    try {
+      let parts = arielParts
+      if (parts.length === 0) {
+        const partsResp = await fetch(`${API_BASE}/api/hr/parts`)
+        const partsData = await partsResp.json()
+        if (partsData.ok && partsData.parts) {
+          parts = partsData.parts
+          setArielParts(parts)
+        }
+      }
+
+      const resp = await fetch(`${API_BASE}/api/hr/cinvoice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerNum: siteSummary.customerNum,
+          customerName: siteSummary.customerName,
+          siteName: selectedSite,
+          details: `${selectedSite} ${selectedSheet}`,
+          items: siteSummary.professions.map(p => {
+            const part = parts.find(ap => ap.code === p.profNum)
+            let pdes = part ? part.name : p.profName
+            if (p.notes) pdes += ' ' + p.notes
+            return {
+              profNum: p.profNum,
+              profName: pdes,
+              hours: p.hoursReg,
+              rate: p.custRate,
+              total: p.custTotal,
+            }
+          }),
+        }),
+      })
+      const data = await resp.json()
+      if (data.ok) {
+        const noteResp = await fetch(`${API_BASE}/api/hr/cinvoices/${data.id}`)
+        const noteData = await noteResp.json()
+        if (noteData.ok) setCinvoice(noteData.note)
+      } else {
+        alert(`שגיאה בפתיחת חשבונית מרכזת: ${data.error || 'Unknown error'}`)
+      }
+    } catch (err) {
+      alert(`שגיאה: ${err.message}`)
+    } finally {
+      setCinvoiceLoading(false)
+    }
+  }
+
+  const handleCinvItemChange = (idx, field, value) => {
+    if (!cinvoice) return
+    const updated = { ...cinvoice, items: cinvoice.items.map((item, i) =>
+      i === idx ? { ...item, [field]: field === 'pdes' || field === 'partname' ? value : Number(value) || 0 } : item
+    )}
+    setCinvoice(updated)
+  }
+
+  const handleCinvDetailsChange = (value) => {
+    if (!cinvoice) return
+    setCinvoice({ ...cinvoice, details: value })
+  }
+
+  const handleCinvSave = async () => {
+    if (!cinvoice) return
+    try {
+      await fetch(`${API_BASE}/api/hr/cinvoices/${cinvoice.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: cinvoice.items, details: cinvoice.details }),
+      })
+    } catch (err) {
+      alert(`שגיאה: ${err.message}`)
+    }
+  }
+
+  const handleCinvSend = async () => {
+    if (!cinvoice) return
+    if (!confirm('לשלוח את החשבונית המרכזת לפריורטי?')) return
+    setCinvSending(true)
+    try {
+      await fetch(`${API_BASE}/api/hr/cinvoices/${cinvoice.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: cinvoice.items, details: cinvoice.details }),
+      })
+      const resp = await fetch(`${API_BASE}/api/hr/cinvoices/${cinvoice.id}/send`, { method: 'POST' })
+      const data = await resp.json()
+      if (data.ok) {
+        setCinvoice(prev => ({ ...prev, status: 'sent', docno: data.ivnum }))
+        alert(`חשבונית מרכזת נשלחה לפריורטי: ${data.ivnum}`)
+      } else {
+        alert(`שגיאה בשליחה: ${data.error}`)
+      }
+    } catch (err) {
+      alert(`שגיאה: ${err.message}`)
+    } finally {
+      setCinvSending(false)
+    }
+  }
+
+  const handleCinvDelete = async () => {
+    if (!cinvoice) return
+    if (!confirm('למחוק את החשבונית המרכזת?')) return
+    try {
+      await fetch(`${API_BASE}/api/hr/cinvoices/${cinvoice.id}`, { method: 'DELETE' })
+      setCinvoice(null)
+    } catch (err) {
+      alert(`שגיאה: ${err.message}`)
     }
   }
 
@@ -1693,6 +1812,14 @@ export default function ArielHRPage() {
                   >
                     {deliveryNoteLoading ? 'פותח תעודה...' : 'פתיחת תעודת משלוח'}
                   </button>
+                  <button
+                    className="hr-toggle-extra-btn"
+                    style={{ marginRight: '8px' }}
+                    disabled={cinvoiceLoading}
+                    onClick={handleCreateCinvoice}
+                  >
+                    {cinvoiceLoading ? 'פותח חשבונית...' : 'פתיחת חשבונית מרכזת'}
+                  </button>
                 </div>
                 <div className="ariel-card hr-table-wrapper">
                   <table className="ariel-table hr-table hr-summary-table">
@@ -1830,6 +1957,83 @@ export default function ArielHRPage() {
 
                     {deliveryNote.status === 'error' && deliveryNote.error && (
                       <div style={{ color: '#f44336', marginTop: '6px', fontSize: '13px' }}>שגיאה: {deliveryNote.error}</div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+                {/* Cinvoice Draft/Sent display */}
+                {cinvoice && (
+                  <div className="hr-site-summary" style={{ marginTop: '16px', borderTop: '2px solid #9c27b0', paddingTop: '12px' }}>
+                    <h3 className="hr-site-summary-title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      חשבונית מרכזת
+                      <span style={{
+                        fontSize: '13px',
+                        padding: '2px 10px',
+                        borderRadius: '12px',
+                        background: cinvoice.status === 'sent' ? '#4caf50' : cinvoice.status === 'error' ? '#f44336' : '#ff9800',
+                        color: '#fff',
+                      }}>
+                        {cinvoice.status === 'sent' ? `נשלחה לפריורטי (${cinvoice.docno})` : cinvoice.status === 'error' ? 'שגיאה' : 'טיוטא'}
+                      </span>
+                    </h3>
+
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap' }}>
+                      <label style={{ fontWeight: 'bold' }}>פרטים:</label>
+                      <input
+                        type="text"
+                        value={cinvoice.details || ''}
+                        onChange={e => handleCinvDetailsChange(e.target.value)}
+                        disabled={cinvoice.status === 'sent'}
+                        style={{ flex: 1, minWidth: '200px', padding: '4px 8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                      />
+                      <span style={{ fontSize: '13px', color: '#666' }}>לקוח: {cinvoice.customer_name} ({cinvoice.customer_num})</span>
+                    </div>
+
+                    <div className="ariel-card hr-table-wrapper">
+                      <table className="ariel-table hr-table hr-summary-table">
+                        <thead>
+                          <tr>
+                            <th>מקט</th>
+                            <th>תאור מוצר</th>
+                            <th>כמות</th>
+                            <th>מחיר ליחידה</th>
+                            <th>סה&quot;כ</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {cinvoice.items.map((item, i) => (
+                            <tr key={i}>
+                              <td><input type="text" value={item.partname || ''} onChange={e => handleCinvItemChange(i, 'partname', e.target.value)} disabled={cinvoice.status === 'sent'} style={{ width: '60px', textAlign: 'center' }} /></td>
+                              <td><input type="text" value={item.pdes || ''} onChange={e => handleCinvItemChange(i, 'pdes', e.target.value)} disabled={cinvoice.status === 'sent'} style={{ width: '400px' }} /></td>
+                              <td><input type="number" value={item.tquant || 0} onChange={e => handleCinvItemChange(i, 'tquant', e.target.value)} disabled={cinvoice.status === 'sent'} style={{ width: '70px', textAlign: 'center' }} /></td>
+                              <td><input type="number" value={item.price || 0} onChange={e => handleCinvItemChange(i, 'price', e.target.value)} disabled={cinvoice.status === 'sent'} style={{ width: '80px', textAlign: 'center' }} /></td>
+                              <td style={{ fontWeight: 'bold' }}>{((item.tquant || 0) * (item.price || 0)).toLocaleString('he-IL', { maximumFractionDigits: 2 })}</td>
+                            </tr>
+                          ))}
+                          <tr className="hr-summary-total-row">
+                            <td></td>
+                            <td><strong>סה&quot;כ</strong></td>
+                            <td><strong>{cinvoice.items.reduce((s, it) => s + (it.tquant || 0), 0).toLocaleString('he-IL', { maximumFractionDigits: 2 })}</strong></td>
+                            <td></td>
+                            <td><strong>{cinvoice.items.reduce((s, it) => s + (it.tquant || 0) * (it.price || 0), 0).toLocaleString('he-IL', { maximumFractionDigits: 2 })}</strong></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {cinvoice.status !== 'sent' && (
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                        <button className="hr-toggle-extra-btn" onClick={handleCinvSave}>שמור שינויים</button>
+                        <button className="hr-toggle-extra-btn" style={{ background: '#4caf50', color: '#fff' }} onClick={handleCinvSend} disabled={cinvSending}>
+                          {cinvSending ? 'שולח...' : 'שלח לפריורטי'}
+                        </button>
+                        <button className="hr-toggle-extra-btn" style={{ background: '#f44336', color: '#fff' }} onClick={handleCinvDelete}>מחק</button>
+                      </div>
+                    )}
+
+                    {cinvoice.status === 'error' && cinvoice.error && (
+                      <div style={{ color: '#f44336', marginTop: '6px', fontSize: '13px' }}>שגיאה: {cinvoice.error}</div>
                     )}
                   </div>
                 )}

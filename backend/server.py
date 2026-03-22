@@ -1937,6 +1937,156 @@ def delete_task(task_id):
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+# ── Cinvoices (חשבוניות מרכזות) ─────────────────────────────
+
+@app.route("/api/hr/cinvoice", methods=["POST"])
+def create_cinvoice():
+    """Save a cinvoice draft to DB."""
+    try:
+        data = request.get_json(force=True)
+        customer_num = (data.get("customerNum") or "").strip()
+        if customer_num.endswith("-102"):
+            customer_num = customer_num[:-4]
+        if not customer_num:
+            return jsonify({"ok": False, "error": "Missing customerNum"}), 400
+
+        raw_items = data.get("items", [])
+        if not raw_items:
+            return jsonify({"ok": False, "error": "Missing items"}), 400
+
+        db_items = []
+        for item in raw_items:
+            db_items.append({
+                "partname": str(item.get("profNum", "")).strip(),
+                "pdes": str(item.get("profName", "")).strip(),
+                "tquant": item.get("hours", 0),
+                "price": item.get("rate", 0),
+            })
+
+        result = delivery_notes_db.save_delivery_note(
+            customer_num=customer_num,
+            customer_name=data.get("customerName", ""),
+            site_name=data.get("siteName", ""),
+            details=data.get("details", ""),
+            items=db_items,
+        )
+        # Tag it as cinvoice type
+        delivery_notes_db.update_delivery_note(result["id"], {"doc_type": "cinvoice"})
+
+        return jsonify({"ok": True, "id": result["id"], "status": "draft"})
+    except Exception as e:
+        logger.error(f"Cinvoice save failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/hr/cinvoices/<note_id>", methods=["GET"])
+def get_cinvoice(note_id):
+    """Get a single cinvoice."""
+    try:
+        note = delivery_notes_db.get_delivery_note(note_id)
+        if not note:
+            return jsonify({"ok": False, "error": "Not found"}), 404
+        return jsonify({"ok": True, "note": note})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/hr/cinvoices/<note_id>", methods=["PUT"])
+def update_cinvoice(note_id):
+    """Update a cinvoice draft."""
+    try:
+        data = request.get_json(force=True)
+        note = delivery_notes_db.get_delivery_note(note_id)
+        if not note:
+            return jsonify({"ok": False, "error": "Not found"}), 404
+        if note.get("status") == "sent":
+            return jsonify({"ok": False, "error": "Cannot edit a sent cinvoice"}), 400
+        updates = {}
+        for field in ("details", "items", "customer_num", "customer_name", "site_name"):
+            if field in data:
+                updates[field] = data[field]
+        if updates:
+            delivery_notes_db.update_delivery_note(note_id, updates)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/hr/cinvoices/<note_id>", methods=["DELETE"])
+def delete_cinvoice(note_id):
+    """Delete a cinvoice draft."""
+    try:
+        note = delivery_notes_db.get_delivery_note(note_id)
+        if not note:
+            return jsonify({"ok": False, "error": "Not found"}), 404
+        if note.get("status") == "sent":
+            return jsonify({"ok": False, "error": "Cannot delete a sent cinvoice"}), 400
+        delivery_notes_db.delete_delivery_note(note_id)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/hr/cinvoices/<note_id>/send", methods=["POST"])
+def send_cinvoice_to_priority(note_id):
+    """Send a cinvoice draft to Priority (CINVOICES)."""
+    try:
+        note = delivery_notes_db.get_delivery_note(note_id)
+        if not note:
+            return jsonify({"ok": False, "error": "Not found"}), 404
+        if note.get("status") == "sent":
+            return jsonify({"ok": False, "error": "Already sent", "ivnum": note.get("docno")}), 400
+
+        customer_num = note["customer_num"]
+        items = note.get("items", [])
+
+        url = PRIORITY_URL_REAL
+        auth = HTTPBasicAuth(
+            os.getenv("PRIORITY_USERNAME", ""),
+            os.getenv("PRIORITY_PASSWORD", ""),
+        )
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "OData-Version": "4.0",
+        }
+
+        subform_items = []
+        for item in items:
+            subform_items.append({
+                "PARTNAME": str(item.get("partname", "")).strip(),
+                "PDES": str(item.get("pdes", "")).strip(),
+                "TQUANT": item.get("tquant", 0),
+                "PRICE": item.get("price", 0),
+            })
+
+        body = {
+            "CUSTNAME": customer_num,
+            "BRANCHNAME": "102",
+            "DETAILS": note.get("details", ""),
+            "CINVOICEITEMS_SUBFORM": subform_items,
+        }
+
+        logger.info(f"[cinvoice] Sending {note_id} to Priority for customer {customer_num}")
+        resp = http_requests.post(f"{url}/CINVOICES", json=body, headers=headers, auth=auth, timeout=30)
+        if not resp.ok:
+            error_text = resp.text[:500]
+            logger.error(f"[cinvoice] Priority error {resp.status_code}: {error_text}")
+            delivery_notes_db.mark_error(note_id, f"Priority {resp.status_code}: {error_text}")
+            return jsonify({"ok": False, "error": f"Priority error {resp.status_code}: {error_text}"}), 500
+
+        result = resp.json()
+        ivnum = result.get("IVNUM", "")
+        delivery_notes_db.mark_sent(note_id, ivnum)
+        logger.info(f"[cinvoice] Sent {note_id} → {ivnum}")
+
+        return jsonify({"ok": True, "ivnum": ivnum})
+    except Exception as e:
+        logger.error(f"Send cinvoice failed: {e}")
+        delivery_notes_db.mark_error(note_id, str(e))
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/hr/delivery-note", methods=["POST"])
 def create_delivery_note():
     """Save a delivery note to DB (draft). Does NOT send to Priority yet."""
