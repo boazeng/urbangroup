@@ -740,8 +740,8 @@ export default function ArielHRPage() {
   const openSitePicker = async (excelRow, custNum) => {
     if (!custNum) return
     setSitePickerRow(excelRow)
-    // Use cache if available
-    if (sitePickerCache.current[custNum]) {
+    // Use cache if available (only if non-empty)
+    if (sitePickerCache.current[custNum]?.length > 0) {
       setSitePickerSites(sitePickerCache.current[custNum])
       setSitePickerLoading(false)
       return
@@ -751,9 +751,9 @@ export default function ArielHRPage() {
     try {
       const resp = await fetch(`${API_BASE}/api/hr/sites?customer=${encodeURIComponent(custNum)}`)
       const data = await resp.json()
-      if (data.ok) {
-        sitePickerCache.current[custNum] = data.sites || []
-        setSitePickerSites(data.sites || [])
+      if (data.ok && data.sites?.length > 0) {
+        sitePickerCache.current[custNum] = data.sites
+        setSitePickerSites(data.sites)
       }
     } catch {}
     setSitePickerLoading(false)
