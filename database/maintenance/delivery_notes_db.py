@@ -158,7 +158,7 @@ def _prepare_item(data):
 
 def _deserialize_item(item):
     """Deserialize DynamoDB item back to Python types."""
-    _JSON_FIELDS = ("items", "parts")
+    _JSON_FIELDS = ("items", "parts", "rows", "filters")
     data = {}
     for k, v in item.items():
         if isinstance(v, Decimal):
@@ -201,3 +201,38 @@ def load_parts_cache():
         return None
     data = _deserialize_item(item)
     return {"parts": data.get("parts", []), "synced_at": data.get("synced_at", "")}
+
+
+# ── HR Sheet Cache (stored as special records in the same table) ──────
+
+
+def save_hr_sheet(sheet_name, rows, filters):
+    """Save HR sheet data to DB cache."""
+    now = datetime.utcnow().isoformat() + "Z"
+    cache_id = f"HR_SHEET_{sheet_name}"
+    item = _prepare_item({
+        "id": cache_id,
+        "status": "_cache",
+        "rows": rows,
+        "filters": filters,
+        "synced_at": now,
+        "created_at": now,
+        "updated_at": now,
+    })
+    _table.put_item(Item=item)
+    logger.info(f"Saved HR sheet '{sheet_name}' with {len(rows)} rows to cache")
+
+
+def load_hr_sheet(sheet_name):
+    """Load HR sheet data from DB cache. Returns {rows, filters, synced_at} or None."""
+    cache_id = f"HR_SHEET_{sheet_name}"
+    resp = _table.get_item(Key={"id": cache_id})
+    item = resp.get("Item")
+    if not item:
+        return None
+    data = _deserialize_item(item)
+    return {
+        "rows": data.get("rows", []),
+        "filters": data.get("filters", {}),
+        "synced_at": data.get("synced_at", ""),
+    }

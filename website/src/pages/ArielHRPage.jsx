@@ -177,41 +177,69 @@ export default function ArielHRPage() {
       .finally(() => setSyncing(false))
   }
 
+  const applyLoadedData = async (data) => {
+    setAllRows(data.rows)
+    setFilters(data.filters)
+
+    // Check for locally saved pending changes
+    try {
+      const localResp = await fetch(`${API_BASE}/api/hr/local-data?sheet=${encodeURIComponent(selectedSheet)}`)
+      const localData = await localResp.json()
+      if (localData.ok && localData.hasLocal && localData.dirtyKeys?.length > 0) {
+        setEditedRows(localData.rows.map(r => [...r]))
+        setDirtyKeys(new Set(localData.dirtyKeys))
+        setDeletedRows(new Set(localData.deletedRows || []))
+        setLocalSaveStatus('saved')
+        return
+      }
+    } catch {
+      // Local data unavailable
+    }
+
+    setEditedRows(data.rows.map(r => [...r]))
+    setDirtyKeys(new Set())
+    setDeletedRows(new Set())
+    setLocalSaveStatus('')
+  }
+
   const loadData = async () => {
     setLoading(true)
     setError('')
     try {
-      // 1. Load from SharePoint
+      // 1. Try DB cache first (fast)
+      const dbResp = await fetch(`${API_BASE}/api/hr/db-data?sheet=${encodeURIComponent(selectedSheet)}`)
+      const dbData = await safeJson(dbResp)
+      if (dbData.ok && dbData.rows?.length > 0) {
+        await applyLoadedData(dbData)
+        return
+      }
+
+      // 2. Fallback to SharePoint (slow, also saves to DB)
       const resp = await fetch(`${API_BASE}/api/hr/sheet-data?sheet=${encodeURIComponent(selectedSheet)}`)
       const data = await safeJson(resp)
       if (!data.ok) {
         setError(data.error || 'שגיאה בטעינה')
         return
       }
-      setAllRows(data.rows)
-      setFilters(data.filters)
+      await applyLoadedData(data)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
-      // 2. Check for locally saved pending changes
-      try {
-        const localResp = await fetch(`${API_BASE}/api/hr/local-data?sheet=${encodeURIComponent(selectedSheet)}`)
-        const localData = await localResp.json()
-        if (localData.ok && localData.hasLocal && localData.dirtyKeys?.length > 0) {
-          // Restore local edits on top of fresh SharePoint data
-          setEditedRows(localData.rows.map(r => [...r]))
-          setDirtyKeys(new Set(localData.dirtyKeys))
-          setDeletedRows(new Set(localData.deletedRows || []))
-          setLocalSaveStatus('saved')
-          return
-        }
-      } catch {
-        // Local data unavailable — proceed with clean SharePoint data
+  const refreshFromExcel = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const resp = await fetch(`${API_BASE}/api/hr/sheet-data?sheet=${encodeURIComponent(selectedSheet)}`)
+      const data = await safeJson(resp)
+      if (!data.ok) {
+        setError(data.error || 'שגיאה בטעינה')
+        return
       }
-
-      // No local pending — use clean SharePoint data
-      setEditedRows(data.rows.map(r => [...r]))
-      setDirtyKeys(new Set())
-      setDeletedRows(new Set())
-      setLocalSaveStatus('')
+      await applyLoadedData(data)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -1215,8 +1243,8 @@ export default function ArielHRPage() {
         )}
 
         <div className="hr-top-actions">
-          <button className="hr-refresh-btn" onClick={loadData} disabled={loading}>
-            {loading ? 'טוען...' : 'רענן'}
+          <button className="hr-refresh-btn" onClick={refreshFromExcel} disabled={loading}>
+            {loading ? 'טוען...' : 'רענן מאקסל'}
           </button>
           <button
             className={`hr-toggle-extra-btn hr-show-all-btn${showAll ? ' hr-toggle-active' : ''}`}

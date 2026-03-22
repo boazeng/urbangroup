@@ -1461,66 +1461,88 @@ def hr_local_data():
     return jsonify({"ok": True, "hasLocal": False})
 
 
+def _parse_hr_sheet(all_rows):
+    """Parse raw Excel rows into data_rows + filters. Returns (data_rows, filters) or (None, error_msg)."""
+    header_idx, last_data_idx = _find_main_table(all_rows)
+    if header_idx is None:
+        return None, "לא נמצאה טבלה ראשית בגיליון"
+
+    data_rows = []
+    for i in range(header_idx + 1, last_data_idx + 1):
+        row = all_rows[i]
+        excel_row = i + 1
+        if row[3] or row[5]:
+            row.append(excel_row)
+            data_rows.append(row)
+
+    customers = sorted(set(str(r[3]).strip() for r in data_rows if r[3]))
+    sites = sorted(set(str(r[5]).strip() for r in data_rows if r[5]))
+    contractors = sorted(set(str(r[11]).strip() for r in data_rows if r[11]))
+
+    customer_sites = {}
+    for r in data_rows:
+        cust = str(r[3]).strip() if r[3] else ""
+        site = str(r[5]).strip() if r[5] else ""
+        if cust and site:
+            customer_sites.setdefault(cust, set()).add(site)
+    customer_sites = {k: sorted(v) for k, v in customer_sites.items()}
+
+    filters = {
+        "customers": customers,
+        "sites": sites,
+        "contractors": contractors,
+        "customer_sites": customer_sites,
+    }
+    return data_rows, filters
+
+
+@app.route("/api/hr/db-data", methods=["GET"])
+def get_hr_db_data():
+    """Load HR sheet data from DynamoDB cache (fast startup)."""
+    sheet = request.args.get("sheet", "2.26")
+    try:
+        cached = delivery_notes_db.load_hr_sheet(sheet)
+        if not cached:
+            return jsonify({"ok": False, "error": "no_cache"})
+        return jsonify({
+            "ok": True,
+            "rows": cached["rows"],
+            "filters": cached["filters"],
+            "fromDb": True,
+            "syncedAt": cached.get("synced_at", ""),
+        })
+    except Exception as e:
+        logger.error(f"HR DB read failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/hr/sheet-data", methods=["GET"])
 def get_hr_sheet_data():
-    """Read main table from the HR Excel file on SharePoint.
-
-    Query params:
-        sheet: sheet name (default '2.26')
-    """
+    """Read main table from the HR Excel file on SharePoint and save to DB cache."""
     sheet = request.args.get("sheet", "2.26")
     try:
         sp = _get_sp_connector()
         excel = sp.SharePointExcel(HR_SHARE_URL)
 
-        # Read a wide range and auto-detect the main table
         data = excel.read(sheet, "A1:X1000")
         all_rows = data["values"]
         if not all_rows:
             return jsonify({"ok": True, "headers": [], "rows": [], "filters": {}})
 
-        header_idx, last_data_idx = _find_main_table(all_rows)
-        if header_idx is None:
-            return jsonify({"ok": False, "error": "לא נמצאה טבלה ראשית בגיליון"})
+        data_rows, filters = _parse_hr_sheet(all_rows)
+        if data_rows is None:
+            return jsonify({"ok": False, "error": filters})
 
-        # header_idx is 0-based in all_rows; Excel row = header_idx + 1
-        header_excel_row = header_idx + 1
-        headers = all_rows[header_idx]
-
-        # Data rows: from header+1 to last_data_idx
-        data_rows = []
-        for i in range(header_idx + 1, last_data_idx + 1):
-            row = all_rows[i]
-            excel_row = i + 1  # Excel row number (1-based)
-            # Row must have at least customer (col D=idx 3) or site (col F=idx 5)
-            if row[3] or row[5]:
-                row.append(excel_row)  # append Excel row number as last element
-                data_rows.append(row)
-
-        # Build unique filter values
-        customers = sorted(set(str(r[3]).strip() for r in data_rows if r[3]))
-        sites = sorted(set(str(r[5]).strip() for r in data_rows if r[5]))
-        contractors = sorted(set(str(r[11]).strip() for r in data_rows if r[11]))
-
-        # Build customer→sites mapping
-        customer_sites = {}
-        for r in data_rows:
-            cust = str(r[3]).strip() if r[3] else ""
-            site = str(r[5]).strip() if r[5] else ""
-            if cust and site:
-                customer_sites.setdefault(cust, set()).add(site)
-        customer_sites = {k: sorted(v) for k, v in customer_sites.items()}
+        # Save to DB cache for fast startup
+        try:
+            delivery_notes_db.save_hr_sheet(sheet, data_rows, filters)
+        except Exception as cache_err:
+            logger.error(f"HR DB cache save failed (non-fatal): {cache_err}")
 
         return jsonify({
             "ok": True,
-            "headers": headers,
             "rows": data_rows,
-            "filters": {
-                "customers": customers,
-                "sites": sites,
-                "contractors": contractors,
-                "customer_sites": customer_sites,
-            },
+            "filters": filters,
         })
     except Exception as e:
         logger.error(f"HR sheet read failed: {e}")
@@ -1637,6 +1659,17 @@ def save_hr_changes():
 
         # Clear local pending data after successful SharePoint save
         _clear_local_hr(sheet)
+
+        # Refresh DB cache from SharePoint
+        try:
+            fresh_data = excel.read(sheet, "A1:X1000")
+            fresh_all = fresh_data["values"]
+            if fresh_all:
+                fresh_rows, fresh_filters = _parse_hr_sheet(fresh_all)
+                if fresh_rows is not None:
+                    delivery_notes_db.save_hr_sheet(sheet, fresh_rows, fresh_filters)
+        except Exception as cache_err:
+            logger.error(f"HR DB cache refresh after save failed (non-fatal): {cache_err}")
 
         return jsonify({"ok": True, "updated": updated, "newRowIndices": new_row_indices})
     except Exception as e:
