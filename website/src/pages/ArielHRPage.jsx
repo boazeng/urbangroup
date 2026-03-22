@@ -1232,44 +1232,75 @@ export default function ArielHRPage() {
     }
 
     try {
-      const resp = await fetch(`${API_BASE}/api/hr/save-changes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sheet: selectedSheet, changes, newRows, deleteRows: deleteRowIndices }),
-      })
-      const data = await safeJson(resp)
-      if (data.ok) {
-        // Update new rows with their real Excel row indices
-        if (data.newRowIndices && data.newRowIndices.length > 0) {
-          const tempIds = [...newRowIds]
-          setEditedRows(prev => prev.map(r => {
-            const tIdx = tempIds.indexOf(r[COL.ROW_INDEX])
-            if (tIdx !== -1 && data.newRowIndices[tIdx] !== undefined) {
-              const copy = [...r]
-              copy[COL.ROW_INDEX] = data.newRowIndices[tIdx]
-              return copy
-            }
-            return r
-          }))
-        }
-        // Remove deleted rows from state
-        if (deletedRows.size > 0) {
-          setEditedRows(prev => prev.filter(r => !deletedRows.has(r[COL.ROW_INDEX])))
-        }
-        const cleanRows = editedRows.filter(r => !deletedRows.has(r[COL.ROW_INDEX])).map(r => [...r])
-        setAllRows(cleanRows)
-        setDirtyKeys(new Set())
-        setDeletedRows(new Set())
-        setLocalSaveStatus('') // local cleared by backend
-        // Update DB cache in background
-        fetch(`${API_BASE}/api/hr/db-data`, {
+      // Split changes into batches of 15 to avoid timeout
+      const BATCH_SIZE = 15
+      let allNewRowIndices = []
+
+      for (let i = 0; i < changes.length; i += BATCH_SIZE) {
+        const batch = changes.slice(i, i + BATCH_SIZE)
+        // Send newRows and deleteRows only in the last batch
+        const isLastBatch = i + BATCH_SIZE >= changes.length
+        const resp = await fetch(`${API_BASE}/api/hr/save-changes`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sheet: selectedSheet, rows: cleanRows, filters }),
-        }).catch(() => {})
-      } else {
-        setError(data.error || 'שגיאה בשמירה')
+          body: JSON.stringify({
+            sheet: selectedSheet,
+            changes: batch,
+            newRows: isLastBatch ? newRows : [],
+            deleteRows: isLastBatch ? deleteRowIndices : [],
+          }),
+        })
+        const data = await safeJson(resp)
+        if (!data.ok) {
+          setError(data.error || `שגיאה בשמירה (batch ${Math.floor(i / BATCH_SIZE) + 1})`)
+          return
+        }
+        if (data.newRowIndices?.length > 0) allNewRowIndices = data.newRowIndices
       }
+
+      // If only newRows/deletes (no changes)
+      if (changes.length === 0 && (newRows.length > 0 || deleteRowIndices.length > 0)) {
+        const resp = await fetch(`${API_BASE}/api/hr/save-changes`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sheet: selectedSheet, changes: [], newRows, deleteRows: deleteRowIndices }),
+        })
+        const data = await safeJson(resp)
+        if (!data.ok) {
+          setError(data.error || 'שגיאה בשמירה')
+          return
+        }
+        if (data.newRowIndices?.length > 0) allNewRowIndices = data.newRowIndices
+      }
+
+      // Update new rows with their real Excel row indices
+      if (allNewRowIndices.length > 0) {
+        const tempIds = [...newRowIds]
+        setEditedRows(prev => prev.map(r => {
+          const tIdx = tempIds.indexOf(r[COL.ROW_INDEX])
+          if (tIdx !== -1 && allNewRowIndices[tIdx] !== undefined) {
+            const copy = [...r]
+            copy[COL.ROW_INDEX] = allNewRowIndices[tIdx]
+            return copy
+          }
+          return r
+        }))
+      }
+      // Remove deleted rows from state
+      if (deletedRows.size > 0) {
+        setEditedRows(prev => prev.filter(r => !deletedRows.has(r[COL.ROW_INDEX])))
+      }
+      const cleanRows = editedRows.filter(r => !deletedRows.has(r[COL.ROW_INDEX])).map(r => [...r])
+      setAllRows(cleanRows)
+      setDirtyKeys(new Set())
+      setDeletedRows(new Set())
+      setLocalSaveStatus('') // local cleared by backend
+      // Update DB cache in background
+      fetch(`${API_BASE}/api/hr/db-data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sheet: selectedSheet, rows: cleanRows, filters }),
+      }).catch(() => {})
     } catch (e) {
       setError(e.message)
     } finally {
