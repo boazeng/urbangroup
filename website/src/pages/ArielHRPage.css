@@ -369,12 +369,12 @@
 
 /* Site column */
 .hr-td-site {
-  width: 90px;
-  max-width: 90px;
+  width: 150px;
+  max-width: 150px;
 }
 
 .hr-td-site .hr-cell-input {
-  width: calc(100% - 18px);
+  width: calc(100% - 36px);
   display: inline-block;
 }
 
