@@ -38,7 +38,7 @@ if os.environ.get("IS_LAMBDA") != "true":
 
 logger = logging.getLogger("urbangroup.agent300")
 
-PRIORITY_URL = os.getenv("PRIORITY_URL", "").rstrip("/")
+PRIORITY_URL = (os.getenv("PRIORITY_URL_REAL") or os.getenv("PRIORITY_URL", "")).rstrip("/")
 PRIORITY_USERNAME = os.getenv("PRIORITY_USERNAME", "")
 PRIORITY_PASSWORD = os.getenv("PRIORITY_PASSWORD", "")
 
@@ -212,8 +212,6 @@ def create_service_call(service_call_data):
 
     branchname = service_call_data.get("branchname", "001")
     custname = service_call_data.get("custname", "99999")
-    if is_demo_env():
-        branchname = "000"
 
     # Validate customer exists in Priority, fall back to 99999 if not
     if not custname or custname == "99999" or not customer_exists(custname):

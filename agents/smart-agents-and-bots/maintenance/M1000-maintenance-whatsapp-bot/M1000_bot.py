@@ -125,7 +125,7 @@ BRANCH_MAP = {
 
 def _get_technician():
     """Return default technician login based on Priority environment."""
-    url = os.environ.get("PRIORITY_URL", "")
+    url = os.environ.get("PRIORITY_URL_REAL") or os.environ.get("PRIORITY_URL", "")
     if "ebyael" in url:
         return "צחי"
     return "יוסי"
@@ -228,16 +228,15 @@ def _handle_voice_bot(phone, name, text, msg_type, message_id, media_id,
     call_id = result.get("id", "")
     priority_callno = ""
 
-    if _is_demo_env():
-        try:
-            writer = _get_service_call_writer()
-            call_data["callstatuscode"] = "ממתין לאישור"
-            priority_result = writer.create_service_call(call_data)
-            priority_callno = str(priority_result.get("DOCNO", ""))
-            maint_db.mark_service_call_pushed(call_id, callno=priority_callno)
-            logger.info(f"[M1000] Voice bot: auto-pushed to Priority DOCNO={priority_callno}")
-        except Exception as e:
-            logger.error(f"[M1000] Voice bot: auto-push to Priority failed: {e}")
+    try:
+        writer = _get_service_call_writer()
+        call_data["callstatuscode"] = "ממתין לאישור"
+        priority_result = writer.create_service_call(call_data)
+        priority_callno = str(priority_result.get("DOCNO", ""))
+        maint_db.mark_service_call_pushed(call_id, callno=priority_callno)
+        logger.info(f"[M1000] Voice bot: auto-pushed to Priority DOCNO={priority_callno}")
+    except Exception as e:
+        logger.error(f"[M1000] Voice bot: auto-push to Priority failed: {e}")
 
     logger.info(f"[M1000] Voice bot service call created: {priority_callno or call_id}")
     return {

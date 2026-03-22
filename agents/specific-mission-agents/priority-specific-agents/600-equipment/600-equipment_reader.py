@@ -25,7 +25,7 @@ if os.environ.get("IS_LAMBDA") != "true":
 
 logger = logging.getLogger("urbangroup.agent600")
 
-PRIORITY_URL = os.getenv("PRIORITY_URL", "").rstrip("/")
+PRIORITY_URL = (os.getenv("PRIORITY_URL_REAL") or os.getenv("PRIORITY_URL", "")).rstrip("/")
 PRIORITY_USERNAME = os.getenv("PRIORITY_USERNAME", "")
 PRIORITY_PASSWORD = os.getenv("PRIORITY_PASSWORD", "")
 

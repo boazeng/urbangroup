@@ -150,7 +150,7 @@ def _is_demo_env():
 
 def _get_technician():
     """Return default technician login based on Priority environment."""
-    url = os.environ.get("PRIORITY_URL", "")
+    url = os.environ.get("PRIORITY_URL_REAL") or os.environ.get("PRIORITY_URL", "")
     if "ebyael" in url:
         return "צחי"
     return "יוסי"
@@ -1023,17 +1023,16 @@ def _save_completed_service_call(session, script=None):
     call_id = result.get("id", "")
     priority_callno = ""
 
-    # Auto-push to Priority in demo environment
-    if _is_demo_env():
-        try:
-            writer = _get_service_call_writer()
-            call_data["callstatuscode"] = "ממתין לאישור"
-            priority_result = writer.create_service_call(call_data)
-            priority_callno = str(priority_result.get("DOCNO", ""))
-            maint_db.mark_service_call_pushed(call_id, callno=priority_callno)
-            logger.info(f"[M10010] Auto-pushed to Priority: DOCNO={priority_callno}")
-        except Exception as e:
-            logger.error(f"[M10010] Auto-push to Priority failed: {e}")
+    # Auto-push to Priority
+    try:
+        writer = _get_service_call_writer()
+        call_data["callstatuscode"] = "ממתין לאישור"
+        priority_result = writer.create_service_call(call_data)
+        priority_callno = str(priority_result.get("DOCNO", ""))
+        maint_db.mark_service_call_pushed(call_id, callno=priority_callno)
+        logger.info(f"[M10010] Auto-pushed to Priority: DOCNO={priority_callno}")
+    except Exception as e:
+        logger.error(f"[M10010] Auto-push to Priority failed: {e}")
 
     # Return Priority DOCNO when available, else internal DB id
     return priority_callno or call_id
