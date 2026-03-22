@@ -422,6 +422,17 @@ export default function ArielHRPage() {
     }
     setDeliveryNoteLoading(true)
     try {
+      // Ensure parts are loaded for part descriptions
+      let parts = arielParts
+      if (parts.length === 0) {
+        const partsResp = await fetch(`${API_BASE}/api/hr/parts`)
+        const partsData = await partsResp.json()
+        if (partsData.ok && partsData.parts) {
+          parts = partsData.parts
+          setArielParts(parts)
+        }
+      }
+
       const now = new Date()
       const resp = await fetch(`${API_BASE}/api/hr/delivery-note`, {
         method: 'POST',
@@ -432,8 +443,8 @@ export default function ArielHRPage() {
           siteName: selectedSite,
           details: `${selectedSite} ${now.getMonth() + 1}.${String(now.getFullYear()).slice(2)}`,
           items: siteSummary.professions.map(p => {
-            // Look up part description from arielParts, fallback to profName
-            const part = arielParts.find(ap => ap.code === p.profNum)
+            // Look up part description from parts list, fallback to profName
+            const part = parts.find(ap => ap.code === p.profNum)
             let pdes = part ? part.name : p.profName
             if (p.notes) pdes += ' ' + p.notes
             return {
