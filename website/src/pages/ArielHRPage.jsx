@@ -92,6 +92,7 @@ export default function ArielHRPage() {
   const [showAll, setShowAll] = useState(true)
   const [showUnfilled, setShowUnfilled] = useState(false)
   const [showUnsent, setShowUnsent] = useState(false)
+  const [deliveryNoteLoading, setDeliveryNoteLoading] = useState(false)
   const [nextNewId, setNextNewId] = useState(1)   // counter for new row temp IDs
 
   // Draggable grand totals order
@@ -398,12 +399,55 @@ export default function ArielHRPage() {
     // Filter out groups with zero regular hours
     const professions = Object.values(byGroup).filter(p => p.hoursReg > 0)
 
+    // Get customer name and number from first row
+    const firstRow = siteRows[0]
+    const customerName = firstRow ? String(firstRow[COL.CUSTOMER] || '').trim() : ''
+    const customerNum = firstRow ? String(firstRow[COL.PRIORITY_NUM] || '').trim() : ''
+
     return {
       professions,
       totalCustomer,
       totalContractor,
+      customerName,
+      customerNum,
     }
   }, [editedRows, selectedSite, selectedContractor, selectedCustomer])
+
+  const handleCreateDeliveryNote = async () => {
+    if (!siteSummary || !siteSummary.customerNum) {
+      alert('לא נמצא מספר לקוח לאתר זה')
+      return
+    }
+    setDeliveryNoteLoading(true)
+    try {
+      const resp = await fetch(`${API_BASE}/api/hr/delivery-note`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerNum: siteSummary.customerNum,
+          customerName: siteSummary.customerName,
+          siteName: selectedSite,
+          items: siteSummary.professions.map(p => ({
+            profNum: p.profNum,
+            profName: p.profName,
+            hours: p.hoursReg,
+            rate: p.custRate,
+            total: p.custTotal,
+          })),
+        }),
+      })
+      const data = await resp.json()
+      if (data.ok) {
+        alert(`תעודת משלוח נפתחה בהצלחה: ${data.docno || ''}`)
+      } else {
+        alert(`שגיאה בפתיחת תעודת משלוח: ${data.error || 'Unknown error'}`)
+      }
+    } catch (err) {
+      alert(`שגיאה: ${err.message}`)
+    } finally {
+      setDeliveryNoteLoading(false)
+    }
+  }
 
   const clearFilters = () => {
     setSelectedContractor('')
@@ -1384,9 +1428,23 @@ export default function ArielHRPage() {
             {siteSummary && (
               <div className="hr-site-summary">
                 <h3 className="hr-site-summary-title">סיכום אתר: {selectedSite}</h3>
+                {siteSummary.customerName && (
+                  <div className="hr-contractor-summary">
+                    <span className="hr-summary-label">לקוח:</span>
+                    <span className="hr-summary-value">{siteSummary.customerName} ({siteSummary.customerNum})</span>
+                  </div>
+                )}
                 <div className="hr-contractor-summary">
                   <span className="hr-summary-label">סה&quot;כ לקוח:</span>
                   <span className="hr-summary-value">{siteSummary.totalCustomer.toLocaleString('he-IL', { maximumFractionDigits: 2 })}</span>
+                  <button
+                    className="hr-toggle-extra-btn"
+                    style={{ marginRight: '16px' }}
+                    disabled={deliveryNoteLoading}
+                    onClick={handleCreateDeliveryNote}
+                  >
+                    {deliveryNoteLoading ? 'פותח תעודה...' : 'פתיחת תעודת משלוח'}
+                  </button>
                 </div>
                 <div className="ariel-card hr-table-wrapper">
                   <table className="ariel-table hr-table hr-summary-table">

@@ -1805,6 +1805,44 @@ def sync_hr_priority():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/api/hr/delivery-note", methods=["POST"])
+def create_delivery_note():
+    """Create a delivery note in Priority (DOCUMENTS_D) via agent 550."""
+    import subprocess
+    try:
+        data = request.get_json(force=True)
+        customer_num = data.get("customerNum")
+        if not customer_num:
+            return jsonify({"ok": False, "error": "Missing customerNum"}), 400
+
+        if _is_lambda:
+            script = Path("/var/task/agents/specific-mission-agents/priority-specific-agents/550-delivery-note/create-delivery-note.js")
+        else:
+            script = Path(__file__).resolve().parent.parent / "agents" / "specific-mission-agents" / \
+                "priority-specific-agents" / "550-delivery-note" / "create-delivery-note.js"
+        if not script.exists():
+            return jsonify({"ok": False, "error": f"Script not found: {script}"}), 500
+
+        json_arg = json.dumps(data, ensure_ascii=False)
+        result = subprocess.run(
+            ["node", str(script), json_arg],
+            capture_output=True, text=True, timeout=60,
+            cwd=str(script.parent),
+        )
+        stderr_log = result.stderr.strip()
+        if stderr_log:
+            logger.info(f"[550-delivery-note] {stderr_log}")
+
+        if result.returncode != 0:
+            return jsonify({"ok": False, "error": stderr_log or "create-delivery-note.js failed"}), 500
+
+        output = json.loads(result.stdout.strip().split("\n")[-1])
+        return jsonify(output)
+    except Exception as e:
+        logger.error(f"Delivery note creation failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 if __name__ == "__main__":
     print("Urban Group Backend API")
     print(f"Priority Demo: {PRIORITY_URL_DEMO}")

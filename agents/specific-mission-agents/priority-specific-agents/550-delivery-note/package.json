@@ -1,0 +1,16 @@
+{
+  "name": "550-delivery-note",
+  "version": "1.0.0",
+  "main": "create-delivery-note.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Creates delivery notes in Priority (DOCUMENTS_D)",
+  "dependencies": {
+    "dotenv": "^17.2.4",
+    "priority-web-sdk": "^3.0.37"
+  }
+}
