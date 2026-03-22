@@ -296,6 +296,14 @@
   padding: 3px 1px;
 }
 
+.hr-table td.hr-td-site {
+  overflow: visible;
+}
+
+.hr-table td.hr-td-xnarrow {
+  overflow: visible;
+}
+
 /* Override ariel-num left alignment for RTL table */
 .hr-table .ariel-num {
   text-align: right !important;
@@ -451,6 +459,11 @@
 .hr-td-xnarrow {
   width: 42px;
   max-width: 42px;
+}
+
+.hr-td-xnarrow .hr-cell-input {
+  width: calc(100% - 16px);
+  display: inline-block;
 }
 
 /* Narrow columns — constrain td/th width */
