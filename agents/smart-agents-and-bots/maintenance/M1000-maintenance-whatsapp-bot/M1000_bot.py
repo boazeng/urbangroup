@@ -187,13 +187,18 @@ def _handle_voice_bot(phone, name, text, msg_type, message_id, media_id,
     is_system_down = llm_result.get("is_system_down", False)
     issue_type = llm_result.get("issue_type", "תקלה") or "תקלה"
 
+    # Extract caller's phone and name from the voice bot message (not the bot's phone)
+    caller_phone = parsed_data.get("טלפון", "") or phone
+    caller_name = parsed_data.get("שם לקוח", "") or parsed_data.get("שם הלקוח", "") or customer_name or name
+
     fault_lines = []
     if description:
         fault_lines.append(description)
-    fault_lines.append(f"טלפון: {phone}")
+    fault_lines.append(f"טלפון: {caller_phone}")
+    fault_lines.append(f"שם לקוח: {caller_name}")
     fault_lines.append(f"מקור: בוט קולי ({name})")
-    if customer_name:
-        fault_lines.append(f"לקוח: {customer_name}")
+    if customer_name and customer_name != caller_name:
+        fault_lines.append(f"לקוח פריורטי: {customer_name}")
     if location:
         fault_lines.append(f"מיקום: {location}")
     if device_number:
@@ -203,8 +208,8 @@ def _handle_voice_bot(phone, name, text, msg_type, message_id, media_id,
     fault_text = "\n".join(fault_lines)
 
     call_data = dict(
-        phone=phone,
-        name=name,
+        phone=caller_phone,
+        name=caller_name,
         issue_type=issue_type,
         description=description or f"קריאה מבוט קולי - {name}",
         urgency="high" if is_system_down else "medium",
