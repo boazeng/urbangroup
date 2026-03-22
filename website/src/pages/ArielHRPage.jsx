@@ -1169,7 +1169,7 @@ export default function ArielHRPage() {
 
         {showArielParts && arielParts.length > 0 && (() => {
           const filtered = partSearch
-            ? arielParts.filter(p => p.code.includes(partSearch) || p.name.includes(partSearch))
+            ? arielParts.filter(p => p.code.includes(partSearch) || p.name.includes(partSearch) || (p.spec20 || '').includes(partSearch))
             : arielParts
           return (
             <div className="hr-priority-section">
@@ -1185,7 +1185,7 @@ export default function ArielHRPage() {
                 />
                 <button className="hr-toggle-extra-btn" onClick={() => setShowArielParts(false)}>הסתר</button>
               </div>
-              <div className="hr-priority-table-wrap" style={{ maxWidth: 500 }}>
+              <div className="hr-priority-table-wrap" style={{ maxWidth: 700 }}>
                 <div className="hr-table-wrapper">
                   <table className="ariel-table hr-summary-table">
                     <thead>
@@ -1193,6 +1193,8 @@ export default function ArielHRPage() {
                         <th>#</th>
                         <th>מקט</th>
                         <th>תיאור</th>
+                        <th>יח' מפעל</th>
+                        <th>פרמטר 20</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1201,6 +1203,8 @@ export default function ArielHRPage() {
                           <td className="ariel-num">{i + 1}</td>
                           <td>{p.code}</td>
                           <td>{p.name}</td>
+                          <td>{p.unit || ''}</td>
+                          <td>{p.spec20 || ''}</td>
                         </tr>
                       ))}
                     </tbody>
