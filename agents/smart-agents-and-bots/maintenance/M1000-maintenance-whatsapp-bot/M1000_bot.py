@@ -124,10 +124,7 @@ BRANCH_MAP = {
 
 
 def _get_technician():
-    """Return default technician login based on Priority environment."""
-    url = os.environ.get("PRIORITY_URL_REAL") or os.environ.get("PRIORITY_URL", "")
-    if "ebyael" in url:
-        return "צחי"
+    """Return default technician login."""
     return "יוסי"
 
 
