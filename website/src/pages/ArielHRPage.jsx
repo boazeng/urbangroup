@@ -1880,12 +1880,7 @@ export default function ArielHRPage() {
                                           <div style={{ padding: '8px 12px', color: '#888' }}>טוען...</div>
                                         ) : sitePickerSites.length === 0 ? (
                                           <div style={{ padding: '8px 12px', color: '#888' }}>לא נמצאו אתרים</div>
-                                        ) : sitePickerSites
-                                          .filter(s => {
-                                            const typed = cellVal(row[col.idx]).toLowerCase()
-                                            return !typed || s.name.toLowerCase().includes(typed) || s.code.includes(typed)
-                                          })
-                                          .map(s => (
+                                        ) : sitePickerSites.map(s => (
                                           <div key={s.code}
                                             onMouseDown={() => selectSite(excelRow, s.name)}
                                             style={{ padding: '4px 12px', cursor: 'pointer', fontSize: '13px', direction: 'rtl' }}
