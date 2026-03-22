@@ -1027,10 +1027,17 @@ export default function ArielHRPage() {
         if (deletedRows.size > 0) {
           setEditedRows(prev => prev.filter(r => !deletedRows.has(r[COL.ROW_INDEX])))
         }
-        setAllRows(editedRows.filter(r => !deletedRows.has(r[COL.ROW_INDEX])).map(r => [...r]))
+        const cleanRows = editedRows.filter(r => !deletedRows.has(r[COL.ROW_INDEX])).map(r => [...r])
+        setAllRows(cleanRows)
         setDirtyKeys(new Set())
         setDeletedRows(new Set())
         setLocalSaveStatus('') // local cleared by backend
+        // Update DB cache in background
+        fetch(`${API_BASE}/api/hr/db-data`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sheet: selectedSheet, rows: cleanRows, filters }),
+        }).catch(() => {})
       } else {
         setError(data.error || 'שגיאה בשמירה')
       }

@@ -1516,6 +1516,21 @@ def get_hr_db_data():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/api/hr/db-data", methods=["POST"])
+def save_hr_db_data():
+    """Save HR sheet data to DynamoDB cache (called by frontend after save)."""
+    try:
+        data = request.get_json(force=True)
+        sheet = data.get("sheet", "2.26")
+        rows = data.get("rows", [])
+        filters = data.get("filters", {})
+        delivery_notes_db.save_hr_sheet(sheet, rows, filters)
+        return jsonify({"ok": True})
+    except Exception as e:
+        logger.error(f"HR DB save failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/hr/sheet-data", methods=["GET"])
 def get_hr_sheet_data():
     """Read main table from the HR Excel file on SharePoint and save to DB cache."""
@@ -1659,17 +1674,6 @@ def save_hr_changes():
 
         # Clear local pending data after successful SharePoint save
         _clear_local_hr(sheet)
-
-        # Refresh DB cache from SharePoint
-        try:
-            fresh_data = excel.read(sheet, "A1:X1000")
-            fresh_all = fresh_data["values"]
-            if fresh_all:
-                fresh_rows, fresh_filters = _parse_hr_sheet(fresh_all)
-                if fresh_rows is not None:
-                    delivery_notes_db.save_hr_sheet(sheet, fresh_rows, fresh_filters)
-        except Exception as cache_err:
-            logger.error(f"HR DB cache refresh after save failed (non-fatal): {cache_err}")
 
         return jsonify({"ok": True, "updated": updated, "newRowIndices": new_row_indices})
     except Exception as e:
