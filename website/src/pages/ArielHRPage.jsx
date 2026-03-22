@@ -599,12 +599,28 @@ export default function ArielHRPage() {
   // Handle cell edit
   const handleCellChange = useCallback((excelRow, colIdx, value) => {
     const needsRecalc = HOURS_COLS.has(colIdx) || CUST_RATE_COLS.has(colIdx) || CONT_RATE_COLS.has(colIdx)
+    const isProfNum = colIdx === COL.PROFESSION_NUM
+
+    // If profession number changed, look up part for auto-fill
+    let autoFillProf = null
+    let autoFillTariff = null
+    if (isProfNum && arielParts.length > 0) {
+      const part = arielParts.find(p => p.code === String(value).trim())
+      if (part) {
+        autoFillProf = part.spec20 || ''
+        autoFillTariff = part.unit || ''
+      }
+    }
 
     setEditedRows(prev => {
       const next = prev.map(r => {
         if (r[COL.ROW_INDEX] === excelRow) {
           const copy = [...r]
           copy[colIdx] = value
+          if (autoFillProf !== null) {
+            copy[COL.PROFESSION] = autoFillProf
+            copy[COL.TARIFF_TYPE] = autoFillTariff
+          }
           if (needsRecalc) recalcRow(copy)
           return copy
         }
@@ -631,9 +647,14 @@ export default function ArielHRPage() {
         next.add(`${excelRow}:${COL.CONT_TOTAL}`)
         next.add(`${excelRow}:${COL.GAP}`)
       }
+      // Mark auto-filled fields as dirty
+      if (autoFillProf !== null) {
+        next.add(`${excelRow}:${COL.PROFESSION}`)
+        next.add(`${excelRow}:${COL.TARIFF_TYPE}`)
+      }
       return next
     })
-  }, [allRows])
+  }, [allRows, arielParts])
 
   // Duplicate row with empty hours
   const handleDuplicateRow = (excelRow) => {
