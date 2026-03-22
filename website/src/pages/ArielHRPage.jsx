@@ -1960,7 +1960,6 @@ export default function ArielHRPage() {
                     )}
                   </div>
                 )}
-              </div>
 
                 {/* Cinvoice Draft/Sent display */}
                 {cinvoice && (
