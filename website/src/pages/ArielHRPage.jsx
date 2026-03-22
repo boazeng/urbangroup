@@ -438,7 +438,7 @@ export default function ArielHRPage() {
       })
       const data = await resp.json()
       if (data.ok) {
-        alert(`תעודת משלוח נפתחה בהצלחה: ${data.docno || ''}`)
+        alert('תעודת משלוח נשמרה כטיוטא')
       } else {
         alert(`שגיאה בפתיחת תעודת משלוח: ${data.error || 'Unknown error'}`)
       }

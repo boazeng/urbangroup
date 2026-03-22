@@ -190,6 +190,13 @@ bot_prompts_db = importlib.util.module_from_spec(spec_bp_db)
 sys.modules["bot_prompts_db"] = bot_prompts_db
 spec_bp_db.loader.exec_module(bot_prompts_db)
 
+# Load delivery notes database module
+dn_db_path = PROJECT_ROOT / "database" / "maintenance" / "delivery_notes_db.py"
+spec_dn_db = importlib.util.spec_from_file_location("delivery_notes_db", dn_db_path)
+delivery_notes_db = importlib.util.module_from_spec(spec_dn_db)
+sys.modules["delivery_notes_db"] = delivery_notes_db
+spec_dn_db.loader.exec_module(delivery_notes_db)
+
 # Load knowledge database module
 kn_db_path = PROJECT_ROOT / "database" / "maintenance" / "knowledge_db.py"
 spec_kn_db = importlib.util.spec_from_file_location("knowledge_db", kn_db_path)
@@ -1807,7 +1814,7 @@ def sync_hr_priority():
 
 @app.route("/api/hr/delivery-note", methods=["POST"])
 def create_delivery_note():
-    """Create a delivery note in Priority (DOCUMENTS_D) via OData API."""
+    """Save a delivery note to DB (draft). Does NOT send to Priority yet."""
     try:
         data = request.get_json(force=True)
         customer_num = (data.get("customerNum") or "").strip()
@@ -1817,11 +1824,118 @@ def create_delivery_note():
         if not customer_num:
             return jsonify({"ok": False, "error": "Missing customerNum"}), 400
 
-        items = data.get("items", [])
-        if not items:
+        raw_items = data.get("items", [])
+        if not raw_items:
             return jsonify({"ok": False, "error": "Missing items"}), 400
 
+        customer_name = data.get("customerName", "")
         site_name = data.get("siteName", "")
+        details = data.get("details", site_name)
+
+        # Normalize items for DB
+        db_items = []
+        for item in raw_items:
+            db_items.append({
+                "partname": str(item.get("profNum", "")).strip(),
+                "pdes": str(item.get("profName", "")).strip(),
+                "tquant": item.get("hours", 0),
+                "price": item.get("rate", 0),
+            })
+
+        result = delivery_notes_db.save_delivery_note(
+            customer_num=customer_num,
+            customer_name=customer_name,
+            site_name=site_name,
+            details=details,
+            items=db_items,
+        )
+        logger.info(f"[delivery-note] Saved draft {result['id']} for customer {customer_num}")
+
+        return jsonify({"ok": True, "id": result["id"], "status": "draft"})
+    except Exception as e:
+        logger.error(f"Delivery note save failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/hr/delivery-notes", methods=["GET"])
+def list_delivery_notes():
+    """List delivery notes, optionally filtered by status."""
+    try:
+        status = request.args.get("status")
+        notes = delivery_notes_db.list_delivery_notes(status=status)
+        return jsonify({"ok": True, "notes": notes})
+    except Exception as e:
+        logger.error(f"List delivery notes failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/hr/delivery-notes/<note_id>", methods=["GET"])
+def get_delivery_note(note_id):
+    """Get a single delivery note."""
+    try:
+        note = delivery_notes_db.get_delivery_note(note_id)
+        if not note:
+            return jsonify({"ok": False, "error": "Not found"}), 404
+        return jsonify({"ok": True, "note": note})
+    except Exception as e:
+        logger.error(f"Get delivery note failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/hr/delivery-notes/<note_id>", methods=["PUT"])
+def update_delivery_note_route(note_id):
+    """Update a delivery note (items, details, etc.)."""
+    try:
+        data = request.get_json(force=True)
+        note = delivery_notes_db.get_delivery_note(note_id)
+        if not note:
+            return jsonify({"ok": False, "error": "Not found"}), 404
+        if note.get("status") == "sent":
+            return jsonify({"ok": False, "error": "Cannot edit a sent delivery note"}), 400
+
+        updates = {}
+        for field in ("details", "items", "customer_num", "customer_name", "site_name"):
+            if field in data:
+                updates[field] = data[field]
+
+        if updates:
+            delivery_notes_db.update_delivery_note(note_id, updates)
+
+        return jsonify({"ok": True})
+    except Exception as e:
+        logger.error(f"Update delivery note failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/hr/delivery-notes/<note_id>", methods=["DELETE"])
+def delete_delivery_note_route(note_id):
+    """Delete a delivery note (only drafts)."""
+    try:
+        note = delivery_notes_db.get_delivery_note(note_id)
+        if not note:
+            return jsonify({"ok": False, "error": "Not found"}), 404
+        if note.get("status") == "sent":
+            return jsonify({"ok": False, "error": "Cannot delete a sent delivery note"}), 400
+
+        delivery_notes_db.delete_delivery_note(note_id)
+        return jsonify({"ok": True})
+    except Exception as e:
+        logger.error(f"Delete delivery note failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/hr/delivery-notes/<note_id>/send", methods=["POST"])
+def send_delivery_note_to_priority(note_id):
+    """Send a draft delivery note to Priority (DOCUMENTS_D)."""
+    try:
+        note = delivery_notes_db.get_delivery_note(note_id)
+        if not note:
+            return jsonify({"ok": False, "error": "Not found"}), 404
+        if note.get("status") == "sent":
+            return jsonify({"ok": False, "error": "Already sent", "docno": note.get("docno")}), 400
+
+        customer_num = note["customer_num"]
+        items = note.get("items", [])
 
         url = PRIORITY_URL_REAL
         auth = HTTPBasicAuth(
@@ -1834,38 +1948,38 @@ def create_delivery_note():
             "OData-Version": "4.0",
         }
 
-        # Build line items for TRANSORDER_D_SUBFORM
         subform_items = []
         for item in items:
-            row = {
-                "PARTNAME": str(item.get("profNum", "")).strip(),
-                "PDES": str(item.get("profName", "")).strip(),
-                "TQUANT": item.get("hours", 0),
-                "PRICE": item.get("rate", 0),
-            }
-            subform_items.append(row)
+            subform_items.append({
+                "PARTNAME": str(item.get("partname", "")).strip(),
+                "PDES": str(item.get("pdes", "")).strip(),
+                "TQUANT": item.get("tquant", 0),
+                "PRICE": item.get("price", 0),
+            })
 
         body = {
             "CUSTNAME": customer_num,
-            "DETAILS": site_name,
+            "DETAILS": note.get("details", ""),
             "TRANSORDER_D_SUBFORM": subform_items,
         }
 
-        logger.info(f"[550-delivery-note] Creating for customer {customer_num} with {len(subform_items)} items")
-        logger.info(f"[550-delivery-note] Body: {json.dumps(body, ensure_ascii=False)}")
+        logger.info(f"[delivery-note] Sending {note_id} to Priority for customer {customer_num}")
         resp = http_requests.post(f"{url}/DOCUMENTS_D", json=body, headers=headers, auth=auth, timeout=30)
         if not resp.ok:
             error_text = resp.text[:500]
-            logger.error(f"[550-delivery-note] Priority error {resp.status_code}: {error_text}")
+            logger.error(f"[delivery-note] Priority error {resp.status_code}: {error_text}")
+            delivery_notes_db.mark_error(note_id, f"Priority {resp.status_code}: {error_text}")
             return jsonify({"ok": False, "error": f"Priority error {resp.status_code}: {error_text}"}), 500
 
         result = resp.json()
         docno = result.get("DOCNO", result.get("DOCNUM", ""))
-        logger.info(f"[550-delivery-note] Created delivery note: {docno}")
+        delivery_notes_db.mark_sent(note_id, docno)
+        logger.info(f"[delivery-note] Sent {note_id} → {docno}")
 
         return jsonify({"ok": True, "docno": docno})
     except Exception as e:
-        logger.error(f"Delivery note creation failed: {e}")
+        logger.error(f"Send delivery note failed: {e}")
+        delivery_notes_db.mark_error(note_id, str(e))
         return jsonify({"ok": False, "error": str(e)}), 500
 
 

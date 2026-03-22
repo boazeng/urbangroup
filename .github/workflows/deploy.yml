@@ -118,6 +118,7 @@ jobs:
           cp database/maintenance/bot_scripts_db.py lambda-backend/database/maintenance/
           cp database/maintenance/bot_prompts_db.py lambda-backend/database/maintenance/
           cp database/maintenance/knowledge_db.py lambda-backend/database/maintenance/
+          cp database/maintenance/delivery_notes_db.py lambda-backend/database/maintenance/
           cp agents/tools-connection/5000-whatsapp/5000-whatsapp_bot.py lambda-backend/agents/tools-connection/5000-whatsapp/
           cp agents/tools-connection/5010-whatsapp/5010-whatsapp_bot.py lambda-backend/agents/tools-connection/5010-whatsapp/
           cp agents/tools-connection/5100-sharepoint/5100-sharepoint_connector.py lambda-backend/agents/tools-connection/5100-sharepoint/
