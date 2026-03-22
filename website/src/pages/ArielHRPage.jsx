@@ -1097,6 +1097,9 @@ export default function ArielHRPage() {
           >
             לא נשלחו
           </button>
+          {hasFilter && (
+            <span className="hr-row-count">{filteredRows.length} שורות</span>
+          )}
           <button
             className={`hr-toggle-extra-btn${showUnfilled ? ' hr-toggle-active' : ''}`}
             onClick={() => { setShowUnfilled(v => !v); if (!showUnfilled) { setShowAll(true) } }}
@@ -1222,10 +1225,6 @@ export default function ArielHRPage() {
                 <button className="hr-clear-btn" onClick={clearFilters}>
                   נקה סינון
                 </button>
-              )}
-
-              {hasFilter && (
-                <span className="hr-row-count">{filteredRows.length} שורות</span>
               )}
 
               <button
