@@ -58,7 +58,7 @@ const DISPLAY_COLS = [
   { idx: COL.CONT_125, label: 'קבלן 125%', type: 'num', extra: true },
   { idx: COL.CONT_150, label: 'קבלן 150%', type: 'num', extra: true },
   { idx: COL.CONT_TOTAL, label: 'סה"כ קבלן', type: 'num', narrow: true, totals: true },
-  { idx: COL.GAP, label: 'פער', type: 'num', narrow: true },
+  { idx: COL.GAP, label: 'פער', type: 'num', xnarrow: true },
 ]
 
 function cellVal(v) {
@@ -127,6 +127,7 @@ export default function ArielHRPage() {
   const [sitePickerRow, setSitePickerRow] = useState(null) // excelRow of row showing site picker
   const [sitePickerSites, setSitePickerSites] = useState([])
   const [sitePickerLoading, setSitePickerLoading] = useState(false)
+  const sitePickerCache = useRef({}) // custNum → sites[]
   const [loadingCustomers, setLoadingCustomers] = useState(false)
   const [customerSearch, setCustomerSearch] = useState('')
   const [arielParts, setArielParts] = useState([])
@@ -737,13 +738,23 @@ export default function ArielHRPage() {
   }
 
   const openSitePicker = async (excelRow, custNum) => {
+    if (!custNum) return
     setSitePickerRow(excelRow)
+    // Use cache if available
+    if (sitePickerCache.current[custNum]) {
+      setSitePickerSites(sitePickerCache.current[custNum])
+      setSitePickerLoading(false)
+      return
+    }
     setSitePickerSites([])
     setSitePickerLoading(true)
     try {
       const resp = await fetch(`${API_BASE}/api/hr/sites?customer=${encodeURIComponent(custNum)}`)
       const data = await resp.json()
-      if (data.ok) setSitePickerSites(data.sites || [])
+      if (data.ok) {
+        sitePickerCache.current[custNum] = data.sites || []
+        setSitePickerSites(data.sites || [])
+      }
     } catch {}
     setSitePickerLoading(false)
   }
