@@ -764,6 +764,16 @@ export default function ArielHRPage() {
     setSitePickerRow(null)
   }
 
+  // Close site picker when clicking outside
+  useEffect(() => {
+    if (sitePickerRow === null) return
+    const handler = (e) => {
+      if (!e.target.closest('.hr-td-site')) setSitePickerRow(null)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [sitePickerRow])
+
   const clearFilters = () => {
     setSelectedContractor('')
     setSelectedCustomer('')
@@ -1846,10 +1856,20 @@ export default function ArielHRPage() {
                                       type="text"
                                       value={cellVal(row[col.idx])}
                                       onChange={e => handleCellChange(excelRow, col.idx, e.target.value)}
-                                      onFocus={() => openSitePicker(excelRow, cellVal(row[COL.PRIORITY_NUM]))}
-                                      onBlur={() => setTimeout(() => setSitePickerRow(null), 200)}
+                                      onFocus={e => e.target.select()}
                                       data-cell={`${excelRow}:${col.idx}`}
+                                      style={{ width: 'calc(100% - 18px)', display: 'inline-block' }}
                                     />
+                                    <button
+                                      className="hr-tracking-toggle-btn"
+                                      style={{ fontSize: '10px', verticalAlign: 'middle' }}
+                                      onMouseDown={e => {
+                                        e.preventDefault()
+                                        if (sitePickerRow === excelRow) { setSitePickerRow(null) }
+                                        else { openSitePicker(excelRow, cellVal(row[COL.PRIORITY_NUM])) }
+                                      }}
+                                      title="בחר אתר מרשימה"
+                                    >&#9660;</button>
                                     {sitePickerRow === excelRow && (
                                       <div style={{
                                         position: 'absolute', zIndex: 100, background: '#fff', border: '1px solid #1976d2',
