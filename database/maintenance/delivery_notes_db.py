@@ -158,7 +158,7 @@ def _prepare_item(data):
 
 def _deserialize_item(item):
     """Deserialize DynamoDB item back to Python types."""
-    _JSON_FIELDS = ("items", "parts", "rows", "filters")
+    _JSON_FIELDS = ("items", "parts", "rows", "filters", "customers")
     data = {}
     for k, v in item.items():
         if isinstance(v, Decimal):
@@ -176,6 +176,7 @@ def _deserialize_item(item):
 # ── Parts Cache (stored as a special record in the same table) ────────
 
 PARTS_CACHE_ID = "PARTS_CACHE"
+CUSTOMERS_CACHE_ID = "CUSTOMERS_CACHE"
 
 
 def save_parts_cache(parts):
@@ -201,6 +202,31 @@ def load_parts_cache():
         return None
     data = _deserialize_item(item)
     return {"parts": data.get("parts", []), "synced_at": data.get("synced_at", "")}
+
+
+def save_customers_cache(customers):
+    """Save customers list to DB cache."""
+    now = datetime.utcnow().isoformat() + "Z"
+    item = _prepare_item({
+        "id": CUSTOMERS_CACHE_ID,
+        "status": "_cache",
+        "customers": customers,
+        "synced_at": now,
+        "created_at": now,
+        "updated_at": now,
+    })
+    _table.put_item(Item=item)
+    logger.info(f"Saved {len(customers)} customers to cache")
+
+
+def load_customers_cache():
+    """Load customers list from DB cache. Returns {customers, synced_at} or None."""
+    resp = _table.get_item(Key={"id": CUSTOMERS_CACHE_ID})
+    item = resp.get("Item")
+    if not item:
+        return None
+    data = _deserialize_item(item)
+    return {"customers": data.get("customers", []), "synced_at": data.get("synced_at", "")}
 
 
 # ── HR Sheet Cache (stored as special records in the same table) ──────

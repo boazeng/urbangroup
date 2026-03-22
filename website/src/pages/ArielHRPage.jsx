@@ -249,6 +249,15 @@ export default function ArielHRPage() {
 
   useEffect(() => { loadData() }, [selectedSheet])
 
+  // Auto-load parts on mount for auto-fill
+  useEffect(() => {
+    if (arielParts.length === 0) {
+      fetch(`${API_BASE}/api/hr/parts`).then(r => r.json()).then(data => {
+        if (data.ok && data.parts) setArielParts(data.parts)
+      }).catch(() => {})
+    }
+  }, [])
+
   // Auto-save locally whenever edits change
   useEffect(() => {
     autoSaveLocal(editedRows, dirtyKeys, deletedRows)

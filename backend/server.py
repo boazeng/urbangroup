@@ -1681,38 +1681,48 @@ def save_hr_changes():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+def _fetch_customers_from_priority():
+    """Fetch customers list from Priority ERP (real env) — filtered to branch 102."""
+    url = PRIORITY_URL_REAL
+    auth = HTTPBasicAuth(
+        os.getenv("PRIORITY_USERNAME", ""),
+        os.getenv("PRIORITY_PASSWORD", ""),
+    )
+    headers = {"Accept": "application/json", "OData-Version": "4.0"}
+
+    customers = []
+    skip = 0
+    while True:
+        api_url = f"{url}/ACCOUNTS_RECEIVABLE?$select=ACCNAME,ACCDES&$orderby=ACCNAME&$top=500&$skip={skip}"
+        resp = http_requests.get(api_url, headers=headers, auth=auth, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        rows = data.get("value", [])
+        if not rows:
+            break
+        for row in rows:
+            acc = row.get("ACCNAME", "")
+            if acc.endswith("-102"):
+                customers.append({
+                    "code": acc,
+                    "name": row.get("ACCDES", ""),
+                })
+        skip += len(rows)
+        if len(rows) < 500:
+            break
+    return customers
+
+
 @app.route("/api/hr/customers", methods=["GET"])
 def get_hr_customers():
-    """Fetch customers list from Priority ERP (real env) — filtered to branch 102."""
+    """Return customers from DB cache. If no cache, fetch from Priority."""
     try:
-        url = PRIORITY_URL_REAL
-        auth = HTTPBasicAuth(
-            os.getenv("PRIORITY_USERNAME", ""),
-            os.getenv("PRIORITY_PASSWORD", ""),
-        )
-        headers = {"Accept": "application/json", "OData-Version": "4.0"}
-
-        customers = []
-        skip = 0
-        while True:
-            api_url = f"{url}/ACCOUNTS_RECEIVABLE?$select=ACCNAME,ACCDES&$orderby=ACCNAME&$top=500&$skip={skip}"
-            resp = http_requests.get(api_url, headers=headers, auth=auth, timeout=30)
-            resp.raise_for_status()
-            data = resp.json()
-            rows = data.get("value", [])
-            if not rows:
-                break
-            for row in rows:
-                acc = row.get("ACCNAME", "")
-                if acc.endswith("-102"):
-                    customers.append({
-                        "code": acc,
-                        "name": row.get("ACCDES", ""),
-                    })
-            skip += len(rows)
-            if len(rows) < 500:
-                break
-
+        cached = delivery_notes_db.load_customers_cache()
+        if cached:
+            return jsonify({"ok": True, "customers": cached["customers"], "syncedAt": cached.get("synced_at", "")})
+        # No cache — fetch live and save
+        customers = _fetch_customers_from_priority()
+        delivery_notes_db.save_customers_cache(customers)
         return jsonify({"ok": True, "customers": customers})
     except Exception as e:
         logger.error(f"HR customers fetch failed: {e}")
@@ -1839,7 +1849,7 @@ def sync_hr_priority():
             next_url = data.get("@odata.nextLink")
         suppliers = [{"code": k, "name": v} for k, v in sorted(sup_map.items())]
 
-        # 3. Fetch parts 100-199 via Web SDK and cache locally
+        # 3. Fetch parts 100-199 and cache
         parts_error = None
         try:
             parts = _fetch_parts_from_priority()
@@ -1848,12 +1858,22 @@ def sync_hr_priority():
             logger.error(f"Parts sync failed (non-fatal): {pe}")
             parts_error = str(pe)
 
+        # 4. Fetch HR customers (ACCOUNTS_RECEIVABLE -102) and cache
+        hr_customers_error = None
+        try:
+            hr_customers = _fetch_customers_from_priority()
+            delivery_notes_db.save_customers_cache(hr_customers)
+        except Exception as ce:
+            logger.error(f"HR customers sync failed (non-fatal): {ce}")
+            hr_customers_error = str(ce)
+
         return jsonify({
             "ok": True,
             "customers": customers,
             "suppliers": suppliers,
             "partsCount": len(parts) if not parts_error else 0,
             "partsError": parts_error,
+            "hrCustomersCount": len(hr_customers) if not hr_customers_error else 0,
             "syncedAt": _now_il().strftime("%Y-%m-%d %H:%M:%S"),
         })
     except Exception as e:
