@@ -591,7 +591,7 @@ export default function ArielHRPage() {
     await fetch(`${API_BASE}/api/hr/tasks`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ description: newTaskText.trim() }),
+      body: JSON.stringify({ description: newTaskText.trim(), month: selectedSheet }),
     })
     setNewTaskText('')
     loadTasks()
@@ -1550,6 +1550,7 @@ export default function ArielHRPage() {
                         <tr>
                           <th style={{ width: '40px' }}>#</th>
                           <th>תאור מטלה</th>
+                          <th style={{ width: '80px' }}>חודש טיפול</th>
                           <th style={{ width: '80px' }}>פעולות</th>
                         </tr>
                       </thead>
@@ -1558,6 +1559,7 @@ export default function ArielHRPage() {
                           <tr key={t.id}>
                             <td>{i + 1}</td>
                             <td>{t.description}</td>
+                            <td>{t.month || ''}</td>
                             <td style={{ display: 'flex', gap: '4px' }}>
                               <button
                                 onClick={() => handleToggleTask(t.id)}

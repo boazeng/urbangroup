@@ -267,7 +267,7 @@ def load_hr_sheet(sheet_name):
 # ── Tasks (מטלות) ────────────────────────────────────────────
 
 
-def save_task(description):
+def save_task(description, month=""):
     """Create a new task."""
     now = datetime.utcnow().isoformat() + "Z"
     task_id = f"TASK_{str(uuid.uuid4())[:8]}"
@@ -275,6 +275,7 @@ def save_task(description):
         "id": task_id,
         "status": "open",
         "description": description,
+        "month": month,
         "created_at": now,
         "updated_at": now,
     })

@@ -1901,7 +1901,8 @@ def create_task():
         description = data.get("description", "").strip()
         if not description:
             return jsonify({"ok": False, "error": "Missing description"}), 400
-        result = delivery_notes_db.save_task(description)
+        month = data.get("month", "").strip()
+        result = delivery_notes_db.save_task(description, month=month)
         return jsonify({"ok": True, "id": result["id"]})
     except Exception as e:
         logger.error(f"Create task failed: {e}")
@@ -1914,10 +1915,9 @@ def update_task(task_id):
     try:
         data = request.get_json(force=True)
         updates = {}
-        if "status" in data:
-            updates["status"] = data["status"]
-        if "description" in data:
-            updates["description"] = data["description"]
+        for field in ("status", "description", "month"):
+            if field in data:
+                updates[field] = data[field]
         if updates:
             delivery_notes_db.update_task(task_id, updates)
         return jsonify({"ok": True})
