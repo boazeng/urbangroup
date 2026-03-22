@@ -1810,7 +1810,10 @@ def create_delivery_note():
     """Create a delivery note in Priority (DOCUMENTS_D) via OData API."""
     try:
         data = request.get_json(force=True)
-        customer_num = data.get("customerNum")
+        customer_num = (data.get("customerNum") or "").strip()
+        # Strip branch suffix (e.g. "50254-102" → "50254")
+        if customer_num.endswith("-102"):
+            customer_num = customer_num[:-4]
         if not customer_num:
             return jsonify({"ok": False, "error": "Missing customerNum"}), 400
 
