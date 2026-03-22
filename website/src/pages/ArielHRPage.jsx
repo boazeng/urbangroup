@@ -433,7 +433,6 @@ export default function ArielHRPage() {
         }
       }
 
-      const now = new Date()
       const resp = await fetch(`${API_BASE}/api/hr/delivery-note`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -441,7 +440,7 @@ export default function ArielHRPage() {
           customerNum: siteSummary.customerNum,
           customerName: siteSummary.customerName,
           siteName: selectedSite,
-          details: `${selectedSite} ${now.getMonth() + 1}.${String(now.getFullYear()).slice(2)}`,
+          details: `${selectedSite} ${selectedSheet}`,
           items: siteSummary.professions.map(p => {
             // Look up part description from parts list, fallback to profName
             const part = parts.find(ap => ap.code === p.profNum)
