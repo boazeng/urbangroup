@@ -1023,7 +1023,6 @@ def _save_completed_service_call(session, script=None):
     # Auto-push to Priority
     try:
         writer = _get_service_call_writer()
-        call_data["callstatuscode"] = "ממתין לאישור"
         priority_result = writer.create_service_call(call_data)
         priority_callno = str(priority_result.get("DOCNO", ""))
         maint_db.mark_service_call_pushed(call_id, callno=priority_callno)
