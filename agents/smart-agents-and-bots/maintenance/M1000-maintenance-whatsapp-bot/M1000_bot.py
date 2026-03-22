@@ -188,8 +188,31 @@ def _handle_voice_bot(phone, name, text, msg_type, message_id, media_id,
     issue_type = llm_result.get("issue_type", "תקלה") or "תקלה"
 
     # Extract caller's phone and name from the voice bot message (not the bot's phone)
-    caller_phone = parsed_data.get("טלפון", "") or phone
-    caller_name = parsed_data.get("שם לקוח", "") or parsed_data.get("שם הלקוח", "") or customer_name or name
+    # Try parsed_data first, then LLM result, then caption parsing, fallback to bot's phone
+    caller_phone = (
+        parsed_data.get("טלפון", "")
+        or parsed_data.get("מספר מזוהה", "")
+        or llm_result.get("phone", "")
+        or llm_result.get("caller_phone", "")
+    )
+    # If still no phone, try parsing caption or text for phone-like patterns
+    if not caller_phone:
+        search_text = text or ""
+        import re
+        phone_match = re.search(r'טלפון[:\s]*([0-9\-+]+)', search_text)
+        if not phone_match:
+            phone_match = re.search(r'מספר מזוהה[:\s]*([0-9\-+]+)', search_text)
+        if phone_match:
+            caller_phone = phone_match.group(1).strip()
+    caller_phone = caller_phone or phone
+
+    caller_name = (
+        parsed_data.get("שם לקוח", "")
+        or parsed_data.get("שם הלקוח", "")
+        or llm_result.get("caller_name", "")
+        or customer_name
+        or name
+    )
 
     fault_lines = []
     if description:
@@ -273,8 +296,12 @@ def process_message(phone, name, text, msg_type="text", message_id="", media_id=
         logger.info(f"  Media ID: {media_id}")
     logger.info("=" * 50)
 
-    # Parse structured fields from text messages
-    parsed_data = parse_message(text) if msg_type == "text" and text else {}
+    # Parse structured fields from text messages (also try caption for images)
+    parsed_data = {}
+    if msg_type == "text" and text:
+        parsed_data = parse_message(text)
+    elif caption:
+        parsed_data = parse_message(caption)
 
     # Save ALL messages to DynamoDB (text, image, audio, etc.)
     try:
