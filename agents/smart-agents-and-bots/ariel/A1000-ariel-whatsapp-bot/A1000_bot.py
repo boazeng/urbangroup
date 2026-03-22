@@ -56,6 +56,26 @@ def _set_real_env():
         ar10010_report.PRIORITY_URL = real_url
 
 
+def _create_task(description):
+    """Create a task in the delivery notes DB."""
+    _dn_db = None
+    try:
+        import delivery_notes_db
+        _dn_db = delivery_notes_db
+    except ImportError:
+        import importlib.util
+        db_path = os.path.normpath(os.path.join(
+            os.path.dirname(__file__), "..", "..", "..", "..",
+            "database", "maintenance", "delivery_notes_db.py",
+        ))
+        spec = importlib.util.spec_from_file_location("delivery_notes_db", db_path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _dn_db = mod
+    _dn_db.save_task(description)
+    logger.info(f"Task created from WhatsApp: {description}")
+
+
 def _run_debt_report_pdf(phone, filters=None):
     """Run AR1000, generate PDF, send via WhatsApp."""
     _set_real_env()
@@ -111,6 +131,20 @@ def process_message(phone, name, text, msg_type="text", message_id="",
     # Only text messages can be commands
     if msg_type != "text":
         return "הודעתך התקבלה. שלח הודעת טקסט עם פקודה."
+
+    # Task creation: message starting with "מטלה"
+    stripped = text.strip()
+    if stripped.startswith("מטלה"):
+        task_text = stripped[len("מטלה"):].strip().lstrip("-").lstrip(":").strip()
+        if task_text:
+            try:
+                _create_task(task_text)
+                return f"מטלה נוספה: {task_text} ✓"
+            except Exception as e:
+                logger.error(f"Task creation failed: {e}")
+                return f"שגיאה ביצירת מטלה: {e}"
+        else:
+            return "שלח: מטלה <תיאור המטלה>"
 
     # Use LLM to parse command
     import allm1000_command_parser
