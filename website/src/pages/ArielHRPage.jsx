@@ -1319,6 +1319,10 @@ export default function ArielHRPage() {
             <div className="hr-priority-section">
               <div className="hr-priority-header">
                 <h3 className="hr-site-summary-title">רשימת לקוחות ({filtered.length})</h3>
+              </div>
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 400px' }}>
+              <div className="hr-priority-header">
                 <input
                   className="hr-filter-select"
                   type="text"
@@ -1362,41 +1366,45 @@ export default function ArielHRPage() {
                   </table>
                 </div>
               </div>
-              {/* Sites table */}
-              {selectedCustForSites && (
-                <div style={{ marginTop: '8px' }}>
-                  <h3 className="hr-site-summary-title">
-                    אתרים של {arielCustomers.find(c => c.code === selectedCustForSites)?.name || selectedCustForSites}
-                    {sitesLoading && ' (טוען...)'}
-                  </h3>
-                  {customerSites.length === 0 && !sitesLoading ? (
-                    <div style={{ color: '#888', fontSize: '13px' }}>לא נמצאו אתרים</div>
-                  ) : (
-                    <div className="hr-table-wrapper">
-                      <table className="ariel-table hr-summary-table">
-                        <thead>
-                          <tr>
-                            <th>#</th>
-                            <th>מספר אתר</th>
-                            <th>שם אתר</th>
-                            <th>עיר</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {customerSites.map((s, i) => (
-                            <tr key={s.code}>
-                              <td className="ariel-num">{i + 1}</td>
-                              <td>{s.code}</td>
-                              <td>{s.name}</td>
-                              <td>{s.city || ''}</td>
+              </div>
+              {/* Sites table - side by side */}
+              <div style={{ flex: '0 0 350px' }}>
+                {selectedCustForSites ? (
+                  <>
+                    <h3 className="hr-site-summary-title" style={{ fontSize: '14px' }}>
+                      אתרים של {arielCustomers.find(c => c.code === selectedCustForSites)?.name || selectedCustForSites}
+                      {sitesLoading && ' (טוען...)'}
+                    </h3>
+                    {customerSites.length === 0 && !sitesLoading ? (
+                      <div style={{ color: '#888', fontSize: '13px' }}>לא נמצאו אתרים</div>
+                    ) : (
+                      <div className="hr-table-wrapper" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                        <table className="ariel-table hr-summary-table">
+                          <thead>
+                            <tr>
+                              <th>מספר</th>
+                              <th>שם אתר</th>
+                              <th>עיר</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              )}
+                          </thead>
+                          <tbody>
+                            {customerSites.map((s) => (
+                              <tr key={s.code}>
+                                <td>{s.code}</td>
+                                <td>{s.name}</td>
+                                <td>{s.city || ''}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div style={{ color: '#888', fontSize: '13px', marginTop: '30px' }}>לחץ על לקוח כדי לראות אתרים</div>
+                )}
+              </div>
+              </div>
             </div>
           )
         })()}

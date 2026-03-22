@@ -1733,7 +1733,10 @@ def get_hr_customers():
 def get_hr_sites():
     """Fetch customer sites from Priority (CUSTDESTS_ONE), filtered to codes 100-2000."""
     try:
-        customer = request.args.get("customer", "")
+        customer = request.args.get("customer", "").strip()
+        # Strip branch suffix (e.g. "50240-102" → "50240")
+        if customer.endswith("-102"):
+            customer = customer[:-4]
         url = PRIORITY_URL_REAL
         auth = HTTPBasicAuth(
             os.getenv("PRIORITY_USERNAME", ""),
