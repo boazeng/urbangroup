@@ -1688,26 +1688,40 @@ PARTS_CACHE_FILE = Path("/tmp/hr_parts_cache.json") if _is_lambda else \
 
 
 def _fetch_parts_from_priority():
-    """Run read-parts.js and return parts list."""
-    import subprocess
-    if _is_lambda:
-        script = Path("/var/task/agents/specific-mission-agents/priority-specific-agents/900-parts/read-parts.js")
-    else:
-        script = Path(__file__).resolve().parent.parent / "agents" / "specific-mission-agents" / \
-            "priority-specific-agents" / "900-parts" / "read-parts.js"
-    if not script.exists():
-        raise Exception(f"Script not found: {script}")
-    result = subprocess.run(
-        ["node", str(script)],
-        capture_output=True, text=True, timeout=60,
-        cwd=str(script.parent),
+    """Fetch parts 100-199 from Priority via OData API."""
+    url = PRIORITY_URL_REAL
+    auth = HTTPBasicAuth(
+        os.getenv("PRIORITY_USERNAME", ""),
+        os.getenv("PRIORITY_PASSWORD", ""),
     )
-    if result.returncode != 0:
-        raise Exception(result.stderr or "read-parts.js failed")
-    data = json.loads(result.stdout.strip().split("\n")[-1])
-    if not data.get("ok"):
-        raise Exception(data.get("error", "Unknown error"))
-    return data.get("parts", [])
+    headers = {"Accept": "application/json", "OData-Version": "4.0"}
+
+    parts = []
+    skip = 0
+    while True:
+        api_url = (
+            f"{url}/LOGPART?$filter=PARTNAME ge '100' and PARTNAME lt '200'"
+            f"&$select=PARTNAME,PARTDES,FAMILYNAME"
+            f"&$orderby=PARTNAME&$top=500&$skip={skip}"
+        )
+        resp = http_requests.get(api_url, headers=headers, auth=auth, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        rows = data.get("value", [])
+        if not rows:
+            break
+        for row in rows:
+            parts.append({
+                "code": row.get("PARTNAME", ""),
+                "name": row.get("PARTDES", ""),
+                "family": row.get("FAMILYNAME", ""),
+            })
+        skip += len(rows)
+        if len(rows) < 500:
+            break
+
+    logger.info(f"Fetched {len(parts)} parts from Priority")
+    return parts
 
 
 def _save_parts_cache(parts):
