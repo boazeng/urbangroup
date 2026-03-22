@@ -1969,6 +1969,7 @@ def send_delivery_note_to_priority(note_id):
 
         body = {
             "CUSTNAME": customer_num,
+            "BRANCHNAME": "102",
             "DETAILS": note.get("details", ""),
             "TRANSORDER_D_SUBFORM": subform_items,
         }
