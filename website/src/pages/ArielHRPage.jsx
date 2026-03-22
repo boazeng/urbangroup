@@ -93,6 +93,8 @@ export default function ArielHRPage() {
   const [showUnfilled, setShowUnfilled] = useState(false)
   const [showUnsent, setShowUnsent] = useState(false)
   const [deliveryNoteLoading, setDeliveryNoteLoading] = useState(false)
+  const [deliveryNote, setDeliveryNote] = useState(null) // current draft/sent note
+  const [dnSending, setDnSending] = useState(false)
   const [nextNewId, setNextNewId] = useState(1)   // counter for new row temp IDs
 
   // Draggable grand totals order
@@ -438,7 +440,10 @@ export default function ArielHRPage() {
       })
       const data = await resp.json()
       if (data.ok) {
-        alert('תעודת משלוח נשמרה כטיוטא')
+        // Load the saved draft
+        const noteResp = await fetch(`${API_BASE}/api/hr/delivery-notes/${data.id}`)
+        const noteData = await noteResp.json()
+        if (noteData.ok) setDeliveryNote(noteData.note)
       } else {
         alert(`שגיאה בפתיחת תעודת משלוח: ${data.error || 'Unknown error'}`)
       }
@@ -446,6 +451,72 @@ export default function ArielHRPage() {
       alert(`שגיאה: ${err.message}`)
     } finally {
       setDeliveryNoteLoading(false)
+    }
+  }
+
+  const handleDnItemChange = (idx, field, value) => {
+    if (!deliveryNote) return
+    const updated = { ...deliveryNote, items: deliveryNote.items.map((item, i) =>
+      i === idx ? { ...item, [field]: field === 'pdes' || field === 'partname' ? value : Number(value) || 0 } : item
+    )}
+    setDeliveryNote(updated)
+  }
+
+  const handleDnDetailsChange = (value) => {
+    if (!deliveryNote) return
+    setDeliveryNote({ ...deliveryNote, details: value })
+  }
+
+  const handleDnSave = async () => {
+    if (!deliveryNote) return
+    try {
+      const resp = await fetch(`${API_BASE}/api/hr/delivery-notes/${deliveryNote.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: deliveryNote.items, details: deliveryNote.details }),
+      })
+      const data = await resp.json()
+      if (!data.ok) alert(`שגיאה בשמירה: ${data.error}`)
+    } catch (err) {
+      alert(`שגיאה: ${err.message}`)
+    }
+  }
+
+  const handleDnSend = async () => {
+    if (!deliveryNote) return
+    if (!confirm('לשלוח את תעודת המשלוח לפריורטי?')) return
+    setDnSending(true)
+    try {
+      // Save latest changes first
+      await fetch(`${API_BASE}/api/hr/delivery-notes/${deliveryNote.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: deliveryNote.items, details: deliveryNote.details }),
+      })
+      // Send to Priority
+      const resp = await fetch(`${API_BASE}/api/hr/delivery-notes/${deliveryNote.id}/send`, { method: 'POST' })
+      const data = await resp.json()
+      if (data.ok) {
+        setDeliveryNote(prev => ({ ...prev, status: 'sent', docno: data.docno }))
+        alert(`תעודת משלוח נשלחה לפריורטי: ${data.docno}`)
+      } else {
+        alert(`שגיאה בשליחה: ${data.error}`)
+      }
+    } catch (err) {
+      alert(`שגיאה: ${err.message}`)
+    } finally {
+      setDnSending(false)
+    }
+  }
+
+  const handleDnDelete = async () => {
+    if (!deliveryNote) return
+    if (!confirm('למחוק את תעודת המשלוח?')) return
+    try {
+      await fetch(`${API_BASE}/api/hr/delivery-notes/${deliveryNote.id}`, { method: 'DELETE' })
+      setDeliveryNote(null)
+    } catch (err) {
+      alert(`שגיאה: ${err.message}`)
     }
   }
 
@@ -1495,6 +1566,96 @@ export default function ArielHRPage() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Delivery Note Draft/Sent display */}
+                {deliveryNote && (
+                  <div className="hr-site-summary" style={{ marginTop: '16px', borderTop: '2px solid #1976d2', paddingTop: '12px' }}>
+                    <h3 className="hr-site-summary-title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      תעודת משלוח
+                      <span style={{
+                        fontSize: '13px',
+                        padding: '2px 10px',
+                        borderRadius: '12px',
+                        background: deliveryNote.status === 'sent' ? '#4caf50' : deliveryNote.status === 'error' ? '#f44336' : '#ff9800',
+                        color: '#fff',
+                      }}>
+                        {deliveryNote.status === 'sent' ? `נשלחה לפריורטי (${deliveryNote.docno})` : deliveryNote.status === 'error' ? 'שגיאה' : 'טיוטא'}
+                      </span>
+                    </h3>
+
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap' }}>
+                      <label style={{ fontWeight: 'bold' }}>פרטים:</label>
+                      <input
+                        type="text"
+                        value={deliveryNote.details || ''}
+                        onChange={e => handleDnDetailsChange(e.target.value)}
+                        disabled={deliveryNote.status === 'sent'}
+                        style={{ flex: 1, minWidth: '200px', padding: '4px 8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                      />
+                      <span style={{ fontSize: '13px', color: '#666' }}>לקוח: {deliveryNote.customer_name} ({deliveryNote.customer_num})</span>
+                    </div>
+
+                    <div className="ariel-card hr-table-wrapper">
+                      <table className="ariel-table hr-table hr-summary-table">
+                        <thead>
+                          <tr>
+                            <th>מקט</th>
+                            <th>תאור מוצר</th>
+                            <th>כמות</th>
+                            <th>מחיר ליחידה</th>
+                            <th>סה&quot;כ</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {deliveryNote.items.map((item, i) => (
+                            <tr key={i}>
+                              <td>
+                                <input type="text" value={item.partname || ''} onChange={e => handleDnItemChange(i, 'partname', e.target.value)}
+                                  disabled={deliveryNote.status === 'sent'} style={{ width: '60px', textAlign: 'center' }} />
+                              </td>
+                              <td>
+                                <input type="text" value={item.pdes || ''} onChange={e => handleDnItemChange(i, 'pdes', e.target.value)}
+                                  disabled={deliveryNote.status === 'sent'} style={{ width: '180px' }} />
+                              </td>
+                              <td>
+                                <input type="number" value={item.tquant || 0} onChange={e => handleDnItemChange(i, 'tquant', e.target.value)}
+                                  disabled={deliveryNote.status === 'sent'} style={{ width: '70px', textAlign: 'center' }} />
+                              </td>
+                              <td>
+                                <input type="number" value={item.price || 0} onChange={e => handleDnItemChange(i, 'price', e.target.value)}
+                                  disabled={deliveryNote.status === 'sent'} style={{ width: '80px', textAlign: 'center' }} />
+                              </td>
+                              <td style={{ fontWeight: 'bold' }}>
+                                {((item.tquant || 0) * (item.price || 0)).toLocaleString('he-IL', { maximumFractionDigits: 2 })}
+                              </td>
+                            </tr>
+                          ))}
+                          <tr className="hr-summary-total-row">
+                            <td></td>
+                            <td><strong>סה&quot;כ</strong></td>
+                            <td><strong>{deliveryNote.items.reduce((s, it) => s + (it.tquant || 0), 0).toLocaleString('he-IL', { maximumFractionDigits: 2 })}</strong></td>
+                            <td></td>
+                            <td><strong>{deliveryNote.items.reduce((s, it) => s + (it.tquant || 0) * (it.price || 0), 0).toLocaleString('he-IL', { maximumFractionDigits: 2 })}</strong></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {deliveryNote.status !== 'sent' && (
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                        <button className="hr-toggle-extra-btn" onClick={handleDnSave}>שמור שינויים</button>
+                        <button className="hr-toggle-extra-btn" style={{ background: '#4caf50', color: '#fff' }} onClick={handleDnSend} disabled={dnSending}>
+                          {dnSending ? 'שולח...' : 'שלח לפריורטי'}
+                        </button>
+                        <button className="hr-toggle-extra-btn" style={{ background: '#f44336', color: '#fff' }} onClick={handleDnDelete}>מחק</button>
+                      </div>
+                    )}
+
+                    {deliveryNote.status === 'error' && deliveryNote.error && (
+                      <div style={{ color: '#f44336', marginTop: '6px', fontSize: '13px' }}>שגיאה: {deliveryNote.error}</div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </>
