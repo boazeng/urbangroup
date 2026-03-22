@@ -121,6 +121,9 @@ export default function ArielHRPage() {
   const [syncing, setSyncing] = useState(false)
   const [arielCustomers, setArielCustomers] = useState([])
   const [showArielCustomers, setShowArielCustomers] = useState(false)
+  const [customerSites, setCustomerSites] = useState([])
+  const [selectedCustForSites, setSelectedCustForSites] = useState('')
+  const [sitesLoading, setSitesLoading] = useState(false)
   const [loadingCustomers, setLoadingCustomers] = useState(false)
   const [customerSearch, setCustomerSearch] = useState('')
   const [arielParts, setArielParts] = useState([])
@@ -1338,7 +1341,18 @@ export default function ArielHRPage() {
                     </thead>
                     <tbody>
                       {filtered.map((c, i) => (
-                        <tr key={c.code}>
+                        <tr key={c.code}
+                          style={{ cursor: 'pointer', background: selectedCustForSites === c.code ? '#e3f2fd' : '' }}
+                          onClick={() => {
+                            setSelectedCustForSites(c.code)
+                            setSitesLoading(true)
+                            fetch(`${API_BASE}/api/hr/sites?customer=${encodeURIComponent(c.code)}`)
+                              .then(r => r.json())
+                              .then(data => { if (data.ok) setCustomerSites(data.sites || []) })
+                              .catch(() => {})
+                              .finally(() => setSitesLoading(false))
+                          }}
+                        >
                           <td className="ariel-num">{i + 1}</td>
                           <td>{c.code}</td>
                           <td>{c.name}</td>
@@ -1348,6 +1362,41 @@ export default function ArielHRPage() {
                   </table>
                 </div>
               </div>
+              {/* Sites table */}
+              {selectedCustForSites && (
+                <div style={{ marginTop: '8px' }}>
+                  <h3 className="hr-site-summary-title">
+                    אתרים של {arielCustomers.find(c => c.code === selectedCustForSites)?.name || selectedCustForSites}
+                    {sitesLoading && ' (טוען...)'}
+                  </h3>
+                  {customerSites.length === 0 && !sitesLoading ? (
+                    <div style={{ color: '#888', fontSize: '13px' }}>לא נמצאו אתרים</div>
+                  ) : (
+                    <div className="hr-table-wrapper">
+                      <table className="ariel-table hr-summary-table">
+                        <thead>
+                          <tr>
+                            <th>#</th>
+                            <th>מספר אתר</th>
+                            <th>שם אתר</th>
+                            <th>עיר</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {customerSites.map((s, i) => (
+                            <tr key={s.code}>
+                              <td className="ariel-num">{i + 1}</td>
+                              <td>{s.code}</td>
+                              <td>{s.name}</td>
+                              <td>{s.city || ''}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )
         })()}

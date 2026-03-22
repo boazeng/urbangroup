@@ -1729,6 +1729,55 @@ def get_hr_customers():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/api/hr/sites", methods=["GET"])
+def get_hr_sites():
+    """Fetch customer sites from Priority (CUSTDESTS_ONE), filtered to codes 100-2000."""
+    try:
+        customer = request.args.get("customer", "")
+        url = PRIORITY_URL_REAL
+        auth = HTTPBasicAuth(
+            os.getenv("PRIORITY_USERNAME", ""),
+            os.getenv("PRIORITY_PASSWORD", ""),
+        )
+        headers = {"Accept": "application/json", "OData-Version": "4.0"}
+
+        odata_filter = "CODE ge '100' and CODE le '2000'"
+        if customer:
+            odata_filter += f" and CUSTNAMEA eq '{customer}'"
+
+        sites = []
+        skip = 0
+        while True:
+            api_url = (
+                f"{url}/CUSTDESTS_ONE"
+                f"?$filter={odata_filter}"
+                f"&$select=CODE,CODEDES,CUSTNAMEA,CUSTNAME,STATE"
+                f"&$orderby=CODE&$top=500&$skip={skip}"
+            )
+            resp = http_requests.get(api_url, headers=headers, auth=auth, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+            rows = data.get("value", [])
+            if not rows:
+                break
+            for row in rows:
+                sites.append({
+                    "code": row.get("CODE", ""),
+                    "name": row.get("CODEDES", ""),
+                    "custCode": row.get("CUSTNAMEA", ""),
+                    "custName": row.get("CUSTNAME", ""),
+                    "city": row.get("STATE", ""),
+                })
+            skip += len(rows)
+            if len(rows) < 500:
+                break
+
+        return jsonify({"ok": True, "sites": sites})
+    except Exception as e:
+        logger.error(f"HR sites fetch failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 _is_lambda = os.environ.get("IS_LAMBDA") == "true"
 
 
