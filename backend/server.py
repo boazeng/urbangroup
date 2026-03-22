@@ -1807,37 +1807,56 @@ def sync_hr_priority():
 
 @app.route("/api/hr/delivery-note", methods=["POST"])
 def create_delivery_note():
-    """Create a delivery note in Priority (DOCUMENTS_D) via agent 550."""
-    import subprocess
+    """Create a delivery note in Priority (DOCUMENTS_D) via OData API."""
     try:
         data = request.get_json(force=True)
         customer_num = data.get("customerNum")
         if not customer_num:
             return jsonify({"ok": False, "error": "Missing customerNum"}), 400
 
-        if _is_lambda:
-            script = Path("/var/task/agents/specific-mission-agents/priority-specific-agents/550-delivery-note/create-delivery-note.js")
-        else:
-            script = Path(__file__).resolve().parent.parent / "agents" / "specific-mission-agents" / \
-                "priority-specific-agents" / "550-delivery-note" / "create-delivery-note.js"
-        if not script.exists():
-            return jsonify({"ok": False, "error": f"Script not found: {script}"}), 500
+        items = data.get("items", [])
+        if not items:
+            return jsonify({"ok": False, "error": "Missing items"}), 400
 
-        json_arg = json.dumps(data, ensure_ascii=False)
-        result = subprocess.run(
-            ["node", str(script), json_arg],
-            capture_output=True, text=True, timeout=60,
-            cwd=str(script.parent),
+        site_name = data.get("siteName", "")
+
+        url = PRIORITY_URL_REAL
+        auth = HTTPBasicAuth(
+            os.getenv("PRIORITY_USERNAME", ""),
+            os.getenv("PRIORITY_PASSWORD", ""),
         )
-        stderr_log = result.stderr.strip()
-        if stderr_log:
-            logger.info(f"[550-delivery-note] {stderr_log}")
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "OData-Version": "4.0",
+        }
 
-        if result.returncode != 0:
-            return jsonify({"ok": False, "error": stderr_log or "create-delivery-note.js failed"}), 500
+        # Build line items for TRANSORDER_D_SUBFORM
+        subform_items = []
+        for item in items:
+            row = {
+                "PARTNAME": str(item.get("profNum", "")).strip(),
+                "PDES": str(item.get("profName", "")).strip(),
+                "TQUANT": item.get("hours", 0),
+                "PRICE": item.get("rate", 0),
+            }
+            subform_items.append(row)
 
-        output = json.loads(result.stdout.strip().split("\n")[-1])
-        return jsonify(output)
+        body = {
+            "CUSTNAME": customer_num,
+            "DETAILS": site_name,
+            "TRANSORDER_D_SUBFORM": subform_items,
+        }
+
+        logger.info(f"[550-delivery-note] Creating for customer {customer_num} with {len(subform_items)} items")
+        resp = http_requests.post(f"{url}/DOCUMENTS_D", json=body, headers=headers, auth=auth, timeout=30)
+        resp.raise_for_status()
+
+        result = resp.json()
+        docno = result.get("DOCNO", result.get("DOCNUM", ""))
+        logger.info(f"[550-delivery-note] Created delivery note: {docno}")
+
+        return jsonify({"ok": True, "docno": docno})
     except Exception as e:
         logger.error(f"Delivery note creation failed: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
