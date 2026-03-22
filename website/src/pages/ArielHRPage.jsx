@@ -1888,6 +1888,16 @@ export default function ArielHRPage() {
                                       value={cellVal(row[col.idx])}
                                       onChange={e => handleCellChange(excelRow, col.idx, e.target.value)}
                                       onFocus={e => e.target.select()}
+                                      onKeyDown={e => {
+                                        if (e.key === 'F10') {
+                                          e.preventDefault()
+                                          const rowIdx = filteredRows.indexOf(row)
+                                          if (rowIdx > 0) {
+                                            const aboveVal = cellVal(filteredRows[rowIdx - 1][col.idx])
+                                            handleCellChange(excelRow, col.idx, aboveVal)
+                                          }
+                                        }
+                                      }}
                                       data-cell={`${excelRow}:${col.idx}`}
                                       style={{ width: 'calc(100% - 18px)', display: 'inline-block' }}
                                     />
