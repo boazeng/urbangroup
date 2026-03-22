@@ -1743,8 +1743,7 @@ def _fetch_sites_from_priority():
     while True:
         api_url = (
             f"{url}/CUSTDESTS_ONE"
-            f"?$filter=CODE ge '100' and CODE le '2000'"
-            f"&$select=CODE,CODEDES,CUSTNAMEA,CUSTNAME,STATE"
+            f"?$select=CODE,CODEDES,CUSTNAMEA,CUSTNAME,STATE"
             f"&$orderby=CODE&$top=500&$skip={skip}"
         )
         resp = http_requests.get(api_url, headers=headers, auth=auth, timeout=30)
@@ -1754,8 +1753,15 @@ def _fetch_sites_from_priority():
         if not rows:
             break
         for row in rows:
+            code = row.get("CODE", "")
+            try:
+                code_num = int(code)
+            except (ValueError, TypeError):
+                continue
+            if code_num < 100 or code_num > 2000:
+                continue
             sites.append({
-                "code": row.get("CODE", ""),
+                "code": code,
                 "name": row.get("CODEDES", ""),
                 "custCode": row.get("CUSTNAMEA", ""),
                 "custName": row.get("CUSTNAME", ""),
