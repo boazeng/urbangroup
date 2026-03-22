@@ -124,6 +124,9 @@ export default function ArielHRPage() {
   const [customerSites, setCustomerSites] = useState([])
   const [selectedCustForSites, setSelectedCustForSites] = useState('')
   const [sitesLoading, setSitesLoading] = useState(false)
+  const [sitePickerRow, setSitePickerRow] = useState(null) // excelRow of row showing site picker
+  const [sitePickerSites, setSitePickerSites] = useState([])
+  const [sitePickerLoading, setSitePickerLoading] = useState(false)
   const [loadingCustomers, setLoadingCustomers] = useState(false)
   const [customerSearch, setCustomerSearch] = useState('')
   const [arielParts, setArielParts] = useState([])
@@ -731,6 +734,24 @@ export default function ArielHRPage() {
   const handleDeleteTask = async (taskId) => {
     await fetch(`${API_BASE}/api/hr/tasks/${taskId}`, { method: 'DELETE' })
     loadTasks()
+  }
+
+  const openSitePicker = async (excelRow, custNum) => {
+    if (sitePickerRow === excelRow) { setSitePickerRow(null); return }
+    setSitePickerRow(excelRow)
+    setSitePickerSites([])
+    setSitePickerLoading(true)
+    try {
+      const resp = await fetch(`${API_BASE}/api/hr/sites?customer=${encodeURIComponent(custNum)}`)
+      const data = await resp.json()
+      if (data.ok) setSitePickerSites(data.sites || [])
+    } catch {}
+    setSitePickerLoading(false)
+  }
+
+  const selectSite = (excelRow, siteName) => {
+    handleCellChange(excelRow, COL.SITE, siteName)
+    setSitePickerRow(null)
   }
 
   const clearFilters = () => {
@@ -1793,7 +1814,7 @@ export default function ArielHRPage() {
                             const siteHighlighted = col.siteCol && Number(row[COL.FILLING]) >= 1
                             const customerTracked = col.idx === COL.CUSTOMER && String(row[COL.TRACKING]) === '1'
                             return (
-                              <td key={col.idx} className={`${col.type === 'num' ? 'ariel-num' : ''}${col.tracking ? ' hr-td-tracking' : col.xnarrow ? ' hr-td-xnarrow' : col.narrow ? ' hr-td-narrow' : ''}${col.wide ? ' hr-td-wide' : ''}${col.siteCol ? ' hr-td-site' : ''}${siteHighlighted ? ' hr-cell-active-hours' : ''}${customerTracked ? ' hr-cell-tracked' : ''}`}>
+                              <td key={col.idx} className={`${col.type === 'num' ? 'ariel-num' : ''}${col.tracking ? ' hr-td-tracking' : col.xnarrow ? ' hr-td-xnarrow' : col.narrow ? ' hr-td-narrow' : ''}${col.wide ? ' hr-td-wide' : ''}${col.siteCol ? ' hr-td-site' : ''}${siteHighlighted ? ' hr-cell-active-hours' : ''}${customerTracked ? ' hr-cell-tracked' : ''}`} style={col.siteCol ? { position: 'relative' } : undefined}>
                                 {col.tracking && (
                                   <button
                                     className="hr-tracking-toggle-btn"
@@ -1802,11 +1823,19 @@ export default function ArielHRPage() {
                                   >&#9998;</button>
                                 )}
                                 {col.siteCol && (
-                                  <button
-                                    className="hr-tracking-toggle-btn"
-                                    onClick={() => handleToggleSiteFilling(siteName)}
-                                    title="סמן/בטל מילוי ורקע ירוק לכל האתר"
-                                  >&#9998;</button>
+                                  <>
+                                    <button
+                                      className="hr-tracking-toggle-btn"
+                                      onClick={() => handleToggleSiteFilling(siteName)}
+                                      title="סמן/בטל מילוי ורקע ירוק לכל האתר"
+                                    >&#9998;</button>
+                                    <button
+                                      className="hr-tracking-toggle-btn"
+                                      onClick={() => openSitePicker(excelRow, cellVal(row[COL.PRIORITY_NUM]))}
+                                      title="בחר אתר מרשימה"
+                                      style={{ fontSize: '10px' }}
+                                    >&#9660;</button>
+                                  </>
                                 )}
                                 <input
                                   className={`hr-cell-input${isDirty ? ' hr-cell-dirty' : ''}`}
@@ -1837,6 +1866,28 @@ export default function ArielHRPage() {
                                   }}
                                   data-cell={`${excelRow}:${col.idx}`}
                                 />
+                                {col.siteCol && sitePickerRow === excelRow && (
+                                  <div style={{
+                                    position: 'absolute', zIndex: 100, background: '#fff', border: '1px solid #1976d2',
+                                    borderRadius: '6px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', padding: '4px 0',
+                                    maxHeight: '200px', overflowY: 'auto', minWidth: '220px', right: 0, top: '100%',
+                                  }}>
+                                    {sitePickerLoading ? (
+                                      <div style={{ padding: '8px 12px', color: '#888' }}>טוען...</div>
+                                    ) : sitePickerSites.length === 0 ? (
+                                      <div style={{ padding: '8px 12px', color: '#888' }}>לא נמצאו אתרים</div>
+                                    ) : sitePickerSites.map(s => (
+                                      <div key={s.code}
+                                        onClick={() => selectSite(excelRow, s.name)}
+                                        style={{ padding: '4px 12px', cursor: 'pointer', fontSize: '13px', direction: 'rtl' }}
+                                        onMouseEnter={e => e.target.style.background = '#e3f2fd'}
+                                        onMouseLeave={e => e.target.style.background = ''}
+                                      >
+                                        {s.code} - {s.name}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </td>
                             )
                           })}
