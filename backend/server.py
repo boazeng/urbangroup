@@ -1700,8 +1700,8 @@ def _fetch_parts_from_priority():
     skip = 0
     while True:
         api_url = (
-            f"{url}/LOGPART?$filter=PARTNAME ge '100' and PARTNAME lt '200'"
-            f"&$select=PARTNAME,PARTDES,FAMILYNAME"
+            f"{url}/LOGPART"
+            f"?$select=PARTNAME,PARTDES,FAMILYNAME"
             f"&$orderby=PARTNAME&$top=500&$skip={skip}"
         )
         resp = http_requests.get(api_url, headers=headers, auth=auth, timeout=30)
@@ -1711,11 +1711,13 @@ def _fetch_parts_from_priority():
         if not rows:
             break
         for row in rows:
-            parts.append({
-                "code": row.get("PARTNAME", ""),
-                "name": row.get("PARTDES", ""),
-                "family": row.get("FAMILYNAME", ""),
-            })
+            code = row.get("PARTNAME", "")
+            if code >= "100" and code < "200":
+                parts.append({
+                    "code": code,
+                    "name": row.get("PARTDES", ""),
+                    "family": row.get("FAMILYNAME", ""),
+                })
         skip += len(rows)
         if len(rows) < 500:
             break
