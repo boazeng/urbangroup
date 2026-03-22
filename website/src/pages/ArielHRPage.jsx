@@ -1344,15 +1344,7 @@ export default function ArielHRPage() {
 
         {error && <div className="ariel-error">{error}</div>}
 
-        {localSaveStatus === 'saved' && !saving && hasDirty && !loading && (
-          <div style={{
-            padding: '8px 16px', marginBottom: 12, borderRadius: 6,
-            background: '#fef3c7', border: '1px solid #fbbf24', fontSize: 13,
-            color: '#92400e', direction: 'rtl',
-          }}>
-            יש שינויים שלא נשמרו ב-SharePoint — לחץ &quot;שמור שינויים&quot; כדי לסנכרן
-          </div>
-        )}
+        {/* Removed large unsaved changes banner — save button turns red instead */}
 
         {loading ? (
           <div className="ariel-loading">
@@ -1447,6 +1439,7 @@ export default function ArielHRPage() {
                     className="hr-save-btn"
                     onClick={handleSave}
                     disabled={saving}
+                    style={{ background: '#dc2626', color: '#fff' }}
                   >
                     {saving ? 'שומר...' : `שמור שינויים (${dirtyKeys.size})`}
                   </button>
