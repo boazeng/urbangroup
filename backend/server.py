@@ -1729,51 +1729,62 @@ def get_hr_customers():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+def _fetch_sites_from_priority():
+    """Fetch all sites 100-2000 from Priority CUSTDESTS_ONE."""
+    url = PRIORITY_URL_REAL
+    auth = HTTPBasicAuth(
+        os.getenv("PRIORITY_USERNAME", ""),
+        os.getenv("PRIORITY_PASSWORD", ""),
+    )
+    headers = {"Accept": "application/json", "OData-Version": "4.0"}
+
+    sites = []
+    skip = 0
+    while True:
+        api_url = (
+            f"{url}/CUSTDESTS_ONE"
+            f"?$filter=CODE ge '100' and CODE le '2000'"
+            f"&$select=CODE,CODEDES,CUSTNAMEA,CUSTNAME,STATE"
+            f"&$orderby=CODE&$top=500&$skip={skip}"
+        )
+        resp = http_requests.get(api_url, headers=headers, auth=auth, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        rows = data.get("value", [])
+        if not rows:
+            break
+        for row in rows:
+            sites.append({
+                "code": row.get("CODE", ""),
+                "name": row.get("CODEDES", ""),
+                "custCode": row.get("CUSTNAMEA", ""),
+                "custName": row.get("CUSTNAME", ""),
+                "city": row.get("STATE", ""),
+            })
+        skip += len(rows)
+        if len(rows) < 500:
+            break
+    return sites
+
+
 @app.route("/api/hr/sites", methods=["GET"])
 def get_hr_sites():
-    """Fetch customer sites from Priority (CUSTDESTS_ONE), filtered to codes 100-2000."""
+    """Return sites from DB cache, filtered by customer. If no cache, fetch from Priority."""
     try:
         customer = request.args.get("customer", "").strip()
-        # Strip branch suffix (e.g. "50240-102" → "50240")
         if customer.endswith("-102"):
             customer = customer[:-4]
-        url = PRIORITY_URL_REAL
-        auth = HTTPBasicAuth(
-            os.getenv("PRIORITY_USERNAME", ""),
-            os.getenv("PRIORITY_PASSWORD", ""),
-        )
-        headers = {"Accept": "application/json", "OData-Version": "4.0"}
 
-        odata_filter = "CODE ge '100' and CODE le '2000'"
+        cached = delivery_notes_db.load_sites_cache()
+        if not cached:
+            # No cache — fetch and save
+            all_sites = _fetch_sites_from_priority()
+            delivery_notes_db.save_sites_cache(all_sites)
+            cached = {"sites": all_sites}
+
+        sites = cached["sites"]
         if customer:
-            odata_filter += f" and CUSTNAMEA eq '{customer}'"
-
-        sites = []
-        skip = 0
-        while True:
-            api_url = (
-                f"{url}/CUSTDESTS_ONE"
-                f"?$filter={odata_filter}"
-                f"&$select=CODE,CODEDES,CUSTNAMEA,CUSTNAME,STATE"
-                f"&$orderby=CODE&$top=500&$skip={skip}"
-            )
-            resp = http_requests.get(api_url, headers=headers, auth=auth, timeout=30)
-            resp.raise_for_status()
-            data = resp.json()
-            rows = data.get("value", [])
-            if not rows:
-                break
-            for row in rows:
-                sites.append({
-                    "code": row.get("CODE", ""),
-                    "name": row.get("CODEDES", ""),
-                    "custCode": row.get("CUSTNAMEA", ""),
-                    "custName": row.get("CUSTNAME", ""),
-                    "city": row.get("STATE", ""),
-                })
-            skip += len(rows)
-            if len(rows) < 500:
-                break
+            sites = [s for s in sites if s.get("custCode") == customer]
 
         return jsonify({"ok": True, "sites": sites})
     except Exception as e:
@@ -1919,6 +1930,17 @@ def sync_hr_priority():
             logger.error(f"HR customers sync failed (non-fatal): {ce}")
             hr_customers_error = str(ce)
 
+        # 5. Fetch sites (CUSTDESTS_ONE 100-2000) and cache
+        sites_error = None
+        sites_count = 0
+        try:
+            all_sites = _fetch_sites_from_priority()
+            delivery_notes_db.save_sites_cache(all_sites)
+            sites_count = len(all_sites)
+        except Exception as se:
+            logger.error(f"Sites sync failed (non-fatal): {se}")
+            sites_error = str(se)
+
         return jsonify({
             "ok": True,
             "customers": customers,
@@ -1926,6 +1948,7 @@ def sync_hr_priority():
             "partsCount": len(parts) if not parts_error else 0,
             "partsError": parts_error,
             "hrCustomersCount": len(hr_customers) if not hr_customers_error else 0,
+            "sitesCount": sites_count,
             "syncedAt": _now_il().strftime("%Y-%m-%d %H:%M:%S"),
         })
     except Exception as e:
