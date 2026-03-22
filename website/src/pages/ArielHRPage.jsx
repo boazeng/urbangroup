@@ -1634,7 +1634,7 @@ export default function ArielHRPage() {
                               </td>
                               <td>
                                 <input type="text" value={item.pdes || ''} onChange={e => handleDnItemChange(i, 'pdes', e.target.value)}
-                                  disabled={deliveryNote.status === 'sent'} style={{ width: '180px' }} />
+                                  disabled={deliveryNote.status === 'sent'} style={{ width: '400px' }} />
                               </td>
                               <td>
                                 <input type="number" value={item.tquant || 0} onChange={e => handleDnItemChange(i, 'tquant', e.target.value)}
