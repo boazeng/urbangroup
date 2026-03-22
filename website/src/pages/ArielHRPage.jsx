@@ -1822,13 +1822,15 @@ export default function ArielHRPage() {
                                     title="סמן/בטל מעקב לכל האתר"
                                   >&#9998;</button>
                                 )}
+                                {col.idx === COL.FILLING && (
+                                  <button
+                                    className="hr-tracking-toggle-btn"
+                                    onClick={() => handleToggleSiteFilling(siteName)}
+                                    title="סמן/בטל מילוי ורקע ירוק לכל האתר"
+                                  >&#9998;</button>
+                                )}
                                 {col.siteCol && (
                                   <>
-                                    <button
-                                      className="hr-tracking-toggle-btn"
-                                      onClick={() => handleToggleSiteFilling(siteName)}
-                                      title="סמן/בטל מילוי ורקע ירוק לכל האתר"
-                                    >&#9998;</button>
                                     <button
                                       className="hr-tracking-toggle-btn"
                                       onClick={() => openSitePicker(excelRow, cellVal(row[COL.PRIORITY_NUM]))}
