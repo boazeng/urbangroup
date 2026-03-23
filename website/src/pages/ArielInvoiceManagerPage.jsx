@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import './ArielPage.css'
 
@@ -8,6 +8,16 @@ export default function ArielInvoiceManagerPage() {
   const [customers, setCustomers] = useState([])
   const [customerSearch, setCustomerSearch] = useState('')
   const [selectedCustomer, setSelectedCustomer] = useState(null)
+  const [comboOpen, setComboOpen] = useState(false)
+  const comboRef = useRef(null)
+
+  // Close combo on outside click
+  useEffect(() => {
+    if (!comboOpen) return
+    const handler = (e) => { if (comboRef.current && !comboRef.current.contains(e.target)) setComboOpen(false) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [comboOpen])
   const [invoices, setInvoices] = useState([])
   const [loading, setLoading] = useState(false)
   const [downloading, setDownloading] = useState('')
@@ -70,43 +80,56 @@ export default function ArielInvoiceManagerPage() {
         <Link to="/ariel" className="ariel-back">&rarr; חזרה לאריאל</Link>
         <h1 className="ariel-title">ניהול חשבוניות</h1>
 
-        <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-          {/* Customers list */}
-          <div style={{ flex: '0 0 350px' }}>
+        <div>
+          {/* Customer combobox */}
+          <div ref={comboRef} style={{ position: 'relative', maxWidth: '450px', marginBottom: '16px' }}>
             <h3>בחר לקוח</h3>
-            <input
-              type="text"
-              placeholder="חיפוש לקוח..."
-              value={customerSearch}
-              onChange={e => setCustomerSearch(e.target.value)}
-              style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', marginBottom: '8px', direction: 'rtl' }}
-            />
-            <div style={{ maxHeight: '500px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
-              <table className="ariel-table" style={{ width: '100%' }}>
-                <thead>
-                  <tr>
-                    <th>מספר</th>
-                    <th>שם לקוח</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCustomers.map(c => (
-                    <tr
-                      key={c.code}
-                      style={{ cursor: 'pointer', background: selectedCustomer?.code === c.code ? '#e3f2fd' : '' }}
-                      onClick={() => loadInvoices(c.code, c.name)}
-                    >
-                      <td>{c.code}</td>
-                      <td>{c.name}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <input
+                type="text"
+                placeholder="הקלד שם או מספר לקוח..."
+                value={customerSearch}
+                onChange={e => { setCustomerSearch(e.target.value); setComboOpen(true) }}
+                onFocus={() => setComboOpen(true)}
+                style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid #ccc', direction: 'rtl', fontSize: '14px' }}
+              />
+              <button
+                onMouseDown={e => { e.preventDefault(); setComboOpen(v => !v) }}
+                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ccc', background: '#f9fafb', cursor: 'pointer', fontSize: '12px' }}
+              >&#9660;</button>
             </div>
+            {comboOpen && (
+              <div style={{
+                position: 'absolute', zIndex: 100, background: '#fff', border: '1px solid #1976d2',
+                borderRadius: '6px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                maxHeight: '300px', overflowY: 'auto', width: '100%', top: '100%', marginTop: '2px',
+              }}>
+                {filteredCustomers.length === 0 ? (
+                  <div style={{ padding: '10px 14px', color: '#888' }}>לא נמצאו לקוחות</div>
+                ) : filteredCustomers.map(c => (
+                  <div
+                    key={c.code}
+                    onMouseDown={() => {
+                      setCustomerSearch(`${c.name} (${c.code})`)
+                      setComboOpen(false)
+                      loadInvoices(c.code, c.name)
+                    }}
+                    style={{
+                      padding: '6px 14px', cursor: 'pointer', fontSize: '13px', direction: 'rtl',
+                      background: selectedCustomer?.code === c.code ? '#e3f2fd' : '',
+                    }}
+                    onMouseEnter={e => e.target.style.background = '#e3f2fd'}
+                    onMouseLeave={e => e.target.style.background = selectedCustomer?.code === c.code ? '#e3f2fd' : ''}
+                  >
+                    {c.code} — {c.name}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Invoices */}
-          <div style={{ flex: 1, minWidth: '400px' }}>
+          <div>
             {selectedCustomer ? (
               <>
                 <h3>חשבוניות — {selectedCustomer.name} ({selectedCustomer.code})</h3>
