@@ -164,7 +164,9 @@ jobs:
               "RoutingScriptId=flow_1772177781916" \
               "SharePointTenantId=${{ secrets.SHAREPOINT_TENANT_ID }}" \
               "SharePointClientId=${{ secrets.SHAREPOINT_CLIENT_ID }}" \
-              "SharePointClientSecret=${{ secrets.SHAREPOINT_CLIENT_SECRET }}"
+              "SharePointClientSecret=${{ secrets.SHAREPOINT_CLIENT_SECRET }}" \
+              "GmailUser=${{ secrets.GMAIL_USER }}" \
+              "GmailAppPassword=${{ secrets.GMAIL_APP_PASSWORD }}"
 
       # ── Upload Excel template to S3 ─────────────────────
       - name: Upload template to S3

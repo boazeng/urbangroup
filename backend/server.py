@@ -946,7 +946,7 @@ def send_invoices_email():
         # Build email
         msg = MIMEMultipart()
         msg["Subject"] = f"חשבוניות — {customer_name}" if customer_name else "חשבוניות"
-        msg["From"] = "invoices@urbangroup.co.il"
+        msg["From"] = os.getenv("GMAIL_USER", "arielmpinvoice@gmail.com")
         msg["To"] = email_to
 
         body_text = f"מצורפות {len(invoice_nums)} חשבוניות"
@@ -991,13 +991,16 @@ def send_invoices_email():
         if attached == 0:
             return jsonify({"ok": False, "error": f"לא הצלחתי לצרף חשבוניות. {'; '.join(errors)}"}), 500
 
-        # Send via SES
-        ses = boto3.client("ses", region_name=os.environ.get("AWS_REGION", "us-east-1"))
-        ses.send_raw_email(
-            Source=msg["From"],
-            Destinations=[email_to],
-            RawMessage={"Data": msg.as_string()},
-        )
+        # Send via Gmail SMTP
+        import smtplib
+        gmail_user = os.getenv("GMAIL_USER", "arielmpinvoice@gmail.com")
+        gmail_pass = os.getenv("GMAIL_APP_PASSWORD", "")
+        msg["From"] = gmail_user
+
+        with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+            smtp.starttls()
+            smtp.login(gmail_user, gmail_pass)
+            smtp.send_message(msg)
 
         logger.info(f"Sent {attached} invoices to {email_to}")
         return jsonify({"ok": True, "sent": attached, "errors": errors})

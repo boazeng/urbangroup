@@ -65,6 +65,13 @@ Parameters:
     Type: String
     NoEcho: true
     Default: ""
+  GmailUser:
+    Type: String
+    Default: "arielmpinvoice@gmail.com"
+  GmailAppPassword:
+    Type: String
+    NoEcho: true
+    Default: ""
 
 Globals:
   Function:
@@ -135,6 +142,8 @@ Resources:
           SHAREPOINT_CLIENT_ID: !Ref SharePointClientId
           SHAREPOINT_CLIENT_SECRET: !Ref SharePointClientSecret
           SHAREPOINT_SITE_URL: "https://yaelisrael.sharepoint.com"
+          GMAIL_USER: !Ref GmailUser
+          GMAIL_APP_PASSWORD: !Ref GmailAppPassword
       Policies:
         - S3ReadPolicy:
             BucketName: !Sub urbangroup-templates-${Stage}
