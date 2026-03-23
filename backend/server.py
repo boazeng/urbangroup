@@ -828,12 +828,13 @@ def get_customer_invoices():
         )
         headers = {"Accept": "application/json", "OData-Version": "4.0"}
 
+        top = int(request.args.get("top", "10"))
         api_url = (
             f"{url}/CINVOICES"
             f"?$filter=BRANCHNAME eq '102' and CUSTNAME eq '{customer}' and FINAL eq 'Y'"
             f"&$select=IVNUM,CUSTNAME,CDES,IVDATE,QPRICE,VAT,TOTPRICE,DETAILS,CODEDES"
             f"&$orderby=IVDATE desc"
-            f"&$top=10"
+            f"&$top={top}"
         )
         resp = http_requests.get(api_url, headers=headers, auth=auth, timeout=30)
         resp.raise_for_status()
@@ -911,6 +912,98 @@ def download_cinvoice_pdf():
     except Exception as e:
         logger.error(f"CINVOICE download failed for {ivnum}: {e}")
         return jsonify({"error": f"שגיאה בהורדת חשבונית: {e}"}), 500
+
+
+@app.route("/api/hr/send-invoices-email", methods=["POST"])
+def send_invoices_email():
+    """Download selected CINVOICE PDFs and send them as email attachments."""
+    set_priority_env()
+    data = request.get_json(force=True)
+    email_to = data.get("email", "").strip()
+    invoice_nums = data.get("invoices", [])
+    customer_name = data.get("customerName", "")
+
+    if not email_to:
+        return jsonify({"ok": False, "error": "Missing email"}), 400
+    if not invoice_nums:
+        return jsonify({"ok": False, "error": "No invoices selected"}), 400
+
+    try:
+        import base64
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.base import MIMEBase
+        from email.mime.text import MIMEText
+        from email import encoders
+        import boto3
+
+        url = PRIORITY_URL_REAL
+        auth = HTTPBasicAuth(
+            os.getenv("PRIORITY_USERNAME", ""),
+            os.getenv("PRIORITY_PASSWORD", ""),
+        )
+        headers_api = {"Accept": "application/json", "OData-Version": "4.0"}
+
+        # Build email
+        msg = MIMEMultipart()
+        msg["Subject"] = f"חשבוניות — {customer_name}" if customer_name else "חשבוניות"
+        msg["From"] = "invoices@urbangroup.co.il"
+        msg["To"] = email_to
+
+        body_text = f"מצורפות {len(invoice_nums)} חשבוניות"
+        if customer_name:
+            body_text += f" של {customer_name}"
+        msg.attach(MIMEText(body_text, "plain", "utf-8"))
+
+        attached = 0
+        errors = []
+        for ivnum in invoice_nums:
+            try:
+                att_url = f"{url}/CINVOICES(IVNUM='{ivnum}',IVTYPE='C',DEBIT='D')/EXTFILES_SUBFORM"
+                resp = http_requests.get(att_url, headers=headers_api, auth=auth, timeout=30)
+                resp.raise_for_status()
+                attachments = resp.json().get("value", [])
+                if not attachments:
+                    errors.append(f"{ivnum}: לא נמצא נספח")
+                    continue
+
+                att = attachments[0]
+                raw = att.get("EXTFILENAME", "")
+                suffix = att.get("SUFFIX", "pdf")
+                if raw.startswith("data:"):
+                    _, b64_data = raw.split(",", 1) if "," in raw else ("", raw)
+                else:
+                    b64_data = raw
+
+                file_bytes = base64.b64decode(b64_data)
+                ext = suffix if suffix.startswith(".") else f".{suffix}"
+                safe_name = ivnum.replace("/", "-").replace("\\", "-")
+                filename = f"{safe_name}{ext}"
+
+                part = MIMEBase("application", "octet-stream")
+                part.set_payload(file_bytes)
+                encoders.encode_base64(part)
+                part.add_header("Content-Disposition", f"attachment; filename={filename}")
+                msg.attach(part)
+                attached += 1
+            except Exception as e:
+                errors.append(f"{ivnum}: {e}")
+
+        if attached == 0:
+            return jsonify({"ok": False, "error": f"לא הצלחתי לצרף חשבוניות. {'; '.join(errors)}"}), 500
+
+        # Send via SES
+        ses = boto3.client("ses", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+        ses.send_raw_email(
+            Source=msg["From"],
+            Destinations=[email_to],
+            RawMessage={"Data": msg.as_string()},
+        )
+
+        logger.info(f"Sent {attached} invoices to {email_to}")
+        return jsonify({"ok": True, "sent": attached, "errors": errors})
+    except Exception as e:
+        logger.error(f"Send invoices email failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 # ── Invoice Printer ──────────────────────────────────────────
