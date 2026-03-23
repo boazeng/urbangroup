@@ -1009,6 +1009,201 @@ def send_invoices_email():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+# ── Delivery Notes Manager ───────────────────────────────────
+
+@app.route("/api/hr/customer-delivery-notes", methods=["GET"])
+def get_customer_delivery_notes():
+    """Fetch last N DOCUMENTS_D for a customer (branch 102, finalized)."""
+    try:
+        customer = request.args.get("customer", "").strip()
+        if customer.endswith("-102"):
+            customer = customer[:-4]
+        if not customer:
+            return jsonify({"ok": False, "error": "Missing customer"}), 400
+
+        top = int(request.args.get("top", "10"))
+        url = PRIORITY_URL_REAL
+        auth = HTTPBasicAuth(
+            os.getenv("PRIORITY_USERNAME", ""),
+            os.getenv("PRIORITY_PASSWORD", ""),
+        )
+        headers = {"Accept": "application/json", "OData-Version": "4.0"}
+
+        api_url = (
+            f"{url}/DOCUMENTS_D"
+            f"?$filter=BRANCHNAME eq '102' and CUSTNAME eq '{customer}' and STATDES eq 'סופית'"
+            f"&$select=DOCNO,CUSTNAME,CDES,CURDATE,QPRICE,VAT,TOTPRICE,DETAILS,CODEDES,IVALL"
+            f"&$orderby=CURDATE desc"
+            f"&$top={top}"
+        )
+        resp = http_requests.get(api_url, headers=headers, auth=auth, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+
+        docs = []
+        for row in data.get("value", []):
+            docs.append({
+                "docno": row.get("DOCNO", ""),
+                "customer": row.get("CUSTNAME", ""),
+                "customerName": row.get("CDES", ""),
+                "date": row.get("CURDATE", ""),
+                "priceBeforeVat": row.get("QPRICE", 0),
+                "vat": row.get("VAT", 0),
+                "totalPrice": row.get("TOTPRICE", 0),
+                "details": row.get("DETAILS", ""),
+                "site": row.get("CODEDES", ""),
+                "charged": row.get("IVALL") == "Y",
+            })
+
+        return jsonify({"ok": True, "docs": docs})
+    except Exception as e:
+        logger.error(f"Customer delivery notes fetch failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/hr/delivery-note-download", methods=["POST"])
+def download_delivery_note_pdf():
+    """Download DOCUMENTS_D PDF attachment from Priority."""
+    set_priority_env()
+    data = request.get_json(silent=True) or {}
+    docno = data.get("docno", "").strip()
+    if not docno:
+        return jsonify({"error": "Missing docno"}), 400
+
+    try:
+        url = PRIORITY_URL_REAL
+        auth = HTTPBasicAuth(
+            os.getenv("PRIORITY_USERNAME", ""),
+            os.getenv("PRIORITY_PASSWORD", ""),
+        )
+        headers_api = {"Accept": "application/json", "OData-Version": "4.0"}
+
+        att_url = f"{url}/DOCUMENTS_D(DOCNO='{docno}',TYPE='D')/EXTFILES_SUBFORM"
+        resp = http_requests.get(att_url, headers=headers_api, auth=auth, timeout=30)
+        resp.raise_for_status()
+
+        attachments = resp.json().get("value", [])
+        if not attachments:
+            return jsonify({"error": f"לא נמצא נספח לתעודה {docno}"}), 404
+
+        att = attachments[0]
+        raw = att.get("EXTFILENAME", "")
+        suffix = att.get("SUFFIX", "pdf")
+
+        import base64
+        mime_type = "application/pdf"
+        if raw.startswith("data:"):
+            header, b64_data = raw.split(",", 1) if "," in raw else ("", raw)
+            if ";" in header:
+                mime_type = header.split(":")[1].split(";")[0]
+        else:
+            b64_data = raw
+
+        file_bytes = base64.b64decode(b64_data)
+        safe_name = docno.replace("/", "-").replace("\\", "-")
+        ext = suffix if suffix.startswith(".") else f".{suffix}"
+        filename = f"{safe_name}{ext}"
+
+        return send_file(
+            io.BytesIO(file_bytes),
+            mimetype=mime_type,
+            as_attachment=True,
+            download_name=filename,
+        )
+    except Exception as e:
+        logger.error(f"Delivery note download failed for {docno}: {e}")
+        return jsonify({"error": f"שגיאה בהורדת תעודה: {e}"}), 500
+
+
+@app.route("/api/hr/send-delivery-notes-email", methods=["POST"])
+def send_delivery_notes_email():
+    """Send selected delivery note PDFs via email."""
+    set_priority_env()
+    data = request.get_json(force=True)
+    email_to = data.get("email", "").strip()
+    doc_nums = data.get("docs", [])
+    customer_name = data.get("customerName", "")
+
+    if not email_to:
+        return jsonify({"ok": False, "error": "Missing email"}), 400
+    if not doc_nums:
+        return jsonify({"ok": False, "error": "No docs selected"}), 400
+
+    try:
+        import base64
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.base import MIMEBase
+        from email.mime.text import MIMEText
+        from email import encoders
+        import smtplib
+
+        url = PRIORITY_URL_REAL
+        auth = HTTPBasicAuth(
+            os.getenv("PRIORITY_USERNAME", ""),
+            os.getenv("PRIORITY_PASSWORD", ""),
+        )
+        headers_api = {"Accept": "application/json", "OData-Version": "4.0"}
+
+        gmail_user = os.getenv("GMAIL_USER", "arielmpinvoice@gmail.com")
+        gmail_pass = os.getenv("GMAIL_APP_PASSWORD", "")
+
+        msg = MIMEMultipart()
+        msg["Subject"] = f"תעודות משלוח — {customer_name}" if customer_name else "תעודות משלוח"
+        msg["From"] = gmail_user
+        msg["To"] = email_to
+
+        body_text = f"מצורפות {len(doc_nums)} תעודות משלוח"
+        if customer_name:
+            body_text += f" של {customer_name}"
+        msg.attach(MIMEText(body_text, "plain", "utf-8"))
+
+        attached = 0
+        for docno in doc_nums:
+            try:
+                att_url = f"{url}/DOCUMENTS_D(DOCNO='{docno}',TYPE='D')/EXTFILES_SUBFORM"
+                resp = http_requests.get(att_url, headers=headers_api, auth=auth, timeout=30)
+                resp.raise_for_status()
+                attachments = resp.json().get("value", [])
+                if not attachments:
+                    continue
+
+                att = attachments[0]
+                raw = att.get("EXTFILENAME", "")
+                suffix = att.get("SUFFIX", "pdf")
+                if raw.startswith("data:"):
+                    _, b64_data = raw.split(",", 1) if "," in raw else ("", raw)
+                else:
+                    b64_data = raw
+
+                file_bytes = base64.b64decode(b64_data)
+                ext = suffix if suffix.startswith(".") else f".{suffix}"
+                safe_name = docno.replace("/", "-").replace("\\", "-")
+                filename = f"{safe_name}{ext}"
+
+                part = MIMEBase("application", "octet-stream")
+                part.set_payload(file_bytes)
+                encoders.encode_base64(part)
+                part.add_header("Content-Disposition", f"attachment; filename={filename}")
+                msg.attach(part)
+                attached += 1
+            except Exception as e:
+                logger.error(f"Attach {docno} failed: {e}")
+
+        if attached == 0:
+            return jsonify({"ok": False, "error": "לא הצלחתי לצרף תעודות"}), 500
+
+        with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+            smtp.starttls()
+            smtp.login(gmail_user, gmail_pass)
+            smtp.send_message(msg)
+
+        logger.info(f"Sent {attached} delivery notes to {email_to}")
+        return jsonify({"ok": True, "sent": attached})
+    except Exception as e:
+        logger.error(f"Send delivery notes email failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 # ── Invoice Printer ──────────────────────────────────────────
 
 @app.route("/api/invoice-printer/download", methods=["POST"])
