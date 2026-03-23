@@ -165,8 +165,8 @@ jobs:
               "SharePointTenantId=${{ secrets.SHAREPOINT_TENANT_ID }}" \
               "SharePointClientId=${{ secrets.SHAREPOINT_CLIENT_ID }}" \
               "SharePointClientSecret=${{ secrets.SHAREPOINT_CLIENT_SECRET }}" \
-              "GmailUser=${{ secrets.GMAIL_USER }}" \
-              "GmailAppPassword=${{ secrets.GMAIL_APP_PASSWORD }}"
+              "GmailUser=${{ secrets.GMAIL_USER || 'arielmpinvoice@gmail.com' }}" \
+              "GmailAppPassword=${{ secrets.GMAIL_APP_PASSWORD || 'not-configured' }}"
 
       # ── Upload Excel template to S3 ─────────────────────
       - name: Upload template to S3
