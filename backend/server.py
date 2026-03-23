@@ -809,6 +809,110 @@ def get_ariel_invoices():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+# ── Customer Invoices (ניהול חשבוניות) ──────────────────────
+
+@app.route("/api/hr/customer-invoices", methods=["GET"])
+def get_customer_invoices():
+    """Fetch last 10 CINVOICES for a customer (branch 102, finalized)."""
+    try:
+        customer = request.args.get("customer", "").strip()
+        if customer.endswith("-102"):
+            customer = customer[:-4]
+        if not customer:
+            return jsonify({"ok": False, "error": "Missing customer"}), 400
+
+        url = PRIORITY_URL_REAL
+        auth = HTTPBasicAuth(
+            os.getenv("PRIORITY_USERNAME", ""),
+            os.getenv("PRIORITY_PASSWORD", ""),
+        )
+        headers = {"Accept": "application/json", "OData-Version": "4.0"}
+
+        api_url = (
+            f"{url}/CINVOICES"
+            f"?$filter=BRANCHNAME eq '102' and CUSTNAME eq '{customer}' and FINAL eq 'Y'"
+            f"&$select=IVNUM,CUSTNAME,CDES,IVDATE,QPRICE,VAT,TOTPRICE,DETAILS,CODEDES"
+            f"&$orderby=IVDATE desc"
+            f"&$top=10"
+        )
+        resp = http_requests.get(api_url, headers=headers, auth=auth, timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+
+        invoices = []
+        for row in data.get("value", []):
+            invoices.append({
+                "ivnum": row.get("IVNUM", ""),
+                "customer": row.get("CUSTNAME", ""),
+                "customerName": row.get("CDES", ""),
+                "date": row.get("IVDATE", ""),
+                "priceBeforeVat": row.get("QPRICE", 0),
+                "vat": row.get("VAT", 0),
+                "totalPrice": row.get("TOTPRICE", 0),
+                "details": row.get("DETAILS", ""),
+                "site": row.get("CODEDES", ""),
+            })
+
+        return jsonify({"ok": True, "invoices": invoices})
+    except Exception as e:
+        logger.error(f"Customer invoices fetch failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/hr/cinvoice-download", methods=["POST"])
+def download_cinvoice_pdf():
+    """Download CINVOICE PDF attachment from Priority."""
+    set_priority_env()
+    data = request.get_json(silent=True) or {}
+    ivnum = data.get("ivnum", "").strip()
+    if not ivnum:
+        return jsonify({"error": "Missing ivnum"}), 400
+
+    try:
+        url = PRIORITY_URL_REAL
+        auth = HTTPBasicAuth(
+            os.getenv("PRIORITY_USERNAME", ""),
+            os.getenv("PRIORITY_PASSWORD", ""),
+        )
+        headers = {"Accept": "application/json", "OData-Version": "4.0"}
+
+        att_url = f"{url}/CINVOICES(IVNUM='{ivnum}',IVTYPE='C',DEBIT='D')/EXTFILES_SUBFORM"
+        resp = http_requests.get(att_url, headers=headers, auth=auth, timeout=30)
+        resp.raise_for_status()
+
+        attachments = resp.json().get("value", [])
+        if not attachments:
+            return jsonify({"error": f"לא נמצא נספח לחשבונית {ivnum}"}), 404
+
+        att = attachments[0]
+        raw = att.get("EXTFILENAME", "")
+        suffix = att.get("SUFFIX", "pdf")
+
+        mime_type = "application/pdf"
+        if raw.startswith("data:"):
+            header, b64_data = raw.split(",", 1) if "," in raw else ("", raw)
+            if ";" in header:
+                mime_type = header.split(":")[1].split(";")[0]
+        else:
+            b64_data = raw
+
+        import base64
+        file_bytes = base64.b64decode(b64_data)
+        safe_name = ivnum.replace("/", "-").replace("\\", "-")
+        ext = suffix if suffix.startswith(".") else f".{suffix}"
+        filename = f"{safe_name}{ext}"
+
+        return send_file(
+            io.BytesIO(file_bytes),
+            mimetype=mime_type,
+            as_attachment=True,
+            download_name=filename,
+        )
+    except Exception as e:
+        logger.error(f"CINVOICE download failed for {ivnum}: {e}")
+        return jsonify({"error": f"שגיאה בהורדת חשבונית: {e}"}), 500
+
+
 # ── Invoice Printer ──────────────────────────────────────────
 
 @app.route("/api/invoice-printer/download", methods=["POST"])

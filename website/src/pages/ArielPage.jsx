@@ -18,6 +18,13 @@ export default function ArielPage() {
               <span className="ariel-section-action">צפייה &larr;</span>
             </Link>
 
+            <Link to="/ariel/invoice-manager" className="ariel-section-card">
+              <span className="ariel-section-icon">🧾</span>
+              <h3 className="ariel-section-title">ניהול חשבוניות</h3>
+              <p className="ariel-section-desc">צפייה בחשבוניות לקוח והורדת נספחים</p>
+              <span className="ariel-section-action">צפייה &larr;</span>
+            </Link>
+
             <Link to="/ariel/debt-report" className="ariel-section-card">
               <span className="ariel-section-icon">📋</span>
               <h3 className="ariel-section-title">דוח חייבים לקוחות אריאל</h3>
