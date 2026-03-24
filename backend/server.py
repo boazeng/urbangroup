@@ -1995,6 +1995,19 @@ def save_hr_changes():
         sp = _get_sp_connector()
         excel = sp.SharePointExcel(HR_SHARE_URL)
 
+        # Retry helper for SharePoint 409 conflicts
+        import time
+        def _sp_call(fn, retries=3, delay=2):
+            for attempt in range(retries):
+                try:
+                    return fn()
+                except Exception as e:
+                    if ('409' in str(e) or 'Conflict' in str(e)) and attempt < retries - 1:
+                        logger.warning(f"SharePoint conflict, retry {attempt + 1}/{retries}")
+                        time.sleep(delay * (attempt + 1))
+                    else:
+                        raise
+
         # 1. Update existing cells — group by row for batch writes
         updated = 0
         rows_map = {}  # row_num → {col_idx: value}
@@ -2026,80 +2039,47 @@ def save_hr_changes():
             for col_idx, value in cols.items():
                 row_data[col_idx - min_col] = value
 
-            sp.write_excel_range(
+            _sp_call(lambda cr=cell_range, rd=row_data: sp.write_excel_range(
                 excel.drive_id, excel.item_id,
-                sheet, cell_range, [row_data]
-            )
+                sheet, cr, [rd]
+            ))
             updated += len(cols)
 
         # 2. Delete rows — clear content in Excel
         for row_num in delete_rows_list:
-            cell_range = f"A{row_num}:X{row_num}"
+            cr = f"A{row_num}:X{row_num}"
             empty_row = [[''] * 24]
-            sp.write_excel_range(
+            _sp_call(lambda c=cr, e=empty_row: sp.write_excel_range(
                 excel.drive_id, excel.item_id,
-                sheet, cell_range, empty_row
-            )
+                sheet, c, e
+            ))
 
-        # 3. Insert new rows at correct positions (with retry for 409 conflicts)
+        # 3. Append new rows at end of table (no insert — avoids 409 conflicts)
         import time
-
-        def _sp_retry(fn, retries=3, delay=2):
-            for attempt in range(retries):
-                try:
-                    return fn()
-                except Exception as e:
-                    if '409' in str(e) and attempt < retries - 1:
-                        logger.warning(f"SharePoint 409 conflict, retry {attempt + 1}/{retries}")
-                        time.sleep(delay)
-                    else:
-                        raise
-
         new_row_indices = []
         if new_rows:
-            # Wait a bit after batch writes to let SharePoint settle
             if updated > 0:
-                time.sleep(2)
+                time.sleep(1)
 
-            positioned = []
+            # Find end of table
+            table_data = excel.read(sheet, "A1:X1000")
+            all_rows_data = table_data.get("values", [])
+            header_idx, last_data_idx = _find_main_table(all_rows_data)
+            next_row = (last_data_idx + 1 if last_data_idx is not None else len(all_rows_data)) + 1
+
             for entry in new_rows:
                 if isinstance(entry, dict):
                     row_data = entry.get("data", [])
-                    after_row = entry.get("afterRow")
                 else:
                     row_data = entry
-                    after_row = None
-                positioned.append((after_row, row_data))
-
-            data = excel.read(sheet, "A1:X1000")
-            all_rows_data = data.get("values", [])
-            header_idx, last_data_idx = _find_main_table(all_rows_data)
-            end_row = (last_data_idx + 1 if last_data_idx is not None else len(all_rows_data)) + 1
-
-            for i, (after, rd) in enumerate(positioned):
-                if after is None:
-                    positioned[i] = (end_row - 1, rd)
-                    end_row += 1
-
-            indexed = list(enumerate(positioned))
-            indexed.sort(key=lambda x: x[1][0], reverse=True)
-
-            assigned = [None] * len(positioned)
-            for orig_idx, (after_row, row_data) in indexed:
-                insert_row = after_row + 1
                 padded = list(row_data) + [''] * (24 - len(row_data))
-                cell_range = f"A{insert_row}:X{insert_row}"
-                _sp_retry(lambda: sp.insert_excel_range(
+                cell_range = f"A{next_row}:X{next_row}"
+                _sp_call(lambda cr=cell_range, p=padded[:24]: sp.write_excel_range(
                     excel.drive_id, excel.item_id,
-                    sheet, cell_range, shift="Down"
+                    sheet, cr, [p]
                 ))
-                _sp_retry(lambda: sp.write_excel_range(
-                    excel.drive_id, excel.item_id,
-                    sheet, cell_range, [padded[:24]]
-                ))
-                assigned[orig_idx] = insert_row
-
-            new_row_indices = assigned
+                new_row_indices.append(next_row)
+                next_row += 1
 
         # Clear local pending data after successful SharePoint save
         _clear_local_hr(sheet)
