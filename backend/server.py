@@ -2041,10 +2041,26 @@ def save_hr_changes():
                 sheet, cell_range, empty_row
             )
 
-        # 3. Insert new rows at correct positions
+        # 3. Insert new rows at correct positions (with retry for 409 conflicts)
+        import time
+
+        def _sp_retry(fn, retries=3, delay=2):
+            for attempt in range(retries):
+                try:
+                    return fn()
+                except Exception as e:
+                    if '409' in str(e) and attempt < retries - 1:
+                        logger.warning(f"SharePoint 409 conflict, retry {attempt + 1}/{retries}")
+                        time.sleep(delay)
+                    else:
+                        raise
+
         new_row_indices = []
         if new_rows:
-            # Parse entries — each can be {data, afterRow} or plain array
+            # Wait a bit after batch writes to let SharePoint settle
+            if updated > 0:
+                time.sleep(2)
+
             positioned = []
             for entry in new_rows:
                 if isinstance(entry, dict):
@@ -2055,7 +2071,6 @@ def save_hr_changes():
                     after_row = None
                 positioned.append((after_row, row_data))
 
-            # Rows without afterRow go to end of table
             data = excel.read(sheet, "A1:X1000")
             all_rows_data = data.get("values", [])
             header_idx, last_data_idx = _find_main_table(all_rows_data)
@@ -2063,29 +2078,25 @@ def save_hr_changes():
 
             for i, (after, rd) in enumerate(positioned):
                 if after is None:
-                    positioned[i] = (end_row - 1, rd)  # afterRow = last data row
+                    positioned[i] = (end_row - 1, rd)
                     end_row += 1
 
-            # Sort descending by afterRow so inserts don't shift earlier positions
             indexed = list(enumerate(positioned))
             indexed.sort(key=lambda x: x[1][0], reverse=True)
 
-            # Track assigned Excel row for each original index
             assigned = [None] * len(positioned)
             for orig_idx, (after_row, row_data) in indexed:
                 insert_row = after_row + 1
                 padded = list(row_data) + [''] * (24 - len(row_data))
                 cell_range = f"A{insert_row}:X{insert_row}"
-                # Insert blank row, shifting existing content down
-                sp.insert_excel_range(
+                _sp_retry(lambda: sp.insert_excel_range(
                     excel.drive_id, excel.item_id,
                     sheet, cell_range, shift="Down"
-                )
-                # Write data into the newly inserted row
-                sp.write_excel_range(
+                ))
+                _sp_retry(lambda: sp.write_excel_range(
                     excel.drive_id, excel.item_id,
                     sheet, cell_range, [padded[:24]]
-                )
+                ))
                 assigned[orig_idx] = insert_row
 
             new_row_indices = assigned
