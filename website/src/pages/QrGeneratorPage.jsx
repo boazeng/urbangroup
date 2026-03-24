@@ -200,6 +200,36 @@ export default function QrGeneratorPage() {
     setPdfLoading(false)
   }
 
+  function downloadTemplate() {
+    const wb = XLSX.utils.book_new()
+    const ws = XLSX.utils.aoa_to_sheet([
+      ['מספר מכשיר', 'סוג מכשיר', 'כתובת המכשיר'],
+      ['203-00000011', 'מטען', 'רחוב הרצל 5, תל אביב'],
+      ['203-00000012', 'מתקן חניה', 'רחוב בן גוריון 10, חיפה'],
+    ])
+    ws['!cols'] = [{ wch: 20 }, { wch: 20 }, { wch: 30 }]
+    XLSX.utils.book_append_sheet(wb, ws, 'מכשירים')
+    XLSX.writeFile(wb, 'template-devices.xlsx')
+  }
+
+  function downloadExcelWithQr() {
+    if (!generated.length) return
+    const wb = XLSX.utils.book_new()
+    const data = [
+      ['מספר מכשיר', 'סוג מכשיר', 'כתובת המכשיר', 'קישור QR'],
+      ...generated.map(item => [
+        item.deviceNum,
+        item.deviceType,
+        item.address,
+        item.waLink,
+      ]),
+    ]
+    const ws = XLSX.utils.aoa_to_sheet(data)
+    ws['!cols'] = [{ wch: 20 }, { wch: 20 }, { wch: 30 }, { wch: 50 }]
+    XLSX.utils.book_append_sheet(wb, ws, 'מכשירים')
+    XLSX.writeFile(wb, `devices-qr-${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
+
   function handlePrint() {
     window.print()
   }
@@ -225,6 +255,9 @@ export default function QrGeneratorPage() {
 
         {/* Excel upload */}
         <div className="qrg-excel-bar">
+          <button className="qrg-excel-btn" onClick={downloadTemplate}>
+            📄 שמור קובץ טמפלט
+          </button>
           <button className="qrg-excel-btn" onClick={() => fileInputRef.current.click()}>
             📂 העלה קובץ Excel
           </button>
@@ -304,6 +337,7 @@ export default function QrGeneratorPage() {
                 <button className="qrg-pdf-btn no-print" onClick={downloadPdf} disabled={pdfLoading}>
                   {pdfLoading ? 'יוצר PDF...' : '⬇ הורד PDF'}
                 </button>
+                <button className="qrg-excel-btn no-print" onClick={downloadExcelWithQr}>📊 הורד Excel</button>
                 <button className="qrg-print-btn no-print" onClick={handlePrint}>🖨️ הדפס הכל</button>
               </div>
             </div>
