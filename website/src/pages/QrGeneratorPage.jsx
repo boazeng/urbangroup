@@ -9,7 +9,7 @@ const BOT_PHONE_DEFAULT = '972547653274'
 export default function QrGeneratorPage() {
   const [botPhone, setBotPhone] = useState(BOT_PHONE_DEFAULT)
   const [rows, setRows] = useState([
-    { id: 1, deviceNum: '', deviceType: '', address: '' },
+    { id: 1, deviceNum: '' },
   ])
   const [generated, setGenerated] = useState([])
   const [pdfLoading, setPdfLoading] = useState(false)
@@ -18,7 +18,7 @@ export default function QrGeneratorPage() {
   const fileInputRef = useRef(null)
 
   function addRow() {
-    setRows(r => [...r, { id: Date.now(), deviceNum: '', deviceType: '', address: '' }])
+    setRows(r => [...r, { id: Date.now(), deviceNum: '' }])
   }
 
   function removeRow(id) {
@@ -35,15 +35,13 @@ export default function QrGeneratorPage() {
         const wb = XLSX.read(ev.target.result, { type: 'array' })
         const ws = wb.Sheets[wb.SheetNames[0]]
         const data = XLSX.utils.sheet_to_json(ws, { header: 1 })
-        // Skip header row, map columns: [0]=deviceNum [1]=deviceType [2]=address
+        // Skip header row, map columns: [0]=deviceNum
         const loaded = data
           .slice(1)
           .filter(row => row[0])
           .map((row, i) => ({
             id: Date.now() + i,
             deviceNum: String(row[0] || '').trim(),
-            deviceType: String(row[1] || '').trim(),
-            address: String(row[2] || '').trim(),
           }))
         if (!loaded.length) {
           setXlsxError('לא נמצאו שורות בקובץ')
@@ -64,11 +62,7 @@ export default function QrGeneratorPage() {
   }
 
   function buildWaText(row) {
-    const parts = ['פתיחת קריאה לאחזקה']
-    if (row.deviceNum) parts.push(`מספר מכשיר: ${row.deviceNum}`)
-    if (row.deviceType) parts.push(`סוג מכשיר: ${row.deviceType}`)
-    if (row.address) parts.push(`כתובת: ${row.address}`)
-    return parts.join('\n')
+    return `פתיחת קריאה לאחזקה\nמספר מכשיר: ${row.deviceNum}`
   }
 
   function buildWaLink(row) {
@@ -142,37 +136,22 @@ export default function QrGeneratorPage() {
           ctx.textAlign = 'center'
           ctx.fillText(item.deviceNum, CARD_W / 2, 248)
 
-          // Device type
-          if (item.deviceType) {
-            ctx.fillStyle = '#2b6cb0'
-            ctx.font = '14px Arial'
-            ctx.fillText(item.deviceType, CARD_W / 2, 270)
-          }
-
-          // Address
-          if (item.address) {
-            ctx.fillStyle = '#718096'
-            ctx.font = '12px Arial'
-            ctx.fillText(item.address, CARD_W / 2, 290)
-          }
-
           // Divider
           ctx.strokeStyle = '#E2E8F0'
           ctx.lineWidth = 0.5
           ctx.beginPath()
-          ctx.moveTo(10, 305)
-          ctx.lineTo(CARD_W - 10, 305)
+          ctx.moveTo(10, 270)
+          ctx.lineTo(CARD_W - 10, 270)
           ctx.stroke()
 
-          // WA text (decoded message)
+          // WA text
           ctx.fillStyle = '#25D366'
           ctx.font = 'bold 11px Arial'
-          ctx.fillText('📱 סרוק לפתיחת WhatsApp', CARD_W / 2, 320)
+          ctx.fillText('סרוק לפתיחת WhatsApp', CARD_W / 2, 290)
 
           ctx.fillStyle = '#718096'
           ctx.font = '10px Arial'
-          const shortText = item.waText.replace(/\n/g, '  |  ')
-          ctx.fillText(shortText.length > 42 ? shortText.slice(0, 42) + '...' : shortText, CARD_W / 2, 338)
+          ctx.fillText(item.waText.replace(/\n/g, '  |  '), CARD_W / 2, 308)
 
           // Embed in PDF
           const pngData = cardCanvas.toDataURL('image/png')
@@ -203,11 +182,11 @@ export default function QrGeneratorPage() {
   function downloadTemplate() {
     const wb = XLSX.utils.book_new()
     const ws = XLSX.utils.aoa_to_sheet([
-      ['מספר מכשיר', 'סוג מכשיר', 'כתובת המכשיר'],
-      ['203-00000011', 'מטען', 'רחוב הרצל 5, תל אביב'],
-      ['203-00000012', 'מתקן חניה', 'רחוב בן גוריון 10, חיפה'],
+      ['מספר מכשיר'],
+      ['203-00000011'],
+      ['203-00000012'],
     ])
-    ws['!cols'] = [{ wch: 20 }, { wch: 20 }, { wch: 30 }]
+    ws['!cols'] = [{ wch: 25 }]
     XLSX.utils.book_append_sheet(wb, ws, 'מכשירים')
     XLSX.writeFile(wb, 'template-devices.xlsx')
   }
@@ -216,16 +195,14 @@ export default function QrGeneratorPage() {
     if (!generated.length) return
     const wb = XLSX.utils.book_new()
     const data = [
-      ['מספר מכשיר', 'סוג מכשיר', 'כתובת המכשיר', 'קישור QR'],
+      ['מספר מכשיר', 'קישור QR'],
       ...generated.map(item => [
         item.deviceNum,
-        item.deviceType,
-        item.address,
         item.waLink,
       ]),
     ]
     const ws = XLSX.utils.aoa_to_sheet(data)
-    ws['!cols'] = [{ wch: 20 }, { wch: 20 }, { wch: 30 }, { wch: 50 }]
+    ws['!cols'] = [{ wch: 25 }, { wch: 60 }]
     XLSX.utils.book_append_sheet(wb, ws, 'מכשירים')
     XLSX.writeFile(wb, `devices-qr-${new Date().toISOString().slice(0, 10)}.xlsx`)
   }
@@ -261,7 +238,7 @@ export default function QrGeneratorPage() {
           <button className="qrg-excel-btn" onClick={() => fileInputRef.current.click()}>
             📂 העלה קובץ Excel
           </button>
-          <span className="qrg-excel-hint">עמודות נדרשות: מספר מכשיר, סוג מכשיר, כתובת המכשיר</span>
+          <span className="qrg-excel-hint">עמודה נדרשת: מספר מכשיר</span>
           {xlsxError && <span className="qrg-excel-error">{xlsxError}</span>}
           <input
             ref={fileInputRef}
@@ -279,8 +256,6 @@ export default function QrGeneratorPage() {
               <tr>
                 <th>#</th>
                 <th>מספר מכשיר *</th>
-                <th>סוג המכשיר</th>
-                <th>כתובת המכשיר</th>
                 <th></th>
               </tr>
             </thead>
@@ -293,23 +268,7 @@ export default function QrGeneratorPage() {
                       className="qrg-input"
                       value={row.deviceNum}
                       onChange={e => updateRow(row.id, 'deviceNum', e.target.value)}
-                      placeholder="מ-12345"
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="qrg-input"
-                      value={row.deviceType}
-                      onChange={e => updateRow(row.id, 'deviceType', e.target.value)}
-                      placeholder="מזגן / דוד שמש..."
-                    />
-                  </td>
-                  <td>
-                    <input
-                      className="qrg-input"
-                      value={row.address}
-                      onChange={e => updateRow(row.id, 'address', e.target.value)}
-                      placeholder="רחוב העצמאות 5, דירה 3"
+                      placeholder="203-00000011"
                     />
                   </td>
                   <td>
@@ -353,8 +312,6 @@ export default function QrGeneratorPage() {
                   />
                   <div className="qrg-card-info">
                     <div className="qrg-card-device">{item.deviceNum}</div>
-                    {item.deviceType && <div className="qrg-card-location">{item.deviceType}</div>}
-                    {item.address && <div className="qrg-card-desc">{item.address}</div>}
                   </div>
                   <div className="qrg-card-wa-data">
                     <div className="qrg-wa-label">📱 נתונים שיישלחו לבוט:</div>
