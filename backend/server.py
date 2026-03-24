@@ -1995,19 +1995,42 @@ def save_hr_changes():
         sp = _get_sp_connector()
         excel = sp.SharePointExcel(HR_SHARE_URL)
 
-        # 1. Update existing cells
+        # 1. Update existing cells — group by row for batch writes
         updated = 0
+        rows_map = {}  # row_num → {col_idx: value}
         for ch in changes:
             row_num = ch["row"]
             col_idx = ch["col"]
             value = ch["value"]
-            col_letter = chr(65 + col_idx)
-            cell = f"{col_letter}{row_num}"
+            if row_num not in rows_map:
+                rows_map[row_num] = {}
+            rows_map[row_num][col_idx] = value
+
+        for row_num, cols in rows_map.items():
+            min_col = min(cols.keys())
+            max_col = max(cols.keys())
+            # Read current row range to fill gaps
+            start_letter = chr(65 + min_col)
+            end_letter = chr(65 + max_col)
+            cell_range = f"{start_letter}{row_num}:{end_letter}{row_num}"
+            try:
+                current = excel.read(sheet, cell_range)
+                current_vals = current["values"][0] if current.get("values") else [''] * (max_col - min_col + 1)
+            except Exception:
+                current_vals = [''] * (max_col - min_col + 1)
+
+            # Apply changes on top of current values
+            row_data = list(current_vals)
+            while len(row_data) < (max_col - min_col + 1):
+                row_data.append('')
+            for col_idx, value in cols.items():
+                row_data[col_idx - min_col] = value
+
             sp.write_excel_range(
                 excel.drive_id, excel.item_id,
-                sheet, cell, [[value]]
+                sheet, cell_range, [row_data]
             )
-            updated += 1
+            updated += len(cols)
 
         # 2. Delete rows — clear content in Excel
         for row_num in delete_rows_list:

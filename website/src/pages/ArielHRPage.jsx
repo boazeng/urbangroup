@@ -1232,8 +1232,8 @@ export default function ArielHRPage() {
     }
 
     try {
-      // Split changes into batches of 8 (API Gateway has 29s timeout)
-      const BATCH_SIZE = 8
+      // Split changes into batches of 50 (backend groups by row, ~1 API call per row)
+      const BATCH_SIZE = 50
       let allNewRowIndices = []
 
       for (let i = 0; i < changes.length; i += BATCH_SIZE) {
