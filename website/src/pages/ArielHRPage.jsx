@@ -1642,7 +1642,7 @@ export default function ArielHRPage() {
         {loading ? (
           <div className="ariel-loading">
             <div className="ariel-spinner" />
-            <span>טוען נתונים מ-SharePoint...</span>
+            <span>טוען נתונים...</span>
           </div>
         ) : (
           <>
