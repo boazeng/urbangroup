@@ -2008,42 +2008,51 @@ def save_hr_changes():
                     else:
                         raise
 
-        # 1. Update existing cells — group by row for batch writes
+        # 1. Update existing cells — single read + single write for entire range
         updated = 0
-        rows_map = {}  # row_num → {col_idx: value}
-        for ch in changes:
-            row_num = ch["row"]
-            col_idx = ch["col"]
-            value = ch["value"]
-            if row_num not in rows_map:
-                rows_map[row_num] = {}
-            rows_map[row_num][col_idx] = value
+        if changes:
+            rows_map = {}  # row_num → {col_idx: value}
+            for ch in changes:
+                row_num = ch["row"]
+                col_idx = ch["col"]
+                value = ch["value"]
+                if row_num not in rows_map:
+                    rows_map[row_num] = {}
+                rows_map[row_num][col_idx] = value
 
-        for row_num, cols in rows_map.items():
-            min_col = min(cols.keys())
-            max_col = max(cols.keys())
-            # Read current row range to fill gaps
-            start_letter = chr(65 + min_col)
-            end_letter = chr(65 + max_col)
-            cell_range = f"{start_letter}{row_num}:{end_letter}{row_num}"
+            min_row = min(rows_map.keys())
+            max_row = max(rows_map.keys())
+
+            # Read entire affected range once (A:X = columns 0-23)
+            read_range = f"A{min_row}:X{max_row}"
             try:
-                current = excel.read(sheet, cell_range)
-                current_vals = current["values"][0] if current.get("values") else [''] * (max_col - min_col + 1)
+                current = excel.read(sheet, read_range)
+                all_vals = current.get("values", [])
             except Exception:
-                current_vals = [''] * (max_col - min_col + 1)
+                all_vals = []
 
-            # Apply changes on top of current values
-            row_data = list(current_vals)
-            while len(row_data) < (max_col - min_col + 1):
-                row_data.append('')
-            for col_idx, value in cols.items():
-                row_data[col_idx - min_col] = value
+            # Ensure we have enough rows
+            needed = max_row - min_row + 1
+            while len(all_vals) < needed:
+                all_vals.append([''] * 24)
 
-            _sp_call(lambda cr=cell_range, rd=row_data: sp.write_excel_range(
+            # Apply all changes
+            for row_num, cols in rows_map.items():
+                row_idx = row_num - min_row
+                row_data = list(all_vals[row_idx])
+                while len(row_data) < 24:
+                    row_data.append('')
+                for col_idx, value in cols.items():
+                    if col_idx < 24:
+                        row_data[col_idx] = value
+                all_vals[row_idx] = row_data
+                updated += len(cols)
+
+            # Write entire range back in one call
+            _sp_call(lambda: sp.write_excel_range(
                 excel.drive_id, excel.item_id,
-                sheet, cr, [rd]
+                sheet, read_range, all_vals
             ))
-            updated += len(cols)
 
         # 2. Delete rows — clear content in Excel
         for row_num in delete_rows_list:

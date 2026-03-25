@@ -115,7 +115,7 @@ export default function ArielHRPage() {
 
   // Sheet (month) selector
   const [availableSheets, setAvailableSheets] = useState([])
-  const [selectedSheet, setSelectedSheet] = useState('2.26')
+  const [selectedSheet, setSelectedSheet] = useState(() => localStorage.getItem('hr-last-sheet') || '3.26')
 
   // Priority sync state
   const [syncing, setSyncing] = useState(false)
@@ -243,6 +243,7 @@ export default function ArielHRPage() {
   }
 
   const refreshFromExcel = async () => {
+    if (!confirm('לרענן מהאקסל? הנתונים המקומיים יוחלפו בנתונים מהאקסל.')) return
     setLoading(true)
     setError('')
     try {
@@ -1232,8 +1233,8 @@ export default function ArielHRPage() {
     }
 
     try {
-      // Split changes into batches of 50 (backend groups by row, ~1 API call per row)
-      const BATCH_SIZE = 50
+      // Backend does single read+write for entire range — send all at once
+      const BATCH_SIZE = 500
       let allNewRowIndices = []
 
       for (let i = 0; i < changes.length; i += BATCH_SIZE) {
@@ -1322,7 +1323,7 @@ export default function ArielHRPage() {
             <select
               className="hr-sheet-select"
               value={selectedSheet}
-              onChange={e => setSelectedSheet(e.target.value)}
+              onChange={e => { setSelectedSheet(e.target.value); localStorage.setItem('hr-last-sheet', e.target.value) }}
             >
               {availableSheets.length > 0
                 ? availableSheets.map(s => <option key={s} value={s}>{s}</option>)
