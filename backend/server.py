@@ -2559,14 +2559,27 @@ def send_cinvoice_to_priority(note_id):
                 "PRICE": item.get("price", 0),
             })
 
+        # Look up site code (DCODE) from sites cache
+        site_code = ""
+        site_name = note.get("site_name", "")
+        if site_name:
+            cached_sites = delivery_notes_db.load_sites_cache()
+            if cached_sites:
+                for s in cached_sites.get("sites", []):
+                    if s.get("name") == site_name and s.get("custCode") == customer_num:
+                        site_code = s.get("code", "")
+                        break
+
         body = {
             "CUSTNAME": customer_num,
             "BRANCHNAME": "102",
             "DETAILS": note.get("details", ""),
             "CINVOICEITEMS_SUBFORM": subform_items,
         }
+        if site_code:
+            body["DCODE"] = site_code
 
-        logger.info(f"[cinvoice] Sending {note_id} to Priority for customer {customer_num}")
+        logger.info(f"[cinvoice] Sending {note_id} to Priority for customer {customer_num}, site {site_code}")
         resp = http_requests.post(f"{url}/CINVOICES", json=body, headers=headers, auth=auth, timeout=30)
         if not resp.ok:
             error_text = resp.text[:500]
@@ -2731,14 +2744,27 @@ def send_delivery_note_to_priority(note_id):
                 "PRICE": item.get("price", 0),
             })
 
+        # Look up site code (DCODE) from sites cache
+        site_code = ""
+        site_name = note.get("site_name", "")
+        if site_name:
+            cached_sites = delivery_notes_db.load_sites_cache()
+            if cached_sites:
+                for s in cached_sites.get("sites", []):
+                    if s.get("name") == site_name and s.get("custCode") == customer_num:
+                        site_code = s.get("code", "")
+                        break
+
         body = {
             "CUSTNAME": customer_num,
             "BRANCHNAME": "102",
             "DETAILS": note.get("details", ""),
             "TRANSORDER_D_SUBFORM": subform_items,
         }
+        if site_code:
+            body["DCODE"] = site_code
 
-        logger.info(f"[delivery-note] Sending {note_id} to Priority for customer {customer_num}")
+        logger.info(f"[delivery-note] Sending {note_id} to Priority for customer {customer_num}, site {site_code}")
         resp = http_requests.post(f"{url}/DOCUMENTS_D", json=body, headers=headers, auth=auth, timeout=30)
         if not resp.ok:
             error_text = resp.text[:500]
