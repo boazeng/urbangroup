@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { PDFDocument } from 'pdf-lib'
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import * as pdfjsLib from 'pdfjs-dist'
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import './PdfSignPage.css'
@@ -115,6 +115,14 @@ export default function PdfSignPage() {
   const [saving, setSaving]               = useState(false)
   const [status, setStatus]               = useState('')
   const [pasteHint, setPasteHint]         = useState(false)  // flash hint
+
+  // Page numbering
+  const [numberingEnabled, setNumberingEnabled] = useState(false)
+  const [startNumber, setStartNumber]           = useState(1)
+  const [numFontSize, setNumFontSize]           = useState(12)
+  const [numPosition, setNumPosition]           = useState('bottom-center') // top/bottom + left/center/right
+  const [numPrefix, setNumPrefix]               = useState('')
+  const [numSuffix, setNumSuffix]               = useState('')
 
   const [dragging, setDragging]           = useState(false)
   const [resizing, setResizing]           = useState(false)
@@ -295,7 +303,7 @@ export default function PdfSignPage() {
 
   // ── Save PDF ──────────────────────────────────────────────────
   const savePdf = async () => {
-    if (!pdfBytes || placements.length === 0) return
+    if (!pdfBytes || (placements.length === 0 && !numberingEnabled)) return
     setSaving(true)
     setStatus('מכין את הקובץ...')
     try {
@@ -330,6 +338,31 @@ export default function PdfSignPage() {
         pdfPage.drawImage(embedded, { x: xPdf, y: yPdf, width: wPdf, height: hPdf })
       }
 
+      // Page numbering
+      if (numberingEnabled) {
+        const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
+        for (let i = 0; i < pdfPages.length; i++) {
+          const pdfPage = pdfPages[i]
+          const { width: pgW, height: pgH } = pdfPage.getSize()
+          const pageNum = startNumber + i
+          const text = `${numPrefix}${pageNum}${numSuffix}`
+          const textWidth = font.widthOfTextAtSize(text, numFontSize)
+          const margin = 30
+
+          const [vPos, hPos] = numPosition.split('-')
+          const y = vPos === 'top' ? pgH - margin : margin
+          let x
+          if (hPos === 'left')        x = margin
+          else if (hPos === 'right')  x = pgW - textWidth - margin
+          else                        x = (pgW - textWidth) / 2
+
+          pdfPage.drawText(text, {
+            x, y, size: numFontSize, font,
+            color: rgb(0, 0, 0),
+          })
+        }
+      }
+
       const saved = await pdfDoc.save()
       const blob  = new Blob([saved], { type: 'application/pdf' })
       const url   = URL.createObjectURL(blob)
@@ -355,7 +388,7 @@ export default function PdfSignPage() {
         <Link to="/apps" className="ps-back">&rarr; חזרה לאפליקציות</Link>
         <h1 className="ps-title">חתימה על PDF</h1>
         <div className="ps-topbar-actions">
-          {pdfBytes && placements.length > 0 && (
+          {pdfBytes && (placements.length > 0 || numberingEnabled) && (
             <button className="ps-save-btn" onClick={savePdf} disabled={saving}>
               {saving ? 'שומר...' : '💾 שמור PDF'}
             </button>
@@ -461,6 +494,51 @@ export default function PdfSignPage() {
             </div>
           )}
 
+          {/* Page numbering controls */}
+          {pages.length > 0 && (
+            <div className="ps-numbering-section">
+              <label className="ps-numbering-toggle">
+                <input type="checkbox" checked={numberingEnabled} onChange={e => setNumberingEnabled(e.target.checked)} />
+                <span>מספור עמודים</span>
+              </label>
+
+              {numberingEnabled && (
+                <div className="ps-numbering-options">
+                  <div className="ps-num-row">
+                    <label>מספר התחלה</label>
+                    <input type="number" min="1" value={startNumber} onChange={e => setStartNumber(Math.max(1, Number(e.target.value)))} />
+                  </div>
+                  <div className="ps-num-row">
+                    <label>גודל פונט</label>
+                    <input type="number" min="6" max="72" value={numFontSize} onChange={e => setNumFontSize(Math.max(6, Math.min(72, Number(e.target.value))))} />
+                  </div>
+                  <div className="ps-num-row">
+                    <label>תווית לפני</label>
+                    <input type="text" value={numPrefix} onChange={e => setNumPrefix(e.target.value)} placeholder='למשל: עמוד ' />
+                  </div>
+                  <div className="ps-num-row">
+                    <label>תווית אחרי</label>
+                    <input type="text" value={numSuffix} onChange={e => setNumSuffix(e.target.value)} placeholder='למשל:  מתוך 50' />
+                  </div>
+                  <div className="ps-num-row">
+                    <label>מיקום</label>
+                    <select value={numPosition} onChange={e => setNumPosition(e.target.value)}>
+                      <option value="bottom-center">למטה באמצע</option>
+                      <option value="bottom-right">למטה מימין</option>
+                      <option value="bottom-left">למטה משמאל</option>
+                      <option value="top-center">למעלה באמצע</option>
+                      <option value="top-right">למעלה מימין</option>
+                      <option value="top-left">למעלה משמאל</option>
+                    </select>
+                  </div>
+                  <div className="ps-num-preview">
+                    {numPrefix}{startNumber + selectedPage}{numSuffix}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
 
         {/* ── Right panel: viewer ── */}
@@ -480,6 +558,25 @@ export default function PdfSignPage() {
               style={{ width: pg.displayW, height: pg.displayH }}
             >
               <img src={pg.dataUrl} alt={`עמוד ${selectedPage + 1}`} className="ps-page-img" draggable={false} />
+
+              {/* Page number preview overlay */}
+              {numberingEnabled && (() => {
+                const [vPos, hPos] = numPosition.split('-')
+                const previewStyle = {
+                  position: 'absolute',
+                  fontSize: numFontSize * pg.scale,
+                  color: '#000',
+                  pointerEvents: 'none',
+                  whiteSpace: 'nowrap',
+                  fontFamily: 'Helvetica, Arial, sans-serif',
+                  background: 'rgba(255,255,200,0.6)',
+                  padding: '1px 4px',
+                  borderRadius: 2,
+                  ...(vPos === 'top' ? { top: 30 * pg.scale } : { bottom: 30 * pg.scale }),
+                  ...(hPos === 'left' ? { left: 30 * pg.scale } : hPos === 'right' ? { right: 30 * pg.scale } : { left: '50%', transform: 'translateX(-50%)' }),
+                }
+                return <span style={previewStyle}>{numPrefix}{startNumber + selectedPage}{numSuffix}</span>
+              })()}
 
               {placements
                 .filter(p => p.pageIdx === selectedPage)

@@ -81,7 +81,7 @@
   border-left: 1px solid #E2E8F0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 /* ── Thumbnails panel (left side in RTL) ────────────────────── */
@@ -434,6 +434,82 @@
   min-width: 28px;
   text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+/* ── Page numbering controls ──────────────────────────────── */
+.ps-numbering-section {
+  padding: 10px;
+  border-top: 1px solid #E2E8F0;
+  margin-top: auto;
+}
+
+.ps-numbering-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2D3748;
+  cursor: pointer;
+}
+
+.ps-numbering-toggle input[type="checkbox"] {
+  accent-color: #4299E1;
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+.ps-numbering-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.ps-num-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ps-num-row label {
+  font-size: 10px;
+  color: #718096;
+  font-weight: 500;
+}
+
+.ps-num-row input[type="number"],
+.ps-num-row input[type="text"],
+.ps-num-row select {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid #CBD5E0;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #2D3748;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.ps-num-row input:focus,
+.ps-num-row select:focus {
+  outline: none;
+  border-color: #4299E1;
+  box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.2);
+}
+
+.ps-num-preview {
+  text-align: center;
+  padding: 5px;
+  background: #F7FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #2D3748;
+  font-family: Helvetica, Arial, sans-serif;
+  margin-top: 2px;
+  direction: ltr;
 }
 
 /* Resize handle — bottom-left corner (RTL) */
