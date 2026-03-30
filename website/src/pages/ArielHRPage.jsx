@@ -1279,8 +1279,16 @@ export default function ArielHRPage() {
         setDirtyKeys(new Set())
         setDeletedRows(new Set())
         setLocalSaveStatus('')
-        // Reload from Excel to get correct row indices
-        await loadData()
+        // Reload from Excel (not DB cache) to get correct row indices
+        setLoading(true)
+        try {
+          const refreshResp = await fetch(`${API_BASE}/api/hr/sheet-data?sheet=${encodeURIComponent(selectedSheet)}`)
+          const refreshData = await safeJson(refreshResp)
+          if (refreshData.ok) {
+            await applyLoadedData(refreshData)
+          }
+        } catch (e) { /* ignore refresh error */ }
+        setLoading(false)
       } else {
         // No structural changes — just update state locally
         const cleanRows = editedRows.filter(r => !deletedRows.has(r[COL.ROW_INDEX])).map(r => [...r])
