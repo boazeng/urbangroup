@@ -1274,51 +1274,27 @@ export default function ArielHRPage() {
         if (data.newRowIndices?.length > 0) allNewRowIndices = data.newRowIndices
       }
 
-      // Update row indices after insert — existing rows below insert point shift down
-      if (allNewRowIndices.length > 0) {
-        const tempIds = [...newRowIds]
-        // Collect insert positions (sorted ascending) to shift existing rows
-        const insertPositions = [...allNewRowIndices].sort((a, b) => a - b)
-
-        setEditedRows(prev => prev.map(r => {
-          // Check if this is a new row that needs its temp ID replaced
-          const tIdx = tempIds.indexOf(r[COL.ROW_INDEX])
-          if (tIdx !== -1 && allNewRowIndices[tIdx] !== undefined) {
-            const copy = [...r]
-            copy[COL.ROW_INDEX] = allNewRowIndices[tIdx]
-            return copy
-          }
-          // For existing rows, shift ROW_INDEX down for each insert above them
-          if (typeof r[COL.ROW_INDEX] === 'number') {
-            let shift = 0
-            for (const pos of insertPositions) {
-              if (r[COL.ROW_INDEX] >= pos) shift++
-              else break
-            }
-            if (shift > 0) {
-              const copy = [...r]
-              copy[COL.ROW_INDEX] = r[COL.ROW_INDEX] + shift
-              return copy
-            }
-          }
-          return r
-        }))
+      // After insert/delete, row indices in Excel shifted — reload fresh data
+      if (allNewRowIndices.length > 0 || deleteRowIndices.length > 0) {
+        setDirtyKeys(new Set())
+        setDeletedRows(new Set())
+        setLocalSaveStatus('')
+        // Reload from Excel to get correct row indices
+        await loadData()
+      } else {
+        // No structural changes — just update state locally
+        const cleanRows = editedRows.filter(r => !deletedRows.has(r[COL.ROW_INDEX])).map(r => [...r])
+        setAllRows(cleanRows)
+        setDirtyKeys(new Set())
+        setDeletedRows(new Set())
+        setLocalSaveStatus('')
+        // Update DB cache in background
+        fetch(`${API_BASE}/api/hr/db-data`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sheet: selectedSheet, rows: cleanRows, filters }),
+        }).catch(() => {})
       }
-      // Remove deleted rows from state
-      if (deletedRows.size > 0) {
-        setEditedRows(prev => prev.filter(r => !deletedRows.has(r[COL.ROW_INDEX])))
-      }
-      const cleanRows = editedRows.filter(r => !deletedRows.has(r[COL.ROW_INDEX])).map(r => [...r])
-      setAllRows(cleanRows)
-      setDirtyKeys(new Set())
-      setDeletedRows(new Set())
-      setLocalSaveStatus('') // local cleared by backend
-      // Update DB cache in background
-      fetch(`${API_BASE}/api/hr/db-data`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sheet: selectedSheet, rows: cleanRows, filters }),
-      }).catch(() => {})
     } catch (e) {
       setError(e.message)
     } finally {
