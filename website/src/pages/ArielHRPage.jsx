@@ -1177,100 +1177,64 @@ export default function ArielHRPage() {
     openReport('לא נשלחו - חברת אריאל', tablesHtml)
   }
 
-  // Save changes
+  // Save changes — DB first, then Excel in background
   const handleSave = async () => {
     if (dirtyKeys.size === 0 && deletedRows.size === 0) return
     setSaving(true)
     setError('')
 
-    // Separate existing cell updates from new rows
-    const changes = []
-    const newRows = []
-    const newRowIds = new Set()
-
-    for (const key of dirtyKeys) {
-      const [rowStr] = key.split(':')
-      if (rowStr.startsWith('new_')) {
-        newRowIds.add(rowStr)
-      }
-    }
-
-    // Collect cell-level changes for existing rows
-    for (const key of dirtyKeys) {
-      const [rowStr, colStr] = key.split(':')
-      if (rowStr.startsWith('new_')) continue
-      const excelRow = Number(rowStr)
-      const colIdx = Number(colStr)
-      const editedRow = editedRows.find(r => r[COL.ROW_INDEX] === excelRow)
-      if (editedRow) {
-        changes.push({ row: excelRow, col: colIdx, value: editedRow[colIdx] ?? '' })
-      }
-    }
-
-    // When there are new rows or deletes, send ALL rows in correct order
-    // so the backend can rewrite the entire data section
-    let allOrderedRows = null
-    if (newRowIds.size > 0 || deletedRows.size > 0) {
-      allOrderedRows = editedRows
-        .filter(r => !deletedRows.has(r[COL.ROW_INDEX]))
-        .map(r => r.slice(0, 24))
-    }
-
     try {
-      // If we have structural changes (new rows or deletes), rewrite entire table
-      if (allOrderedRows) {
-        const resp = await fetch(`${API_BASE}/api/hr/save-changes`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sheet: selectedSheet,
-            changes,
-            allOrderedRows,
-          }),
-        })
-        const data = await safeJson(resp)
-        if (!data.ok) {
-          setError(data.error || 'שגיאה בשמירה')
-          return
-        }
-      } else if (changes.length > 0) {
-        // Only cell-level changes — send in batches
-        const BATCH_SIZE = 500
-        for (let i = 0; i < changes.length; i += BATCH_SIZE) {
-          const batch = changes.slice(i, i + BATCH_SIZE)
-          const resp = await fetch(`${API_BASE}/api/hr/save-changes`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sheet: selectedSheet, changes: batch }),
-          })
-          const data = await safeJson(resp)
-          if (!data.ok) {
-            setError(data.error || `שגיאה בשמירה (batch ${Math.floor(i / BATCH_SIZE) + 1})`)
-            return
-          }
-        }
+      // 1. Build clean rows (apply deletes, keep order)
+      const cleanRows = editedRows.filter(r => !deletedRows.has(r[COL.ROW_INDEX])).map(r => [...r])
+      // Re-assign sequential ROW_INDEX
+      cleanRows.forEach((r, i) => { r[COL.ROW_INDEX] = i + 1 })
+
+      // 2. Save to DB first (fast, reliable)
+      const dbResp = await fetch(`${API_BASE}/api/hr/db-data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sheet: selectedSheet, rows: cleanRows, filters }),
+      })
+      const dbData = await safeJson(dbResp)
+      if (!dbData.ok) {
+        setError(dbData.error || 'שגיאה בשמירה לבסיס נתונים')
+        return
       }
 
-      // Update local state after save
-      const cleanRows = editedRows.filter(r => !deletedRows.has(r[COL.ROW_INDEX])).map(r => [...r])
-      // Re-assign sequential ROW_INDEX to match new Excel positions
-      if (allOrderedRows) {
-        // Backend wrote header rows first, then data — data starts after header
-        // We don't know exact header count, so just assign sequential numbers
-        // Next loadData will get the real ones from the server
-        cleanRows.forEach((r, i) => { r[COL.ROW_INDEX] = 1000 + i })
-      }
+      // 3. Update local state immediately (user sees success)
       setAllRows(cleanRows)
       setEditedRows(cleanRows.map(r => [...r]))
       setDirtyKeys(new Set())
       setDeletedRows(new Set())
       setLocalSaveStatus('')
-      // Update DB cache in background
-      fetch(`${API_BASE}/api/hr/db-data`, {
+
+      // 4. Collect info for Excel sync
+      const hasStructuralChanges = [...dirtyKeys].some(k => k.split(':')[0].startsWith('new_')) || deletedRows.size > 0
+
+      const changes = []
+      if (!hasStructuralChanges) {
+        for (const key of dirtyKeys) {
+          const [rowStr, colStr] = key.split(':')
+          const excelRow = Number(rowStr)
+          const colIdx = Number(colStr)
+          const editedRow = editedRows.find(r => r[COL.ROW_INDEX] === excelRow)
+          if (editedRow) {
+            changes.push({ row: excelRow, col: colIdx, value: editedRow[colIdx] ?? '' })
+          }
+        }
+      }
+
+      // 5. Sync to Excel in background (non-blocking)
+      const excelBody = hasStructuralChanges
+        ? { sheet: selectedSheet, allOrderedRows: cleanRows.map(r => r.slice(0, 24)) }
+        : { sheet: selectedSheet, changes }
+
+      fetch(`${API_BASE}/api/hr/save-changes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sheet: selectedSheet, rows: cleanRows, filters }),
-      }).catch(() => {})
+        body: JSON.stringify(excelBody),
+      }).catch(() => { /* Excel sync failed — data safe in DB */ })
+
     } catch (e) {
       setError(e.message)
     } finally {
