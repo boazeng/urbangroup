@@ -1207,75 +1207,52 @@ export default function ArielHRPage() {
       }
     }
 
-    // Collect full new rows with position info (columns A-V = indices 0-21)
-    for (const tempId of newRowIds) {
-      const idx = editedRows.findIndex(r => r[COL.ROW_INDEX] === tempId)
-      if (idx === -1) continue
-      const row = editedRows[idx]
-      // Find the row above to determine insert position
-      let afterRow = null
-      for (let j = idx - 1; j >= 0; j--) {
-        const prevId = editedRows[j][COL.ROW_INDEX]
-        if (typeof prevId === 'number') {
-          afterRow = prevId
-          break
-        }
-      }
-      newRows.push({ data: row.slice(0, 24), afterRow })
-    }
-
-    // Collect deleted row indices (only real Excel rows, not new ones)
-    const deleteRowIndices = []
-    for (const rowId of deletedRows) {
-      if (typeof rowId === 'number') {
-        deleteRowIndices.push(rowId)
-      }
+    // When there are new rows or deletes, send ALL rows in correct order
+    // so the backend can rewrite the entire data section
+    let allOrderedRows = null
+    if (newRowIds.size > 0 || deletedRows.size > 0) {
+      allOrderedRows = editedRows
+        .filter(r => !deletedRows.has(r[COL.ROW_INDEX]))
+        .map(r => r.slice(0, 24))
     }
 
     try {
-      // Backend does single read+write for entire range — send all at once
-      const BATCH_SIZE = 500
-      let allNewRowIndices = []
-
-      for (let i = 0; i < changes.length; i += BATCH_SIZE) {
-        const batch = changes.slice(i, i + BATCH_SIZE)
-        // Send newRows and deleteRows only in the last batch
-        const isLastBatch = i + BATCH_SIZE >= changes.length
+      // If we have structural changes (new rows or deletes), rewrite entire table
+      if (allOrderedRows) {
         const resp = await fetch(`${API_BASE}/api/hr/save-changes`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             sheet: selectedSheet,
-            changes: batch,
-            newRows: isLastBatch ? newRows : [],
-            deleteRows: isLastBatch ? deleteRowIndices : [],
+            changes,
+            allOrderedRows,
           }),
-        })
-        const data = await safeJson(resp)
-        if (!data.ok) {
-          setError(data.error || `שגיאה בשמירה (batch ${Math.floor(i / BATCH_SIZE) + 1})`)
-          return
-        }
-        if (data.newRowIndices?.length > 0) allNewRowIndices = data.newRowIndices
-      }
-
-      // If only newRows/deletes (no changes)
-      if (changes.length === 0 && (newRows.length > 0 || deleteRowIndices.length > 0)) {
-        const resp = await fetch(`${API_BASE}/api/hr/save-changes`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sheet: selectedSheet, changes: [], newRows, deleteRows: deleteRowIndices }),
         })
         const data = await safeJson(resp)
         if (!data.ok) {
           setError(data.error || 'שגיאה בשמירה')
           return
         }
-        if (data.newRowIndices?.length > 0) allNewRowIndices = data.newRowIndices
+      } else if (changes.length > 0) {
+        // Only cell-level changes — send in batches
+        const BATCH_SIZE = 500
+        for (let i = 0; i < changes.length; i += BATCH_SIZE) {
+          const batch = changes.slice(i, i + BATCH_SIZE)
+          const resp = await fetch(`${API_BASE}/api/hr/save-changes`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sheet: selectedSheet, changes: batch }),
+          })
+          const data = await safeJson(resp)
+          if (!data.ok) {
+            setError(data.error || `שגיאה בשמירה (batch ${Math.floor(i / BATCH_SIZE) + 1})`)
+            return
+          }
+        }
       }
 
-      // After insert/delete, row indices in Excel shifted — reload fresh data
-      if (allNewRowIndices.length > 0 || deleteRowIndices.length > 0) {
+      // After structural changes, reload fresh data from Excel
+      if (allOrderedRows) {
         setDirtyKeys(new Set())
         setDeletedRows(new Set())
         setLocalSaveStatus('')

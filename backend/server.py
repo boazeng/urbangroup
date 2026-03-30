@@ -1984,12 +1984,11 @@ def save_hr_changes():
     body = request.get_json(force=True)
     sheet = body.get("sheet", "2.26")
     changes = body.get("changes", [])
-    new_rows = body.get("newRows", [])
+    all_ordered_rows = body.get("allOrderedRows")
 
-    delete_rows_list = body.get("deleteRows", [])
-    if not changes and not new_rows and not delete_rows_list:
-        return jsonify({"ok": True, "updated": 0, "newRowIndices": []})
-    logger.info(f"HR save: {len(changes)} changes, {len(new_rows)} new, {len(delete_rows_list)} deletes")
+    if not changes and not all_ordered_rows:
+        return jsonify({"ok": True, "updated": 0})
+    logger.info(f"HR save: {len(changes)} changes, allOrderedRows={'yes' if all_ordered_rows else 'no'} ({len(all_ordered_rows) if all_ordered_rows else 0} rows)")
 
     try:
         sp = _get_sp_connector()
@@ -2008,10 +2007,55 @@ def save_hr_changes():
                     else:
                         raise
 
-        # 1. Update existing cells — single read + single write for entire range
         updated = 0
+
+        # MODE 1: Full rewrite — when rows were added/deleted, frontend sends all rows in order
+        if all_ordered_rows:
+            # Read Excel to find header position
+            table_data = excel.read(sheet, "A1:X1000")
+            all_excel = table_data.get("values", [])
+            header_idx, last_data_idx = _find_main_table(all_excel)
+
+            # Keep header rows (everything up to and including header)
+            header_rows = all_excel[:header_idx + 1] if header_idx is not None else []
+
+            # Apply cell-level changes to the ordered rows
+            changes_map = {}
+            for ch in changes:
+                key = f"{ch['row']}:{ch['col']}"
+                changes_map.setdefault(ch['row'], {})[ch['col']] = ch['value']
+
+            # Build new data rows from frontend order, applying any pending changes
+            data_rows = []
+            for row in all_ordered_rows:
+                padded = list(row)[:24] + [''] * max(0, 24 - len(row))
+                data_rows.append(padded)
+
+            # Combine: headers + data rows
+            final = header_rows + data_rows
+            write_range = f"A1:X{len(final)}"
+            _sp_call(lambda: sp.write_excel_range(
+                excel.drive_id, excel.item_id,
+                sheet, write_range, final
+            ))
+
+            # Clear any leftover rows in Excel (if old table was longer)
+            old_len = len(all_excel)
+            new_len = len(final)
+            if old_len > new_len:
+                empty_rows = [[''] * 24] * (old_len - new_len)
+                clear_range = f"A{new_len + 1}:X{old_len}"
+                _sp_call(lambda: sp.write_excel_range(
+                    excel.drive_id, excel.item_id,
+                    sheet, clear_range, empty_rows
+                ))
+
+            updated = len(data_rows)
+            return jsonify({"ok": True, "updated": updated})
+
+        # MODE 2: Cell-level updates only (no structural changes)
         if changes:
-            rows_map = {}  # row_num → {col_idx: value}
+            rows_map = {}
             for ch in changes:
                 row_num = ch["row"]
                 col_idx = ch["col"]
@@ -2023,7 +2067,6 @@ def save_hr_changes():
             min_row = min(rows_map.keys())
             max_row = max(rows_map.keys())
 
-            # Read entire affected range once (A:X = columns 0-23)
             read_range = f"A{min_row}:X{max_row}"
             try:
                 current = excel.read(sheet, read_range)
@@ -2031,12 +2074,10 @@ def save_hr_changes():
             except Exception:
                 all_vals = []
 
-            # Ensure we have enough rows
             needed = max_row - min_row + 1
             while len(all_vals) < needed:
                 all_vals.append([''] * 24)
 
-            # Apply all changes
             for row_num, cols in rows_map.items():
                 row_idx = row_num - min_row
                 row_data = list(all_vals[row_idx])
@@ -2048,87 +2089,15 @@ def save_hr_changes():
                 all_vals[row_idx] = row_data
                 updated += len(cols)
 
-            # Write entire range back in one call
             _sp_call(lambda: sp.write_excel_range(
                 excel.drive_id, excel.item_id,
                 sheet, read_range, all_vals
             ))
 
-        # 2. Delete rows — clear content in Excel
-        for row_num in delete_rows_list:
-            cr = f"A{row_num}:X{row_num}"
-            empty_row = [[''] * 24]
-            _sp_call(lambda c=cr, e=empty_row: sp.write_excel_range(
-                excel.drive_id, excel.item_id,
-                sheet, c, e
-            ))
-
-        # 3. Insert new rows at correct position (after afterRow)
-        import time
-        new_row_indices = []
-        if new_rows:
-            if updated > 0:
-                time.sleep(1)
-
-            # Read entire table
-            table_data = excel.read(sheet, "A1:X1000")
-            all_rows_data = table_data.get("values", [])
-            header_idx, last_data_idx = _find_main_table(all_rows_data)
-
-            # Pad all rows to 24 columns
-            for ri in range(len(all_rows_data)):
-                row = list(all_rows_data[ri])
-                while len(row) < 24:
-                    row.append('')
-                all_rows_data[ri] = row
-
-            # Sort new rows by afterRow descending so inserts don't shift indices
-            sorted_new = []
-            for entry in new_rows:
-                if isinstance(entry, dict):
-                    row_data = entry.get("data", [])
-                    after_row = entry.get("afterRow")
-                else:
-                    row_data = entry
-                    after_row = None
-                padded = list(row_data)[:24] + [''] * max(0, 24 - len(row_data))
-                sorted_new.append((after_row, padded[:24]))
-
-            # Sort descending by afterRow so later inserts don't affect earlier indices
-            sorted_new.sort(key=lambda x: x[0] if x[0] is not None else 999999, reverse=True)
-
-            # Track insert positions for response
-            insert_positions = []
-            for after_row, padded in sorted_new:
-                if after_row is not None and after_row <= len(all_rows_data):
-                    # afterRow is 1-based Excel row number
-                    # To insert AFTER this row: 0-based index of afterRow is (afterRow - 1)
-                    # So we insert at index afterRow (which is after index afterRow-1)
-                    insert_idx = after_row
-                    logger.info(f"Insert new row after Excel row {after_row}, at array index {insert_idx}, total rows={len(all_rows_data)}")
-                    all_rows_data.insert(insert_idx, padded)
-                    insert_positions.append(insert_idx)
-                else:
-                    # Append at end
-                    end_idx = (last_data_idx if last_data_idx is not None else len(all_rows_data) - 1) + 1
-                    all_rows_data.insert(end_idx, padded)
-                    insert_positions.append(end_idx)
-
-            # Write entire table back
-            write_range = f"A1:X{len(all_rows_data)}"
-            _sp_call(lambda: sp.write_excel_range(
-                excel.drive_id, excel.item_id,
-                sheet, write_range, all_rows_data
-            ))
-
-            # Calculate final 1-based Excel row numbers
-            for pos in reversed(insert_positions):
-                new_row_indices.append(pos + 1)  # Convert to 1-based
-
         # Clear local pending data after successful SharePoint save
         _clear_local_hr(sheet)
 
-        return jsonify({"ok": True, "updated": updated, "newRowIndices": new_row_indices})
+        return jsonify({"ok": True, "updated": updated})
     except Exception as e:
         logger.error(f"HR save failed: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
