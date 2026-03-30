@@ -2101,8 +2101,11 @@ def save_hr_changes():
             insert_positions = []
             for after_row, padded in sorted_new:
                 if after_row is not None and after_row <= len(all_rows_data):
-                    # Insert after the specified row (afterRow is 1-based Excel row)
-                    insert_idx = after_row  # 0-based index = afterRow (since row 1 = index 0)
+                    # afterRow is 1-based Excel row number
+                    # To insert AFTER this row: 0-based index of afterRow is (afterRow - 1)
+                    # So we insert at index afterRow (which is after index afterRow-1)
+                    insert_idx = after_row
+                    logger.info(f"Insert new row after Excel row {after_row}, at array index {insert_idx}, total rows={len(all_rows_data)}")
                     all_rows_data.insert(insert_idx, padded)
                     insert_positions.append(insert_idx)
                 else:
