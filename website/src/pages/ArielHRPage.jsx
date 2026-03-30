@@ -1274,15 +1274,32 @@ export default function ArielHRPage() {
         if (data.newRowIndices?.length > 0) allNewRowIndices = data.newRowIndices
       }
 
-      // Update new rows with their real Excel row indices
+      // Update row indices after insert — existing rows below insert point shift down
       if (allNewRowIndices.length > 0) {
         const tempIds = [...newRowIds]
+        // Collect insert positions (sorted ascending) to shift existing rows
+        const insertPositions = [...allNewRowIndices].sort((a, b) => a - b)
+
         setEditedRows(prev => prev.map(r => {
+          // Check if this is a new row that needs its temp ID replaced
           const tIdx = tempIds.indexOf(r[COL.ROW_INDEX])
           if (tIdx !== -1 && allNewRowIndices[tIdx] !== undefined) {
             const copy = [...r]
             copy[COL.ROW_INDEX] = allNewRowIndices[tIdx]
             return copy
+          }
+          // For existing rows, shift ROW_INDEX down for each insert above them
+          if (typeof r[COL.ROW_INDEX] === 'number') {
+            let shift = 0
+            for (const pos of insertPositions) {
+              if (r[COL.ROW_INDEX] >= pos) shift++
+              else break
+            }
+            if (shift > 0) {
+              const copy = [...r]
+              copy[COL.ROW_INDEX] = r[COL.ROW_INDEX] + shift
+              return copy
+            }
           }
           return r
         }))
