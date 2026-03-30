@@ -1251,35 +1251,26 @@ export default function ArielHRPage() {
         }
       }
 
-      // After structural changes, reload fresh data from Excel
+      // Update local state after save
+      const cleanRows = editedRows.filter(r => !deletedRows.has(r[COL.ROW_INDEX])).map(r => [...r])
+      // Re-assign sequential ROW_INDEX to match new Excel positions
       if (allOrderedRows) {
-        setDirtyKeys(new Set())
-        setDeletedRows(new Set())
-        setLocalSaveStatus('')
-        // Reload from Excel (not DB cache) to get correct row indices
-        setLoading(true)
-        try {
-          const refreshResp = await fetch(`${API_BASE}/api/hr/sheet-data?sheet=${encodeURIComponent(selectedSheet)}`)
-          const refreshData = await safeJson(refreshResp)
-          if (refreshData.ok) {
-            await applyLoadedData(refreshData)
-          }
-        } catch (e) { /* ignore refresh error */ }
-        setLoading(false)
-      } else {
-        // No structural changes — just update state locally
-        const cleanRows = editedRows.filter(r => !deletedRows.has(r[COL.ROW_INDEX])).map(r => [...r])
-        setAllRows(cleanRows)
-        setDirtyKeys(new Set())
-        setDeletedRows(new Set())
-        setLocalSaveStatus('')
-        // Update DB cache in background
-        fetch(`${API_BASE}/api/hr/db-data`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sheet: selectedSheet, rows: cleanRows, filters }),
-        }).catch(() => {})
+        // Backend wrote header rows first, then data — data starts after header
+        // We don't know exact header count, so just assign sequential numbers
+        // Next loadData will get the real ones from the server
+        cleanRows.forEach((r, i) => { r[COL.ROW_INDEX] = 1000 + i })
       }
+      setAllRows(cleanRows)
+      setEditedRows(cleanRows.map(r => [...r]))
+      setDirtyKeys(new Set())
+      setDeletedRows(new Set())
+      setLocalSaveStatus('')
+      // Update DB cache in background
+      fetch(`${API_BASE}/api/hr/db-data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sheet: selectedSheet, rows: cleanRows, filters }),
+      }).catch(() => {})
     } catch (e) {
       setError(e.message)
     } finally {
