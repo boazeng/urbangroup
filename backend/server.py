@@ -2063,32 +2063,64 @@ def save_hr_changes():
                 sheet, c, e
             ))
 
-        # 3. Append new rows at end of table (no insert — avoids 409 conflicts)
+        # 3. Insert new rows at correct position (after afterRow)
         import time
         new_row_indices = []
         if new_rows:
             if updated > 0:
                 time.sleep(1)
 
-            # Find end of table
+            # Read entire table
             table_data = excel.read(sheet, "A1:X1000")
             all_rows_data = table_data.get("values", [])
             header_idx, last_data_idx = _find_main_table(all_rows_data)
-            next_row = (last_data_idx + 1 if last_data_idx is not None else len(all_rows_data)) + 1
 
+            # Pad all rows to 24 columns
+            for ri in range(len(all_rows_data)):
+                row = list(all_rows_data[ri])
+                while len(row) < 24:
+                    row.append('')
+                all_rows_data[ri] = row
+
+            # Sort new rows by afterRow descending so inserts don't shift indices
+            sorted_new = []
             for entry in new_rows:
                 if isinstance(entry, dict):
                     row_data = entry.get("data", [])
+                    after_row = entry.get("afterRow")
                 else:
                     row_data = entry
-                padded = list(row_data) + [''] * (24 - len(row_data))
-                cell_range = f"A{next_row}:X{next_row}"
-                _sp_call(lambda cr=cell_range, p=padded[:24]: sp.write_excel_range(
-                    excel.drive_id, excel.item_id,
-                    sheet, cr, [p]
-                ))
-                new_row_indices.append(next_row)
-                next_row += 1
+                    after_row = None
+                padded = list(row_data)[:24] + [''] * max(0, 24 - len(row_data))
+                sorted_new.append((after_row, padded[:24]))
+
+            # Sort descending by afterRow so later inserts don't affect earlier indices
+            sorted_new.sort(key=lambda x: x[0] if x[0] is not None else 999999, reverse=True)
+
+            # Track insert positions for response
+            insert_positions = []
+            for after_row, padded in sorted_new:
+                if after_row is not None and after_row <= len(all_rows_data):
+                    # Insert after the specified row (afterRow is 1-based Excel row)
+                    insert_idx = after_row  # 0-based index = afterRow (since row 1 = index 0)
+                    all_rows_data.insert(insert_idx, padded)
+                    insert_positions.append(insert_idx)
+                else:
+                    # Append at end
+                    end_idx = (last_data_idx if last_data_idx is not None else len(all_rows_data) - 1) + 1
+                    all_rows_data.insert(end_idx, padded)
+                    insert_positions.append(end_idx)
+
+            # Write entire table back
+            write_range = f"A1:X{len(all_rows_data)}"
+            _sp_call(lambda: sp.write_excel_range(
+                excel.drive_id, excel.item_id,
+                sheet, write_range, all_rows_data
+            ))
+
+            # Calculate final 1-based Excel row numbers
+            for pos in reversed(insert_positions):
+                new_row_indices.append(pos + 1)  # Convert to 1-based
 
         # Clear local pending data after successful SharePoint save
         _clear_local_hr(sheet)
