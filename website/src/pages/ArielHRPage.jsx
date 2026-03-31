@@ -1189,11 +1189,26 @@ export default function ArielHRPage() {
       // Re-assign sequential ROW_INDEX
       cleanRows.forEach((r, i) => { r[COL.ROW_INDEX] = i + 1 })
 
-      // 2. Save to DB first (fast, reliable)
+      // 2. Rebuild filters before saving
+      const newCustomers = [...new Set(cleanRows.map(r => String(r[COL.CUSTOMER] || '').trim()).filter(Boolean))].sort()
+      const newSites = [...new Set(cleanRows.map(r => String(r[COL.SITE] || '').trim()).filter(Boolean))].sort()
+      const newContractors = [...new Set(cleanRows.map(r => String(r[COL.CONTRACTOR] || '').trim()).filter(Boolean))].sort()
+      const newCustSites = {}
+      for (const r of cleanRows) {
+        const cust = String(r[COL.CUSTOMER] || '').trim()
+        const site = String(r[COL.SITE] || '').trim()
+        if (cust && site) {
+          if (!newCustSites[cust]) newCustSites[cust] = []
+          if (!newCustSites[cust].includes(site)) newCustSites[cust].push(site)
+        }
+      }
+      const updatedFilters = { customers: newCustomers, sites: newSites, contractors: newContractors, customer_sites: newCustSites }
+
+      // Save to DB first (fast, reliable)
       const dbResp = await fetch(`${API_BASE}/api/hr/db-data`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sheet: selectedSheet, rows: cleanRows, filters }),
+        body: JSON.stringify({ sheet: selectedSheet, rows: cleanRows, filters: updatedFilters }),
       })
       const dbData = await safeJson(dbResp)
       if (!dbData.ok) {
@@ -1204,6 +1219,7 @@ export default function ArielHRPage() {
       // 3. Update local state immediately (user sees success)
       setAllRows(cleanRows)
       setEditedRows(cleanRows.map(r => [...r]))
+      setFilters(updatedFilters)
       setDirtyKeys(new Set())
       setDeletedRows(new Set())
       setLocalSaveStatus('')
