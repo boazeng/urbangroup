@@ -256,8 +256,8 @@ def _build_step_message(step_id, script, session_data):
     except (ValueError, KeyError):
         pass
 
-    # For the first step, prepend greeting
-    if step_id == script.get("first_step"):
+    # For the first displayed step, prepend greeting
+    if not session_data.get("_greeted"):
         customer_name = session_data.get("customer_name", "")
         if customer_name:
             greeting = script.get("greeting_known", "שלום {customer_name}!").format(
@@ -270,6 +270,7 @@ def _build_step_message(step_id, script, session_data):
         if device_number:
             greeting += f"\nזיהינו את מכשיר מספר {device_number}."
         text = f"{greeting}\n{text}"
+        session_data["_greeted"] = True
 
     step_type = step.get("type", "text_input")
 
