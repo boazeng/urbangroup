@@ -255,10 +255,16 @@ def create_service_call(service_call_data):
     if service_call_data.get("is_system_down"):
         body["BREAKSTART"] = _israel_now()
 
-    # Facility address in DETAILS
+    # DETAILS = first 22 chars of fault description + location
+    fault_desc = service_call_data.get("fault_text", "") or service_call_data.get("description", "")
+    details_parts = []
+    if fault_desc:
+        details_parts.append(fault_desc[:22])
     location = service_call_data.get("location", "")
     if location:
-        body["DETAILS"] = location
+        details_parts.append(location)
+    if details_parts:
+        body["DETAILS"] = " | ".join(details_parts)
 
     # Build fault description text for DOCTEXT_Q_2_SUBFORM
     # fault_text already includes description, so don't add description separately
