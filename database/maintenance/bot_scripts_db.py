@@ -141,7 +141,12 @@ def _deserialize_item(item):
             try:
                 data[k] = json.loads(v)
             except (json.JSONDecodeError, TypeError):
-                data[k] = v
+                # Fallback: try Python literal (single quotes from repr)
+                try:
+                    import ast
+                    data[k] = ast.literal_eval(v)
+                except Exception:
+                    data[k] = v
         elif isinstance(v, Decimal):
             data[k] = int(v) if v == int(v) else float(v)
         else:
