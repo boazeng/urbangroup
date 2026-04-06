@@ -838,6 +838,16 @@ def process_message(phone, text, msg_type="text", caption=""):
     current_step = session.get("step", "")
     logger.info(f"[M10010] Processing {phone} step={current_step} input={text[:50]}")
 
+    # User pressed -1 → end conversation immediately
+    if text.strip() == "-1":
+        logger.info(f"[M10010] User {phone} pressed -1 → ending session")
+        session["status"] = "cancelled"
+        _append_log(session, "session_cancelled", step=current_step)
+        db.update_session_step(phone, "CANCELLED")
+        session["expires_at"] = int(time.time()) + 7 * 86400
+        db.save_session(session)
+        return {"text": "השיחה הסתיימה. תודה!"}
+
     next_step = _process_step_input(current_step, script, session, text, msg_type)
 
     # If device_number was just entered, enrich customer info from Priority
