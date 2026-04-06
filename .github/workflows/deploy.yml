@@ -161,7 +161,7 @@ jobs:
               "OpenAiApiKey=${{ secrets.OPENAI_API_KEY }}" \
               "AnthropicApiKey=${{ secrets.ANTHROPIC_API_KEY || 'not-configured' }}" \
               "ClaudeModel=claude-sonnet-4-20250514" \
-              "RoutingScriptId=flow_1772177781916" \
+              "RoutingScriptId=maintenance-troubleshoot" \
               "SharePointTenantId=${{ secrets.SHAREPOINT_TENANT_ID }}" \
               "SharePointClientId=${{ secrets.SHAREPOINT_CLIENT_ID }}" \
               "SharePointClientSecret=${{ secrets.SHAREPOINT_CLIENT_SECRET }}" \
