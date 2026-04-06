@@ -718,6 +718,10 @@ def get_active_session(phone):
     if not session:
         return None
 
+    # Session marked as done or cancelled — not active
+    if session.get("status") in ("done", "cancelled"):
+        return None
+
     step = session.get("step")
     # Check if step is a done step
     script = _load_script(session.get("script_id"))
