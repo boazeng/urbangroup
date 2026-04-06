@@ -265,10 +265,6 @@ def _build_step_message(step_id, script, session_data):
             )
         else:
             greeting = script.get("greeting_unknown", "שלום!")
-        # Add device identification info if auto-detected
-        device_number = session_data.get("device_number", "")
-        if device_number:
-            greeting += f"\nזיהינו את מכשיר מספר {device_number}."
         text = f"{greeting}\n{text}"
         session_data["_greeted"] = True
 
