@@ -911,7 +911,7 @@ def _save_customer_message(session, script=None):
                 message = session[save_to]
                 break
 
-    maint_db.save_service_call(
+    call_data = dict(
         phone=phone,
         name=name,
         issue_type="הודעה",
@@ -923,7 +923,21 @@ def _save_customer_message(session, script=None):
         custname=session.get("customer_number", "") or "99999",
         cdes=name,
         technicianlogin=_get_technician(),
+        callstatuscode="הודעות מלקוח",
     )
+    result = maint_db.save_service_call(**call_data)
+    call_id = result.get("id", "")
+
+    # Auto-push to Priority
+    try:
+        writer = _get_service_call_writer()
+        call_data["fault_text"] = f"הודעה מלקוח:\n{message}\nטלפון: {phone}\nשם: {name}"
+        priority_result = writer.create_service_call(call_data)
+        priority_callno = str(priority_result.get("DOCNO", ""))
+        maint_db.mark_service_call_pushed(call_id, callno=priority_callno)
+        logger.info(f"[M10010] Message auto-pushed to Priority: DOCNO={priority_callno}")
+    except Exception as e:
+        logger.error(f"[M10010] Message auto-push to Priority failed: {e}")
 
 
 def _save_completed_service_call(session, script=None):
