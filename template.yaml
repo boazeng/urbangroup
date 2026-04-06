@@ -52,7 +52,7 @@ Parameters:
     Default: "claude-sonnet-4-20250514"
   RoutingScriptId:
     Type: String
-    Default: "flow_1772177781916"
+    Default: "maintenance-troubleshoot"
   SharePointTenantId:
     Type: String
     NoEcho: true
