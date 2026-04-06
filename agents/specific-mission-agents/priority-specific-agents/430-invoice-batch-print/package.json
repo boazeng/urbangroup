@@ -1,0 +1,10 @@
+{
+  "name": "430-invoice-batch-print",
+  "version": "1.0.0",
+  "main": "print-invoice.js",
+  "description": "Batch print AINVOICES via Priority Web SDK",
+  "dependencies": {
+    "dotenv": "^17.2.4",
+    "priority-web-sdk": "^3.0.37"
+  }
+}

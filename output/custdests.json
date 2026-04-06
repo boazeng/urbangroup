@@ -1,0 +1,2 @@
+{"error":{"code":"400","message":"Could not find a property named 'CDES' on type 'Priority.OData.CUSTDESTS_ONE'.","target":"","details":{},"innererror":{} }}
+HTTP: 400

@@ -1,0 +1,1388 @@
+[
+  {
+    "page": 1,
+    "inv_num": "8289",
+    "date": "2025-12-31",
+    "amount": 15184.0,
+    "total_with_vat": 17917.12,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 2,
+    "inv_num": "8288",
+    "date": "2025-12-31",
+    "amount": 19000.0,
+    "total_with_vat": 22420.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 3,
+    "inv_num": "8287",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 4,
+    "inv_num": "8286",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 5,
+    "inv_num": "8285",
+    "date": "2025-12-31",
+    "amount": 18900.0,
+    "total_with_vat": 22302.0,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 6,
+    "inv_num": "8284",
+    "date": "2025-12-31",
+    "amount": 19100.0,
+    "total_with_vat": 22538.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 7,
+    "inv_num": "8283",
+    "date": "2025-12-31",
+    "amount": 19700.0,
+    "total_with_vat": 23246.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 8,
+    "inv_num": "8282",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 9,
+    "inv_num": "8281",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 10,
+    "inv_num": "8280",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 11,
+    "inv_num": "8279",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 12,
+    "inv_num": "8278",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 13,
+    "inv_num": "8277",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 14,
+    "inv_num": "8276",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 15,
+    "inv_num": "8275",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 16,
+    "inv_num": "8274",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 17,
+    "inv_num": "8273",
+    "date": "2025-12-31",
+    "amount": 19990.0,
+    "total_with_vat": 23588.2,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 18,
+    "inv_num": "8272",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 19,
+    "inv_num": "8271",
+    "date": "2025-12-31",
+    "amount": 19700.0,
+    "total_with_vat": 23246.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 20,
+    "inv_num": "8270",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 21,
+    "inv_num": "8269",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 22,
+    "inv_num": "8268",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 23,
+    "inv_num": "8267",
+    "date": "2025-12-31",
+    "amount": 19200.0,
+    "total_with_vat": 22656.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 24,
+    "inv_num": "8266",
+    "date": "2025-12-31",
+    "amount": 19200.0,
+    "total_with_vat": 22656.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 25,
+    "inv_num": "8265",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 26,
+    "inv_num": "8264",
+    "date": "2025-12-31",
+    "amount": 19700.0,
+    "total_with_vat": 23246.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 27,
+    "inv_num": "8263",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 28,
+    "inv_num": "8262",
+    "date": "2025-12-31",
+    "amount": 19500.0,
+    "total_with_vat": 23010.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 29,
+    "inv_num": "8261",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 30,
+    "inv_num": "8260",
+    "date": "2025-12-31",
+    "amount": 19400.0,
+    "total_with_vat": 22892.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 31,
+    "inv_num": "8259",
+    "date": "2025-12-31",
+    "amount": 19100.0,
+    "total_with_vat": 22538.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 32,
+    "inv_num": "8258",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 33,
+    "inv_num": "8257",
+    "date": "2025-12-31",
+    "amount": 19870.0,
+    "total_with_vat": 23446.6,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 34,
+    "inv_num": "8256",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 35,
+    "inv_num": "8255",
+    "date": "2025-12-31",
+    "amount": 19700.0,
+    "total_with_vat": 23246.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 36,
+    "inv_num": "8254",
+    "date": "2025-12-31",
+    "amount": 19970.0,
+    "total_with_vat": 23564.6,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 37,
+    "inv_num": "8253",
+    "date": "2025-12-31",
+    "amount": 19880.0,
+    "total_with_vat": 23458.4,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 38,
+    "inv_num": "8252",
+    "date": "2025-12-31",
+    "amount": 19700.0,
+    "total_with_vat": 23246.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 39,
+    "inv_num": "8251",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 40,
+    "inv_num": "8250",
+    "date": "2025-12-31",
+    "amount": 19880.0,
+    "total_with_vat": 23458.4,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 41,
+    "inv_num": "8249",
+    "date": "2025-12-31",
+    "amount": 19440.0,
+    "total_with_vat": 22939.2,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 42,
+    "inv_num": "8248",
+    "date": "2025-12-31",
+    "amount": 19200.0,
+    "total_with_vat": 22656.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 43,
+    "inv_num": "8247",
+    "date": "2025-12-31",
+    "amount": 19200.0,
+    "total_with_vat": 22656.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 44,
+    "inv_num": "8246",
+    "date": "2025-12-31",
+    "amount": 19100.0,
+    "total_with_vat": 22538.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 45,
+    "inv_num": "8245",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 46,
+    "inv_num": "8244",
+    "date": "2025-12-31",
+    "amount": 19776.0,
+    "total_with_vat": 23335.68,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 47,
+    "inv_num": "8243",
+    "date": "2025-12-31",
+    "amount": 19100.0,
+    "total_with_vat": 22538.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 48,
+    "inv_num": "8242",
+    "date": "2025-12-31",
+    "amount": 19100.0,
+    "total_with_vat": 22538.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 49,
+    "inv_num": "8241",
+    "date": "2025-12-31",
+    "amount": 19770.0,
+    "total_with_vat": 23328.6,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 50,
+    "inv_num": "8240",
+    "date": "2025-12-31",
+    "amount": 19980.0,
+    "total_with_vat": 23576.4,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 51,
+    "inv_num": "8239",
+    "date": "2025-12-31",
+    "amount": 19770.0,
+    "total_with_vat": 23328.6,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 52,
+    "inv_num": "8238",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 53,
+    "inv_num": "8237",
+    "date": "2025-12-31",
+    "amount": 19770.0,
+    "total_with_vat": 23328.6,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 54,
+    "inv_num": "8236",
+    "date": "2025-12-31",
+    "amount": 19770.0,
+    "total_with_vat": 23328.6,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 55,
+    "inv_num": "8235",
+    "date": "2025-12-31",
+    "amount": 19300.0,
+    "total_with_vat": 22774.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 56,
+    "inv_num": "8234",
+    "date": "2025-12-31",
+    "amount": 19770.0,
+    "total_with_vat": 23328.6,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 57,
+    "inv_num": "8233",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 58,
+    "inv_num": "8232",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 59,
+    "inv_num": "8231",
+    "date": "2025-12-31",
+    "amount": 19700.0,
+    "total_with_vat": 23246.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 60,
+    "inv_num": "8230",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 61,
+    "inv_num": "8229",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 62,
+    "inv_num": "8228",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 63,
+    "inv_num": "8227",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 64,
+    "inv_num": "8226",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 65,
+    "inv_num": "8225",
+    "date": "2025-12-31",
+    "amount": 19600.0,
+    "total_with_vat": 23128.0,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 66,
+    "inv_num": "8224",
+    "date": "2025-12-31",
+    "amount": 19980.0,
+    "total_with_vat": 23576.4,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 67,
+    "inv_num": "8223",
+    "date": "2025-12-31",
+    "amount": 19770.0,
+    "total_with_vat": 23328.6,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 68,
+    "inv_num": "8222",
+    "date": "2025-12-31",
+    "amount": 19700.0,
+    "total_with_vat": 23246.0,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 69,
+    "inv_num": "8221",
+    "date": "2025-12-31",
+    "amount": 19660.0,
+    "total_with_vat": 23198.8,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 70,
+    "inv_num": "8220",
+    "date": "2025-12-31",
+    "amount": 19200.0,
+    "total_with_vat": 22656.0,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 71,
+    "inv_num": "8219",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 72,
+    "inv_num": "8218",
+    "date": "2025-12-31",
+    "amount": 19100.0,
+    "total_with_vat": 22538.0,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 73,
+    "inv_num": "8217",
+    "date": "2025-12-31",
+    "amount": 19880.0,
+    "total_with_vat": 23458.4,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 74,
+    "inv_num": "8216",
+    "date": "2025-12-31",
+    "amount": 19200.0,
+    "total_with_vat": 22656.0,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 75,
+    "inv_num": "8215",
+    "date": "2025-12-31",
+    "amount": 19600.0,
+    "total_with_vat": 23128.0,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 76,
+    "inv_num": "8214",
+    "date": "2025-12-31",
+    "amount": 19870.0,
+    "total_with_vat": 23446.6,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 77,
+    "inv_num": "8213",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 78,
+    "inv_num": "8212",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 79,
+    "inv_num": "8211",
+    "date": "2025-12-31",
+    "amount": 19700.0,
+    "total_with_vat": 23246.0,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 80,
+    "inv_num": "8210",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 81,
+    "inv_num": "8209",
+    "date": "2025-12-31",
+    "amount": 19600.0,
+    "total_with_vat": 23128.0,
+    "description": "עבור עבודות גמר",
+    "details": "עבודות גמר"
+  },
+  {
+    "page": 82,
+    "inv_num": "8208",
+    "date": "2025-12-31",
+    "amount": 19400.0,
+    "total_with_vat": 22892.0,
+    "description": "עבור עבודות גמר",
+    "details": "עבודות גמר"
+  },
+  {
+    "page": 83,
+    "inv_num": "8207",
+    "date": "2025-12-31",
+    "amount": 19300.0,
+    "total_with_vat": 22774.0,
+    "description": "עבור עבודות גמר",
+    "details": "עבודות גמר"
+  },
+  {
+    "page": 84,
+    "inv_num": "8206",
+    "date": "2025-12-31",
+    "amount": 19200.0,
+    "total_with_vat": 22656.0,
+    "description": "עבור עבודות גמר",
+    "details": "עבודות גמר"
+  },
+  {
+    "page": 85,
+    "inv_num": "8205",
+    "date": "2025-12-31",
+    "amount": 19100.0,
+    "total_with_vat": 22538.0,
+    "description": "עבור עבודות גמר",
+    "details": "עבודות גמר"
+  },
+  {
+    "page": 86,
+    "inv_num": "8204",
+    "date": "2025-12-31",
+    "amount": 19600.0,
+    "total_with_vat": 23128.0,
+    "description": "עבור עבודות גמר",
+    "details": "עבודות גמר"
+  },
+  {
+    "page": 87,
+    "inv_num": "8203",
+    "date": "2025-12-31",
+    "amount": 19880.0,
+    "total_with_vat": 23458.4,
+    "description": "עבור עבודות גמר",
+    "details": "עבודות גמר"
+  },
+  {
+    "page": 88,
+    "inv_num": "8202",
+    "date": "2025-12-31",
+    "amount": 19770.0,
+    "total_with_vat": 23328.6,
+    "description": "עבור עבודות גמר",
+    "details": "עבודות גמר"
+  },
+  {
+    "page": 89,
+    "inv_num": "8201",
+    "date": "2025-12-31",
+    "amount": 19990.0,
+    "total_with_vat": 23588.2,
+    "description": "עבור עבודות גמר",
+    "details": "עבודות גמר"
+  },
+  {
+    "page": 90,
+    "inv_num": "8200",
+    "date": "2025-12-31",
+    "amount": 19100.0,
+    "total_with_vat": 22538.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 91,
+    "inv_num": "8199",
+    "date": "2025-12-31",
+    "amount": 19600.0,
+    "total_with_vat": 23128.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 92,
+    "inv_num": "8198",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 93,
+    "inv_num": "8197",
+    "date": "2025-12-31",
+    "amount": 19770.0,
+    "total_with_vat": 23328.6,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 94,
+    "inv_num": "8196",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 95,
+    "inv_num": "8195",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 96,
+    "inv_num": "8194",
+    "date": "2025-12-31",
+    "amount": 19660.0,
+    "total_with_vat": 23198.8,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 97,
+    "inv_num": "8193",
+    "date": "2025-12-31",
+    "amount": 19100.0,
+    "total_with_vat": 22538.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 98,
+    "inv_num": "8192",
+    "date": "2025-12-31",
+    "amount": 19200.0,
+    "total_with_vat": 22656.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 99,
+    "inv_num": "8191",
+    "date": "2025-12-31",
+    "amount": 19100.0,
+    "total_with_vat": 22538.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 100,
+    "inv_num": "8190",
+    "date": "2025-12-31",
+    "amount": 19700.0,
+    "total_with_vat": 23246.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 101,
+    "inv_num": "8189",
+    "date": "2025-12-31",
+    "amount": 19770.0,
+    "total_with_vat": 23328.6,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 102,
+    "inv_num": "8188",
+    "date": "2025-12-31",
+    "amount": 19980.0,
+    "total_with_vat": 23576.4,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 103,
+    "inv_num": "8341",
+    "date": "2025-12-31",
+    "amount": 11781.0,
+    "total_with_vat": 13901.58,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 104,
+    "inv_num": "8340",
+    "date": "2025-12-31",
+    "amount": 17000.0,
+    "total_with_vat": 20060.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 105,
+    "inv_num": "8339",
+    "date": "2025-12-31",
+    "amount": 15000.0,
+    "total_with_vat": 17700.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 106,
+    "inv_num": "8338",
+    "date": "2025-12-31",
+    "amount": 19300.0,
+    "total_with_vat": 22774.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 107,
+    "inv_num": "8337",
+    "date": "2025-12-31",
+    "amount": 18100.0,
+    "total_with_vat": 21358.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 108,
+    "inv_num": "8336",
+    "date": "2025-12-31",
+    "amount": 19100.0,
+    "total_with_vat": 22538.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 109,
+    "inv_num": "8335",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 110,
+    "inv_num": "8334",
+    "date": "2025-12-31",
+    "amount": 19100.0,
+    "total_with_vat": 22538.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 111,
+    "inv_num": "8333",
+    "date": "2025-12-31",
+    "amount": 19770.0,
+    "total_with_vat": 23328.6,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 112,
+    "inv_num": "8332",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 113,
+    "inv_num": "8331",
+    "date": "2025-12-31",
+    "amount": 19100.0,
+    "total_with_vat": 22538.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 114,
+    "inv_num": "8330",
+    "date": "2025-12-31",
+    "amount": 19999.0,
+    "total_with_vat": 23598.82,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 115,
+    "inv_num": "8329",
+    "date": "2025-12-31",
+    "amount": 19700.0,
+    "total_with_vat": 23246.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 116,
+    "inv_num": "8328",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 117,
+    "inv_num": "8327",
+    "date": "2025-12-31",
+    "amount": 19660.0,
+    "total_with_vat": 23198.8,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 118,
+    "inv_num": "8326",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 119,
+    "inv_num": "8325",
+    "date": "2025-12-31",
+    "amount": 19300.0,
+    "total_with_vat": 22774.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 120,
+    "inv_num": "8324",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 121,
+    "inv_num": "8323",
+    "date": "2025-12-31",
+    "amount": 19770.0,
+    "total_with_vat": 23328.6,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 122,
+    "inv_num": "8322",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 123,
+    "inv_num": "8321",
+    "date": "2025-12-31",
+    "amount": 19200.0,
+    "total_with_vat": 22656.0,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 124,
+    "inv_num": "8320",
+    "date": "2025-12-31",
+    "amount": 19500.0,
+    "total_with_vat": 23010.0,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 125,
+    "inv_num": "8319",
+    "date": "2025-12-31",
+    "amount": 19700.0,
+    "total_with_vat": 23246.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 126,
+    "inv_num": "8318",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 127,
+    "inv_num": "8317",
+    "date": "2025-12-31",
+    "amount": 19100.0,
+    "total_with_vat": 22538.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 128,
+    "inv_num": "8316",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 129,
+    "inv_num": "8315",
+    "date": "2025-12-31",
+    "amount": 19100.0,
+    "total_with_vat": 22538.0,
+    "description": "עבור עבודות עפר",
+    "details": "עבודות עפר"
+  },
+  {
+    "page": 130,
+    "inv_num": "8314",
+    "date": "2025-12-31",
+    "amount": 19200.0,
+    "total_with_vat": 22656.0,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 131,
+    "inv_num": "8313",
+    "date": "2025-12-31",
+    "amount": 19400.0,
+    "total_with_vat": 22892.0,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 132,
+    "inv_num": "8312",
+    "date": "2025-12-31",
+    "amount": 19770.0,
+    "total_with_vat": 23328.6,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 133,
+    "inv_num": "8311",
+    "date": "2025-12-31",
+    "amount": 19500.0,
+    "total_with_vat": 23010.0,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 134,
+    "inv_num": "8310",
+    "date": "2025-12-31",
+    "amount": 19200.0,
+    "total_with_vat": 22656.0,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 135,
+    "inv_num": "8309",
+    "date": "2025-12-31",
+    "amount": 19660.0,
+    "total_with_vat": 23198.8,
+    "description": "עבור עבודות שלד",
+    "details": "עבודות שלד"
+  },
+  {
+    "page": 136,
+    "inv_num": "8308",
+    "date": "2025-12-31",
+    "amount": 19880.0,
+    "total_with_vat": 23458.4,
+    "description": "עבור עבודות גמר",
+    "details": "עבודות גמר"
+  },
+  {
+    "page": 137,
+    "inv_num": "8307",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות גמר",
+    "details": "עבודות גמר"
+  },
+  {
+    "page": 138,
+    "inv_num": "8306",
+    "date": "2025-12-31",
+    "amount": 19100.0,
+    "total_with_vat": 22538.0,
+    "description": "עבור עבודות גמר",
+    "details": "עבודות גמר"
+  },
+  {
+    "page": 139,
+    "inv_num": "8305",
+    "date": "2025-12-31",
+    "amount": 19300.0,
+    "total_with_vat": 22774.0,
+    "description": "עבור עבודות גמר",
+    "details": "עבודות גמר"
+  },
+  {
+    "page": 140,
+    "inv_num": "8304",
+    "date": "2025-12-31",
+    "amount": 19700.0,
+    "total_with_vat": 23246.0,
+    "description": "עבור עבודות גמר",
+    "details": "עבודות גמר"
+  },
+  {
+    "page": 141,
+    "inv_num": "8303",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות גמר",
+    "details": "עבודות גמר"
+  },
+  {
+    "page": 142,
+    "inv_num": "8302",
+    "date": "2025-12-31",
+    "amount": 19770.0,
+    "total_with_vat": 23328.6,
+    "description": "עבור עבודות גמר",
+    "details": "עבודות גמר"
+  },
+  {
+    "page": 143,
+    "inv_num": "8301",
+    "date": "2025-12-31",
+    "amount": 19200.0,
+    "total_with_vat": 22656.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 144,
+    "inv_num": "8300",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 145,
+    "inv_num": "8299",
+    "date": "2025-12-31",
+    "amount": 19770.0,
+    "total_with_vat": 23328.6,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 146,
+    "inv_num": "8298",
+    "date": "2025-12-31",
+    "amount": 19100.0,
+    "total_with_vat": 22538.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 147,
+    "inv_num": "8297",
+    "date": "2025-12-31",
+    "amount": 19100.0,
+    "total_with_vat": 22538.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 148,
+    "inv_num": "8296",
+    "date": "2025-12-31",
+    "amount": 19900.0,
+    "total_with_vat": 23482.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 149,
+    "inv_num": "8295",
+    "date": "2025-12-31",
+    "amount": 19700.0,
+    "total_with_vat": 23246.0,
+    "description": "עבור עבודות בניה",
+    "details": "עבודות בניה"
+  },
+  {
+    "page": 150,
+    "inv_num": "8294",
+    "date": "2025-12-31",
+    "amount": 19200.0,
+    "total_with_vat": 22656.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 151,
+    "inv_num": "8293",
+    "date": "2025-12-31",
+    "amount": 19800.0,
+    "total_with_vat": 23364.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 152,
+    "inv_num": "8292",
+    "date": "2025-12-31",
+    "amount": 19400.0,
+    "total_with_vat": 22892.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 153,
+    "inv_num": "8291",
+    "date": "2025-12-31",
+    "amount": 19100.0,
+    "total_with_vat": 22538.0,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  },
+  {
+    "page": 154,
+    "inv_num": "8290",
+    "date": "2025-12-31",
+    "amount": 19770.0,
+    "total_with_vat": 23328.6,
+    "description": "עבור עבודות שיפוצים",
+    "details": "עבודות שיפוצים"
+  }
+]

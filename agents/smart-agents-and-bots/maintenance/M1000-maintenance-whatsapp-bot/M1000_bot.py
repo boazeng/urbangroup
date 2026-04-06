@@ -371,6 +371,7 @@ def process_message(phone, name, text, msg_type="text", message_id="", media_id=
             logger.error(f"[M1000] Equipment lookup by sernum failed: {e}")
 
     # Voice bot: create service call directly without interactive flow
+    logger.info(f"[M1000] VOICE_BOT_PHONES={VOICE_BOT_PHONES}, phone={phone}, match={phone in VOICE_BOT_PHONES}")
     if phone in VOICE_BOT_PHONES:
         logger.info(f"[M1000] Voice bot detected ({phone}), creating service call directly")
         return _handle_voice_bot(

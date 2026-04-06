@@ -1,0 +1,812 @@
+﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!-- saved from url=(0016)http://127.0.0.1 -->
+<HTML>
+<HEAD>
+<meta http-equiv='X-UA-Compatible' content='IE=edge'/>
+<TITLE>הדפסת חשבונית מס</TITLE>
+<meta name="GENERATOR" content="Priority 22.1 - Enterprise Management System - Copyright © Priority Software Ltd. 1986-2023">
+<meta http-equiv="Content-Type" content="text/html;  charset=utf-8">
+<link rel="icon" href="data:,">
+<SCRIPT LANGUAGE=javascript TYPE="text/javascript">
+<!--
+<!--| Priority Script |-->
+<!--| Priority Report Options |-->
+function initform() {
+    <!--| Priority Defaults |-->
+	return true;
+}
+function validate(form) {
+	return true;
+}
+//-->
+</SCRIPT>
+<style>
+<!--
+@font-face {
+    font-family: 'Heebo';
+	src: url('https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/Heebo-Regular.woff') format('woff'),
+		 url('https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/Heebo-Regular.woff2') format('woff2');
+    src: url('https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/Heebo-Regular.eot')  format("eot"),
+		 url('https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/Heebo-Regular.eot?#iefix') format('embedded-opentype');
+}
+
+
+@font-face {
+    font-family: 'Bree Serif';
+	src: url('https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/BreeSerif-Regular.woff') format('woff'),
+		 url('https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/BreeSerif-Regular.woff2') format('woff2');
+	src: url('https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/BreeSerif-Regular.eot') format("eot"),
+		 url('https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/BreeSerif-Regular.eot?#iefix') format('embedded-opentype');
+}
+
+
+body	{
+	font-family:'Arial';
+	font-size: 12pt; 
+}
+
+
+tr font[style*="Bree Serif"] {
+	font-family: 'Bree Serif', serif !important;
+}
+tr[dir="rtl"] font[style*="Bree Serif"] {
+	font-family: "Heebo" !important;
+}
+
+/* a	{ color: #305774; text-decoration: underline }
+a:hover { color: #000000; } */
+a	{ color: #00adee;  text-decoration: underline;}
+.ColTitlesLine td a{
+	text-decoration: none;
+}
+.datafont {
+	font-size: 9pt; 
+	font-family: Verdana, Sans Serif, Helvetica; 
+}
+.totalfont {
+	font-size: 9pt; 
+	font-family: Verdana, Sans Serif, Helvetica; 
+}
+.titlefont {
+	font-size: 9pt; 
+	font-family: Verdana, Sans Serif, Helvetica; 
+	font-weight: bold; 
+}
+.groupfont {
+	font-size: 9pt; 
+	font-family: Verdana, Sans Serif, Helvetica; 
+}
+.SmallDataFont {
+	font-size: 8pt; 
+	font-family:Arial;
+}
+#a { text-decoration:none; color:#000080; }
+#a:hover {text-decoration:underline; color:"#0000ff"}
+.DOCNO a{
+	text-decoration:underline; color:"#000000";
+}
+p {margin:0cm;font-size:10.0pt;font-family:'Arial';}
+thead {display: table-header-group}
+tfoot {display: table-footer-group}
+table {border-collapse:collapse}
+/*
+td {mso-number-format:\@} 
+*/
+.Editcbtn { height:18; width:22;
+            BORDER-LEFT: threedface 1px solid;
+            BORDER-RIGHT: threedface 1px solid;
+            BORDER-TOP: threedface 1px solid;
+            BORDER-BOTTOM: threedface 1px solid; }
+.titletbl { 
+	height:40px;
+	box-sizing:border-box;
+	 -moz-box-sizing:border-box; /* Firefox */
+	 -webkit-box-sizing:border-box; /* Safari */
+}
+.tabstbl {
+	height:30px;
+}
+.buttonstbl {
+	height:19px;
+	table-layout: fixed;
+}
+.buttonstbl a { text-decoration:none; color:#000080; }
+.dbframe {
+	border-style:solid;
+	border-width:1;
+	border-color:#808080;
+	margin-left:3px;
+	margin-right:0px;
+	margin-top:3px;
+	margin-bottom:0px;
+	display:none;
+}
+.titlebar{
+	background-image:url(https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/titlebar40.jpg);
+	padding-left:5px;
+	padding-right:5px;
+	padding-top:4px;
+	padding-bottom:4px;
+	valign:center;
+}
+.titlebar img{
+	margin-left:2px;
+	margin-right:2px;
+}
+.lefton a { text-decoration:none; color:#000080; }
+.lefton {
+	background-image:url(https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/left-on30.png);
+	background-repeat:no-repeat;
+	padding-left:10px;
+	padding-right:0px;
+	vertical-align:top;
+	cursor:pointer;
+}
+.leftoff a{ text-decoration:none; color:#000080; }
+.leftoff {
+	background-image:url(https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/left-off30.png);
+	background-repeat:no-repeat;
+	padding-left:10px;
+	padding-right:0px;
+	vertical-align:top;
+	cursor:pointer;
+}
+.leftonmiddleoff a{ text-decoration:none; color:#000080; }
+.leftonmiddleoff {
+	background-image:url(https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/left-on-middle-off30.png);
+	background-repeat:no-repeat;
+	padding-left:20px;
+	padding-right:0px;
+	vertical-align:top;
+	cursor:pointer;
+}
+.middleon a{ text-decoration:none; color:#000080; }
+.middleon {
+	background-image:url(https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/middle-on30.png);
+	background-repeat:no-repeat;
+	padding-left:20px;
+	padding-right:0px;
+	vertical-align:top;
+	cursor:pointer;
+}
+.middleoff a{ text-decoration:none; color:#000080; }
+.middleoff {
+	background-image:url(https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/middle-off30.png);
+	background-repeat:no-repeat;
+	padding-left:20px;
+	padding-right:0px;
+	vertical-align:top;
+	cursor:pointer;
+}
+.righton a{ text-decoration:none; color:#000080; }
+.righton {
+	background-image:url(https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/right-on30.png);
+	background-repeat:no-repeat;
+	width:10px;
+	vertical-align:top;
+}
+.rightoff a{ text-decoration:none; color:#000080; }
+.rightoff {
+	background-image:url(https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/right-off30.png);
+	background-repeat:no-repeat;
+	width:10px;
+	vertical-align:top;
+}
+.indent {
+	padding-left:25px;
+	padding-right:25px;
+}
+.newpage {
+	page-break-before:always;
+}
+.fs {
+	background-color:white;
+	border-collapse:separate;
+}
+.bttn1,.bttn2,.bttn3,.bttn4,.bttn5,.bttn6,.bttn7,.bttn8 {
+	background-image:url(https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/bttnm.bmp);
+	width:70px;
+	cursor:pointer;
+	vertical-align:top
+}
+.disabled_bttn {
+	background-image:url(https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/bttnm-gray.bmp);
+	width:70px;
+	cursor:default;
+}
+.disabled_bttn font {
+	color:#404040;
+}
+.rightbtn{
+	background-image:url(https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/bttnr.gif);
+	background-repeat:no-repeat;
+	width:15px;
+	cursor:default;
+}
+.disabled_rightbtn{
+	background-image:url(https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/bttnr-gray.gif);
+	width:15px;
+	cursor:default;
+}
+.leftbtn{
+	background-image:url(https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/bttnl.gif);
+	background-repeat:no-repeat;
+	width:15px;
+	cursor:default;
+}
+.disabled_leftbtn{
+	background-image:url(https://p.priority-connect.online/html/priority/priimages/tabz0qun.ini/bttnl-gray.gif);
+	width:15px;
+	cursor:default;
+}
+.ol2{
+	border-top-style:double;
+	border-top-width:3;
+	border-top-color:black;
+}
+.ol{
+	border-top-style:solid;
+	border-top-width:1;
+	border-top-color:black;
+}
+.ul2{
+	border-bottom-style:double;
+	border-bottom-width:3;
+	border-bottom-color:black;
+}
+.ul{
+	border-bottom-style:solid;
+	border-bottom-width:1;
+	border-bottom-color:black;
+}
+.olul2{
+	border-top-style:solid;
+	border-top-width:1;
+	border-top-color:black;
+	border-bottom-style:double;
+	border-bottom-width:3;
+	border-bottom-color:black;
+}
+.ol2ul2{
+	border-top-style:double;
+	border-top-width:3;
+	border-top-color:black;
+	border-bottom-style:double;
+	border-bottom-width:3;
+	border-bottom-color:black;
+}
+.olul{
+	border-top-style:solid;
+	border-top-width:1;
+	border-top-color:black;
+	border-bottom-style:solid;
+	border-bottom-width:1;
+	border-bottom-color:black;
+	background: none;
+}
+/* Styles for scrollable tables */
+.tableContainer {
+	position: relative;	/* to capture the absolutely positioned table header */
+	padding-top: 22px;	/* space for the column heads */
+	margin: 0 auto;
+	width: auto;
+	}
+
+/* this enables the table to scroll without scrolling the page */
+.innerFrame {
+	padding-right: 18px;/* space for the scrollbar */
+    /*overflow: hidden;		
+	overflow-y: scroll;	*/
+	height: 500px;		/* height is required */
+	}
+
+/* position the row of column heads above the table */
+.tableContainer thead tr {
+	/* position: absolute;	throws the header out of the table */
+	top: 0px;
+	left: 0px;			
+	border-right: solid 1pt #d0d0d0;
+	}
+.tableContainer table{
+	border-right: solid 1px #d0d0d0;
+	border-bottom: solid 1px #d0d0d0;
+	border-left: solid 0px black;
+	border-top: solid 0px black;
+	width: 100%;
+	border-collapse:separate;
+	}
+	
+.tableContainer thead td	{
+	/*border-bottom: solid 1pt #d0d0d0;*/
+	}
+	
+.tableContainer td	{
+	/*border-top: solid 1px #d0d0d0;
+	border-left: solid 1px #d0d0d0;
+	border-bottom: solid 0pt black;
+	border-right: solid 0px black;*/
+	}
+.titletable	{ 
+	font-size: 9pt; 
+	font-family: Verdana, Sans Serif, Helvetica; 
+	font-weight: bold; 
+	border-left: 1px solid #F8F8F8; 
+	border-top: 1px solid #F8F8F8; 
+	border-right: 1px solid #909090; 
+	border-bottom: 1px solid #909090; 
+	background-color:#B4CFE0; 
+	height:22 
+}
+.matrix_cell {
+	width:50px;
+}
+.typeborder {
+	display: inline-block;
+	font-family:'Arial';
+	font-size: 16pt; 
+	font-weight: bold;
+	border-style:solid;
+	border-width:2;
+	border-color:black;
+	padding: 2px;
+}
+.hidethead {
+	font-size: 9pt; 
+	font-family: Verdana, Sans Serif, Helvetica; 
+}
+.hidethead thead{
+	display:none
+}
+
+textarea	{ font-size: 9pt; font-family:Courier New, "monospace"; }
+input		{ font-size: 9pt;}
+select		{ font-size: 9pt;}
+#_prigroupheader b{
+	display: flex;
+    align-items: center;
+}
+
+#_prigroupheader:not([align="left"]):not([dir="rtl"]) b{
+	flex-direction: row-reverse;
+}
+.qrcode 
+{
+	width: 200px;
+	height:200px;
+	right: 0;
+    float: right;
+	page-break-inside: avoid;
+}
+-->
+</style>
+
+<style type="text/css" media="print">
+<!--
+._pri_avoid_breaks tr{
+	page-break-inside: avoid;
+}
+.rulesgroups  td {
+	border-left: 1px solid  black;
+	border-right: 1px solid  black;
+}
+.rulesgroups .ColTitlesLine td {
+	border: 1px solid  black;
+}
+.rulesall td {
+	border-width: 1px;
+	border-style: solid;
+	border-color: black;
+}
+a { color: #000000; text-decoration: none }
+.innerFrame {overflow: visible;}
+.tableContainer {padding-top: 0px;}
+.tableContainer thead tr {position: static;}
+.tableContainer td	{
+	border-top: solid 1px black;
+	border-left: solid 1px black;
+	border-bottom: solid 1pt black;
+	border-right: solid 1px black;
+}
+.tableContainer table{
+	border-right: solid 1px black;
+	border-bottom: solid 1px black;
+	border-left: solid 1px black;
+	border-top: solid 1px black;
+	border-collapse:collapse;
+}
+#_reporticons {
+	display:none;
+}
+#_divscr1 {
+    height: auto !important;
+}
+#_divscr1 table {
+    width: 100% !important;
+}
+
+-->
+</style>
+<!--
+<div name='barcode' style="visibility:hidden;position:absolute;font-family:Free 3 of 9; font-size:1">*0*</div>
+-->
+<SCRIPT LANGUAGE=javascript TYPE="text/javascript">
+window.onload = function() {
+    if(window.location.search.indexOf('print=1') >= 0)
+        window.print();
+}
+</SCRIPT>
+</HEAD>
+<BODY BGCOLOR="#FFFFFF" topmargin="2" leftmargin="1" rightmargin="1">
+<form method="POST" name="priform">
+
+<SCRIPT LANGUAGE=javascript TYPE="text/javascript">
+var esh_navigator_name = "";
+if (navigator.appName.toLowerCase().indexOf("microsoft") > -1) {
+ if (navigator.appVersion.indexOf('MSIE') > -1) {
+   esh_navigator_name = "IE";
+  }
+ }
+if (esh_navigator_name != "IE") {
+if (navigator.userAgent.indexOf("Firefox") > -1)
+esh_navigator_name = "Firefox";
+else if (navigator.userAgent.indexOf("Chrome") > -1)
+esh_navigator_name = "Chrome";
+else if (navigator.vendor.indexOf("Apple") > -1)
+esh_navigator_name = "Safari";
+ }
+   if (esh_navigator_name == "IE")
+   document.writeln("<div align='center' dir='rtl'");
+   else
+   document.writeln("<div align='center'");
+   document.writeln("style='height:410px;");
+if (esh_navigator_name == "Firefox"){
+   document.writeln("position:relative; float: left; margin-left: -345px;");
+ }
+   else
+   document.writeln("position:absolute;");
+if (esh_navigator_name != "IE"){
+var esh_text_left = (esh_navigator_name == "Safari" ? "-345px;" : (esh_navigator_name == "Firefox" ? "0px;" : "-345px;"));
+   document.writeln("width:300px; transform: rotate(90deg); -webkit-transform: rotate(90deg); left: ");
+   document.writeln(esh_text_left);
+ }
+   else
+   document.writeln("writing-mode:tb-rl; -ms-writing-mode: tb-rl; left:0;");
+   document.writeln("font-family:Arial;font-size:7pt'>");
+   document.writeln('פריוריטי סופטוור בע"מ - © Priority הופק באמצעות');
+   document.writeln("</div>");
+</SCRIPT>
+
+<table width="100%" border=0 rules="none" bgcolor="#ebedee" cellspacing=0  cellpadding=10 >
+<thead>
+<tr><td>
+<table border=0 width="100%"><tr><td>
+    <TABLE border=0 cellspacing=0 cellpadding=0  width="100%"       >
+<caption></caption><tr>
+	<td ></td>
+	<td  align="right" dir="rtl" bgcolor="#ebedee" dir="rtl">
+<font style="font-family: 'Arial'" size="4" color="#000000"><b>ב. גרנד ניהול והחזקה בע"מ</b></font><br>
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>סניף: ב. גרנד ניהול והחזקה בע"מ</b></font><br>
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>הארד 7</b></font><br>
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>תל אביב</b></font><br>
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>טלפון: 077-5331232</b></font><br>
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>עוסק מורשה: 516592102</b></font><br>
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>מספר תיק במע"מ: 516592102</b></font>
+</td>
+</tr>
+</TABLE>
+
+</td></tr></table>
+</td></tr>
+</thead>
+<tr><td>
+
+<table width="100%" border=0 rules="none" bgcolor="#e3eeff" style="BORDER-TOP: #e3eeff 1px solid" cellspacing=0  cellpadding=1 >
+<tr><td>
+
+<table width="100%" border=0 rules="none" bgcolor="#ffffff" cellspacing=0 cellpadding=6>
+<tr><td>
+
+<table width="100%" border=0 rules="none" bgcolor="#ffffff" cellspacing=0 cellpadding=0>
+<thead>
+<tr>
+<td  colspan="3" valign="top">
+<table border=0 width="100%"><tr><td>
+    <TABLE border=0 cellspacing=0 cellpadding=0  width="100%"   class="_pri_avoid_breaks"    >
+<caption></caption><tr>
+	<td  align="right" valign="top" width="27%" bgcolor="#ffffff" dir="rtl">
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>תאריך חשבונית: 30/01/26</b></font><br>
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>תאריך הדפסה: 26/03/26</b></font><br>
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>שעת הדפסה: 21:06</b></font><br>
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>מספר תעודה: <span dir="ltr">IN264200000075</span></b></font><br>
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>פרטים: שירותי כח אדם 01.26</b></font>
+</td>
+	<td width="27%"></td>
+	<td ></td>
+	<td  align="right" valign="top" dir="rtl" bgcolor="#ffffff" dir="rtl">
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>לכבוד:</b></font><br>
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>גלוריקס בעמ</b></font><br>
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>ג'נאת 2</b></font><br>
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>כבר קרע</b></font><br>
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>ממחסן: <a href="https://p.priority-connect.online/webui/openmail.htm?tenant=z0qun&priority:priform@WAREHOUSESZOOM:Main:ebyael:tabz0qun.ini:1" title="ממחסן" tabindex="50" target="_blank" ><span dir="ltr">Main</span></a></b></font>, <font style="font-family: 'Arial'" size="2" color="#000000"><b>מחסן ראשי</b></font><br>
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>מס' חברה: 517169504</b></font><br>
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>מס' תיק במע"מ: 517169504</b></font>
+</td>
+</tr>
+</TABLE>
+
+</td></tr></table>
+<table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+<br><table border=0 width="100%"><tr><td>
+    <TABLE border=0 cellspacing=0 cellpadding=0  width="100%"       >
+<caption></caption><tr>
+	<td  align="center" dir="rtl" bgcolor="#ffffff" dir="rtl" class='DOCNO'>
+<font style="font-family: 'Arial'" size="4" color="#000000"><u> חשבונית מס </u></font><font style="font-family: 'Arial'" size="4" color="#000000"><u><a href="https://p.priority-connect.online/webui/openmail.htm?tenant=z0qun&priority:priform@AINVOICES:IN264200000075:ebyael:tabz0qun.ini:1" title="מספר תעודה" tabindex="2" target="_blank" ><span dir="ltr">IN264200000075</span></a></u></font><ins id="_orig"><font style="font-family: 'Arial'" size="4" color="#000000"><u> - העתק </u></font></ins></td>
+</tr>
+</TABLE>
+
+</td></tr></table>
+<br><table border=0 width="100%"><tr><td>
+    <TABLE border=0 cellspacing=0 cellpadding=4 rules="none" width="100%"       >
+<caption></caption></TABLE>
+
+</td></tr></table>
+<table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+</td></tr>
+</thead>
+<tr>
+<td  colspan="3" valign="top">
+<br><table border=0 width="100%"><tr><td>
+    <TABLE border=1 cellspacing=0 cellpadding=4 rules="all" width="100%"   bordercolor="#dde2e6" class="rulesall _pri_avoid_breaks"    >
+<caption></caption><thead id='_title'>
+<tr class='ColTitlesLine'>
+	<td align="center"  bgcolor="#e3eeff" dir="rtl" ><font style="font-family: 'Arial'" size="2" color="#17223d"><b>סה"כ מחיר אחרי מע"מ</b></font></td>
+	<td align="center"  bgcolor="#e3eeff" dir="rtl" ><font style="font-family: 'Arial'" size="2" color="#17223d"><b>מע"מ</b></font></td>
+	<td align="center"  bgcolor="#e3eeff" dir="rtl" ><font style="font-family: 'Arial'" size="2" color="#17223d"><b>%מע"מ</b></font></td>
+	<td align="center"  bgcolor="#e3eeff" dir="rtl" ><font style="font-family: 'Arial'" size="2" color="#17223d"><b>קבוצת מס/סיבת פטור</b></font></td>
+	<td align="center"  bgcolor="#e3eeff" dir="rtl" ><font style="font-family: 'Arial'" size="2" color="#17223d"><b>קוד קבוצת מס/פטור</b></font></td>
+	<td align="center"  bgcolor="#e3eeff" dir="rtl" ><font style="font-family: 'Arial'" size="2" color="#17223d"><b>סה"כ מחיר</b></font></td>
+	<td align="center"  bgcolor="#e3eeff" dir="rtl" ><font style="font-family: 'Arial'" size="2" color="#17223d"><b>מחיר ליח' כולל מע"מ</b></font></td>
+	<td align="center"  bgcolor="#e3eeff" dir="rtl" ><font style="font-family: 'Arial'" size="2" color="#17223d"><b>מחיר ליחידה</b></font></td>
+	<td align="center"  bgcolor="#e3eeff" dir="rtl" ><font style="font-family: 'Arial'" size="2" color="#17223d"><b>יתרה לאספקה</b></font></td>
+	<td align="center"  bgcolor="#e3eeff" dir="rtl" ><font style="font-family: 'Arial'" size="2" color="#17223d"><b>כמות</b></font></td>
+	<td align="center"  bgcolor="#e3eeff" dir="rtl" ><font style="font-family: 'Arial'" size="2" color="#17223d"><b>תאור מוצר</b></font></td>
+	<td align="center"  bgcolor="#e3eeff" dir="rtl" ><font style="font-family: 'Arial'" size="2" color="#17223d"><b>ברקוד</b></font></td>
+	<td align="center"  bgcolor="#e3eeff" dir="rtl" ><font style="font-family: 'Arial'" size="2" color="#17223d"><b>מק"ט</b></font></td>
+	<td align="center"  bgcolor="#e3eeff"  ><font style="font-family: 'Arial'" size="2" color="#17223d"><b><span dir="ltr"> </span></b></font></td>
+</tr>
+</thead>
+<tr class='FirstDataLine'>
+	<td  align="right" valign="top"  bgcolor="#ffffff" width="20%"   nowrap><font style="font-family: 'Arial'" size="2" color="#17223d"><span dir="ltr">9,440.00</span></font></td>
+	<td  align="right" valign="top"  bgcolor="#ffffff"   nowrap><font style="font-family: 'Arial'" size="2" color="#17223d"><span dir="ltr">1,440.00</span></font></td>
+	<td  align="right" valign="top"  bgcolor="#ffffff"   nowrap><font style="font-family: 'Arial'" size="2" color="#17223d"><span dir="ltr">18.00</span></font></td>
+	<td  align="right" valign="top"  bgcolor="#ffffff" dir="rtl" ><font style="font-family: 'Arial'" size="2" color="#17223d">קבוצה כללית</font></td>
+	<td  align="right" valign="top"  bgcolor="#ffffff"  ><font style="font-family: 'Arial'" size="2" color="#17223d"><span dir="ltr">000</span></font></td>
+	<td  align="right" valign="top"  bgcolor="#ffffff"   nowrap><font style="font-family: 'Arial'" size="2" color="#17223d"><span dir="ltr">8,000.00</span></font></td>
+	<td  align="right" valign="top"  bgcolor="#ffffff" dir="rtl"  nowrap><font style="font-family: 'Arial'" size="2" color="#17223d">9,440.00 ש"ח</font></td>
+	<td  align="right" valign="top"  bgcolor="#ffffff" dir="rtl"  nowrap><font style="font-family: 'Arial'" size="2" color="#17223d">8,000.00 ש"ח</font></td>
+	<td  align="right" valign="top"  bgcolor="#ffffff" dir="rtl"  nowrap><font style="font-family: 'Arial'" size="2" color="#17223d">0.00 ש'ע</font></td>
+	<td  align="right" valign="top"  bgcolor="#ffffff" dir="rtl"  nowrap><font style="font-family: 'Arial'" size="2" color="#17223d">1.00 ש'ע</font></td>
+	<td  valign="top"  bgcolor="#ffffff" dir="rtl" ><font style="font-family: 'Arial'" size="2" color="#17223d">שרותי כ"א - עובד כללי</font></td>
+	<td  align="right"  bgcolor="#ffffff"   nowrap><font style="font-family: 'Arial'" size="2" color="#17223d"><span dir="ltr">*106*</span></font></td>
+	<td  align="right" valign="top"  bgcolor="#ffffff"   nowrap><font style="font-family: 'Arial'" size="2" color="#17223d"><a href="https://p.priority-connect.online/webui/openmail.htm?tenant=z0qun&priority:priform@LOGPART:106:ebyael:tabz0qun.ini:1" title="מק'ט" tabindex="78" target="_blank" ><span dir="ltr">106</span></a></font></td>
+	<td align="right"  bgcolor="#ffffff"   nowrap><font style="font-family: 'Arial'" size="2" color="#17223d"><span dir="ltr">1</span></font></td>
+</tr>
+</TABLE>
+
+</td></tr></table>
+</td></tr>
+<tr>
+<td width="40%"  valign="top">
+<table border=0 width="100%"><tr><td>
+    <TABLE border=1 cellspacing=0 cellpadding=4 rules="all" width="100%"   bordercolor="#dde2e6" class="rulesall _pri_avoid_breaks"    >
+<caption></caption><tr>
+	<td  align="right" width="25%" bgcolor="#ffffff" dir="rtl">
+<font style="font-family: 'Arial'" size="2" color="#000000"><b><span dir="ltr">$ 2,584.81</span></b></font>
+</td>
+	<td  align="right" dir="rtl" width="25%" bgcolor="#ffffff" dir="rtl">
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>8,000.00 ש"ח</b></font>
+</td>
+	<td  align="right" dir="rtl" nowrap width="50%" bgcolor="#ffffff" dir="rtl">
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>מחיר כולל</b></font>
+</td>
+</tr>
+<tr>
+	<td  align="right" width="25%" bgcolor="#ffffff" dir="rtl">
+<font style="font-family: 'Arial'" size="2" color="#000000"><b><span dir="ltr">$ 465.27</span></b></font>
+</td>
+	<td  align="right" dir="rtl" width="25%" bgcolor="#ffffff" dir="rtl">
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>1,440.00 ש"ח</b></font>
+</td>
+	<td  align="right" dir="rtl" width="50%" bgcolor="#ffffff" dir="rtl">
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>מע"מ</b></font>&nbsp;<font style="font-family: 'Arial'" size="2" color="#000000"><b><span dir="ltr">(18.00%)</span></b></font>
+</td>
+</tr>
+<tr>
+	<td  align="right" width="25%" bgcolor="#ffffff" dir="rtl">
+<font style="font-family: 'Arial'" size="2" color="#000000"><b><span dir="ltr">$ 3,050.08</span></b></font>
+</td>
+	<td  align="right" dir="rtl" width="25%" bgcolor="#ffffff" dir="rtl">
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>9,440.00 ש"ח</b></font>
+</td>
+	<td  align="right" dir="rtl" width="50%" bgcolor="#ffffff" dir="rtl">
+<font style="font-family: 'Arial'" size="2" color="#000000"><b>סה"כ מחיר</b></font>
+</td>
+</tr>
+</TABLE>
+
+</td></tr></table>
+<table border=0 width="100%"><tr><td>
+    <TABLE border=1 cellspacing=0 cellpadding=4 rules="all" width="100%"   bordercolor="#dde2e6" class="rulesall _pri_avoid_breaks"    >
+<caption></caption><tr>
+	<td  align="right" dir="rtl" bgcolor="#fafafa" dir="rtl">
+<font style="font-family: 'Arial'" size="2" color="#000000">סכום במילים:</font>&nbsp;<font style="font-family: 'Arial'" size="2" color="#000000">תשעת אלפים ארבע מאות וארבעים שקלים בלבד</font>
+</td>
+</tr>
+</TABLE>
+
+</td></tr></table>
+</td>
+<td>&nbsp;</td>
+<td width="45%"  valign="top">
+<br><table border=0 width="100%"><tr><td>
+    <TABLE border=0 cellspacing=0 cellpadding=4 rules="none" width="100%"   class="_pri_avoid_breaks"    >
+<caption></caption><tr>
+	<td  align="right" valign="top" dir="rtl" bgcolor="#ffffff" dir="rtl">
+<font style="font-family: 'Arial'" size="2" color="#000000">ברקוד מספר חשבונית:</font>&nbsp;<font style="font-family: 'Arial'" size="2" color="#000000"><span dir="ltr">*IN264200000075*</span></font><br>
+<font style="font-family: 'Arial'" size="2" color="#000000">לתשלום עד: 30/01/26</font><br>
+<font style="font-family: 'Arial'" size="2" color="#000000">מס. לקוח: <a href="https://p.priority-connect.online/webui/openmail.htm?tenant=z0qun&priority:priform@CUSTOMERS:50797:ebyael:tabz0qun.ini:1" title="מס. לקוח" tabindex="99" target="_blank" ><span dir="ltr">50797</span></a></font><br>
+<font style="font-family: 'Arial'" size="2" color="#000000">מס. חברה לקוח: 517169504</font><br>
+<font style="font-family: 'Arial'" size="2" color="#000000">תיק מע"מ לקוח: 517169504</font>
+</td>
+</tr>
+<tr>
+	<td dir="rtl" bgcolor="#ffffff" dir="rtl">
+<font style="font-family: 'Arial'" size="2" color="#000000">סניף: ב. גרנד ניהול והחזקה בע"מ</font>
+</td>
+</tr>
+</TABLE>
+
+</td></tr></table>
+<table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+<table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+</td></tr>
+<tr>
+<td>&nbsp;</td>
+<td  colspan="2" valign="top">
+<br><table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+<br><table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+<br><table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+<table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+<table border=0 width="100%"><tr><td>
+    <TABLE border=1 cellspacing=0 cellpadding=4 rules="all" width="100%"   bordercolor="#dde2e6" class="rulesall"    >
+<caption>	<p align="center" bgcolor="#ffffff" dir="rtl"><font style="font-family: 'Arial'" size="3" color="#17223d"><b>סיכום כמויות</b></font></p>
+</caption><thead id='_title'>
+<tr class='ColTitlesLine'>
+	<td align="center"  bgcolor="#e3eeff" dir="rtl" ><font style="font-family: 'Arial'" size="2" color="#17223d"><b>סה"כ כמות</b></font></td>
+	<td align="center"  bgcolor="#e3eeff" dir="rtl" ><font style="font-family: 'Arial'" size="2" color="#17223d"><b>מס' פריטים</b></font></td>
+</tr>
+</thead>
+<tr class='FirstDataLine'>
+	<td align="right"  bgcolor="#ffffff"   nowrap><font style="font-family: 'Arial'" size="2" color="#17223d"><span dir="ltr">1.00</span></font></td>
+	<td align="right"  bgcolor="#ffffff"   nowrap><font style="font-family: 'Arial'" size="2" color="#17223d"><span dir="ltr">1</span></font></td>
+</tr>
+</TABLE>
+
+</td></tr></table>
+</td></tr>
+<tr>
+<td  colspan="3" valign="top">
+<table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+<table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+<table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+<table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+<table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+<table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+<table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+<table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+</td></tr>
+<tr>
+<td  colspan="3" valign="top">
+<br><table border=0 width="60%" align="right"><tr><td>
+    
+</td></tr></table>
+</td></tr>
+<tr>
+<td  colspan="3" valign="top">
+<br><table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+<br><table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+<br><table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+<br><table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+<table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+</td></tr>
+<tr>
+<td  colspan="3" valign="top">
+<table border=0 width="100%"><tr><td>
+    <TABLE border=0 cellspacing=0 cellpadding=0  width="100%"   class="_pri_avoid_breaks"    >
+<caption></caption><tr>
+	<td width="25%" dir="rtl">
+<font style="font-family: 'Arial'" size="2" color="#000000"><span dir="ltr">userapi</span></font><br>
+<font style="font-family: 'Arial'" size="2" color="#000000">ב. גרנד ניהול והחזקה בע"מ</font>
+</td>
+	<td width="75%" dir="rtl">
+ </td>
+</tr>
+</TABLE>
+
+</td></tr></table>
+<br><table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+<table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+<br><table border=0 width="100%"><tr><td>
+    <TABLE border=0 cellspacing=0 cellpadding=4 rules="none" width="100%"       >
+<caption></caption></TABLE>
+
+</td></tr></table>
+<table border=0 width="100%"><tr><td>
+    <TABLE border=0 cellspacing=0 cellpadding=0  width="100%"       >
+<caption></caption></TABLE>
+
+</td></tr></table>
+</td></tr>
+<tr>
+<td  colspan="3" valign="top">
+<table border=0 width="100%"><tr><td>
+    
+</td></tr></table>
+</td></tr></table>
+</td></tr></table>
+</td></tr></table>
+<table border=0 width="100%"><tr><td dir="rtl">
+<font face="Arial" color="#ff0000" size="3">
+    
+</font></td></tr></table>
+</td></tr></table>
+    
+</form>
+</BODY>
+</HTML>
