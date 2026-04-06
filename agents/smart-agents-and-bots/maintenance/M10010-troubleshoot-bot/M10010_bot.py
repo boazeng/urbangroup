@@ -787,7 +787,8 @@ def start_session(phone, name, parsed_data=None, message_id="", media_id="",
         "expires_at": int(time.time()) + SESSION_TTL_SECONDS,
         "customer_name": customer_name,
         "customer_number": customer_number,
-        "device_number": "",  # Don't pre-fill — let the bot ask the user
+        # Use device number from QR/parsed message, but not from phone lookup
+        "device_number": (parsed_data or {}).get("מספר מכשיר", "").strip(),
         "original_text": original_text,
         "original_message_id": message_id,
         "original_media_id": media_id,
