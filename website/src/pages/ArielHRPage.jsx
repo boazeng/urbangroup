@@ -1013,7 +1013,32 @@ export default function ArielHRPage() {
       { key: COL.CONT_TOTAL, label: 'סה"כ לקבלן', type: 'num' },
     ]
 
-    let tablesHtml = ''
+    // Summary table: contractor → total amount
+    const summaryRows = Object.entries(byContractor)
+      .map(([contractor, cRows]) => ({
+        contractor,
+        total: cRows.reduce((s, r) => s + (Number(r[COL.CONT_TOTAL]) || 0), 0),
+      }))
+      .sort((a, b) => b.total - a.total)
+    const summaryGrand = summaryRows.reduce((s, x) => s + x.total, 0)
+
+    let tablesHtml = `
+      <div class="section">
+        <h2>סיכום קבלנים</h2>
+        <table>
+          <thead><tr><th>שם קבלן</th><th>סה"כ לתשלום</th></tr></thead>
+          <tbody>
+            ${summaryRows.map(x =>
+              `<tr><td>${x.contractor}</td><td class="num">${fmtNum(x.total)}</td></tr>`
+            ).join('')}
+            <tr class="total-row">
+              <td><strong>סה"כ כללי</strong></td>
+              <td class="num"><strong>${fmtNum(summaryGrand)}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>`
+
     for (const [contractor, cRows] of Object.entries(byContractor)) {
       const total = cRows.reduce((s, r) => s + (Number(r[COL.CONT_TOTAL]) || 0), 0)
       tablesHtml += `
