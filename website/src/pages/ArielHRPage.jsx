@@ -738,6 +738,15 @@ export default function ArielHRPage() {
     loadTasks()
   }
 
+  const handleUpdateTaskMonth = async (taskId, newMonth) => {
+    await fetch(`${API_BASE}/api/hr/tasks/${taskId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ month: newMonth }),
+    })
+    loadTasks()
+  }
+
   const openSitePicker = async (excelRow, custNum) => {
     if (!custNum) return
     setSitePickerRow(excelRow)
@@ -1782,7 +1791,20 @@ export default function ArielHRPage() {
                           <tr key={t.id}>
                             <td>{i + 1}</td>
                             <td>{t.description}</td>
-                            <td>{t.month || ''}</td>
+                            <td>
+                              <input
+                                type="text"
+                                defaultValue={t.month || ''}
+                                onBlur={e => {
+                                  const v = e.target.value.trim()
+                                  if (v !== (t.month || '')) handleUpdateTaskMonth(t.id, v)
+                                }}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') e.target.blur()
+                                }}
+                                style={{ width: '70px', border: '1px solid #ccc', borderRadius: '3px', padding: '2px 4px', fontSize: '12px' }}
+                              />
+                            </td>
                             <td style={{ display: 'flex', gap: '4px' }}>
                               <button
                                 onClick={() => handleToggleTask(t.id)}
