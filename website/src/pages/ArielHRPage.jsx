@@ -740,66 +740,89 @@ export default function ArielHRPage() {
     loadTasks()
   }
 
-  // Pre-defined contractor info (company name + tax deduction %)
-  const CONTRACTOR_INFO = {
-    'ויסאם': { company: 'א.ס. ניהול ברמה', taxPct: '0%' },
-    'GN': { company: 'אהרונוביץ ארט גרופ', taxPct: '2%' },
-    'נאיל': { company: 'נאיל ג\'ברין', taxPct: '3%' },
-    'פארס': { company: 'ס.א.ד - קשקוש', taxPct: '0%' },
-    'ראמי': { company: 'ראמי', taxPct: '5%' },
-    'מנסור': { company: 'רמי מנסור', taxPct: '5%' },
-    'איהב': { company: 'איהב', taxPct: '5%' },
-    'סלמן': { company: 'מ.ע.ע סלמן בעמ', taxPct: '2%' },
-    'נתי': { company: 'נתגאל', taxPct: '3%' },
-    'תאמר': { company: 'תאמר - פטור', taxPct: '3%' },
-    'אילן': { company: '', taxPct: '3%' },
-    'אבשלום': { company: 'לא ידוע', taxPct: '0%' },
-    'חונין': { company: 'חונין בניה והנדסה', taxPct: '3%' },
-    'יונתן': { company: 'יונתן', taxPct: '5%' },
-    'חאלד': { company: 'חח עבודות פיקוח', taxPct: '2%' },
-    'דאוויה': { company: 'בוני ירושלים', taxPct: '5%' },
-    'יוחאי': { company: '', taxPct: '' },
-    'ברוך': { company: 'שוהם', taxPct: '0%' },
-    'רפי': { company: 'רפי שריקי (עוסק פטור)', taxPct: '' },
-    'אחמד': { company: 'גמהור אחמד', taxPct: '5%' },
-    'ואגדי': { company: 'א.ס.ג פרחאת לבנין', taxPct: '3%' },
-    'תמיר': { company: 'תמיר עוז', taxPct: '0%' },
-  }
+  // Default contractor list in fixed order from file
+  const DEFAULT_CONTRACTORS = [
+    { contractor: 'ויסאם', company: 'א.ס. ניהול ברמה', taxPct: '0%' },
+    { contractor: 'GN', company: 'אהרונוביץ ארט גרופ', taxPct: '2%' },
+    { contractor: 'נאיל', company: "נאיל ג'ברין", taxPct: '3%' },
+    { contractor: 'פארס', company: 'ס.א.ד - קשקוש', taxPct: '0%' },
+    { contractor: 'ראמי', company: 'ראמי', taxPct: '5%' },
+    { contractor: 'מנסור', company: 'רמי מנסור', taxPct: '5%' },
+    { contractor: 'איהב', company: 'איהב', taxPct: '5%' },
+    { contractor: 'סלמן', company: 'מ.ע.ע סלמן בעמ', taxPct: '2%' },
+    { contractor: 'נתי', company: 'נתגאל', taxPct: '3%' },
+    { contractor: 'תאמר', company: 'תאמר - פטור', taxPct: '3%' },
+    { contractor: 'אילן', company: '', taxPct: '3%' },
+    { contractor: 'אבשלום', company: 'לא ידוע', taxPct: '0%' },
+    { contractor: 'חונין', company: 'חונין בניה והנדסה', taxPct: '3%' },
+    { contractor: 'יונתן', company: 'יונתן', taxPct: '5%' },
+    { contractor: 'חאלד', company: 'חח עבודות פיקוח', taxPct: '2%' },
+    { contractor: 'דאוויה', company: 'בוני ירושלים', taxPct: '5%' },
+    { contractor: 'יוחאי', company: '', taxPct: '' },
+    { contractor: 'ברוך', company: 'שוהם', taxPct: '0%' },
+    { contractor: 'רפי', company: 'רפי שריקי (עוסק פטור)', taxPct: '' },
+    { contractor: 'אחמד', company: 'גמהור אחמד', taxPct: '5%' },
+    { contractor: 'מני', company: 'מני ירושלמי גבראן ראמי - ר.ג.', taxPct: '5%' },
+    { contractor: 'תמיר', company: 'תמיר עוז', taxPct: '0%' },
+    { contractor: 'ואגדי', company: 'א.ס.ג פרחאת לבנין', taxPct: '3%' },
+    { contractor: 'לא משוייך', company: '', taxPct: '' },
+  ]
 
   const initContractorPayments = () => {
+    // Calculate table totals
     const rows = getActiveRows()
-    const byContractor = {}
+    const totals = {}
     for (const r of rows) {
       const cont = cellVal(r[COL.CONTRACTOR])
       if (!cont) continue
-      const info = CONTRACTOR_INFO[cont] || {}
-      if (!byContractor[cont]) byContractor[cont] = { contractor: cont, company: info.company || '', taxPct: info.taxPct || '', tableTotal: 0 }
-      byContractor[cont].tableTotal += Number(r[COL.CONT_TOTAL]) || 0
+      totals[cont] = (totals[cont] || 0) + (Number(r[COL.CONT_TOTAL]) || 0)
     }
-    // Merge with existing data (preserve user edits)
-    const existing = {}
-    for (const p of contractorPayments) existing[p.contractor] = p
-    const merged = Object.values(byContractor).map(b => {
-      const prev = existing[b.contractor] || {}
-      return {
-        contractor: b.contractor,
-        company: prev.company || '',
-        taxPct: prev.taxPct ?? '',
-        tableTotal: b.tableTotal,
-        finalAmount: prev.finalAmount ?? '',
-        afterTaxDeduction: prev.afterTaxDeduction ?? '',
-        withVat: prev.withVat ?? '',
-        paidToDate: prev.paidToDate ?? '',
-        payToday: prev.payToday ?? '',
-      }
-    })
-    setContractorPayments(merged)
+    if (contractorPayments.length > 0) {
+      // Just refresh totals, keep user edits
+      setContractorPayments(prev => prev.map(p => ({ ...p, tableTotal: totals[p.contractor] || 0 })))
+      return
+    }
+    // First time: load from default list
+    setContractorPayments(DEFAULT_CONTRACTORS.map((d, i) => ({
+      id: `cp_${i}`,
+      contractor: d.contractor,
+      company: d.company,
+      taxPct: d.taxPct,
+      tableTotal: totals[d.contractor] || 0,
+      finalAmount: '', afterTaxDeduction: '', withVat: '', paidToDate: '', payToday: '',
+      payTodayGreen: false,
+    })))
   }
 
-  const updateContractorPayment = (contractor, field, value) => {
+  const updateContractorPayment = (id, field, value) => {
     setContractorPayments(prev => prev.map(p =>
-      p.contractor === contractor ? { ...p, [field]: value } : p
+      p.id === id ? { ...p, [field]: value } : p
     ))
+  }
+
+  const addContractorRow = (afterId) => {
+    setContractorPayments(prev => {
+      const idx = afterId ? prev.findIndex(p => p.id === afterId) : prev.length - 1
+      const newRow = { id: `cp_${Date.now()}`, contractor: '', company: '', taxPct: '', tableTotal: 0, finalAmount: '', afterTaxDeduction: '', withVat: '', paidToDate: '', payToday: '', payTodayGreen: false }
+      const next = [...prev]
+      next.splice(idx + 1, 0, newRow)
+      return next
+    })
+  }
+
+  const deleteContractorRow = (id) => {
+    setContractorPayments(prev => prev.filter(p => p.id !== id))
+  }
+
+  const moveContractorRow = (id, dir) => {
+    setContractorPayments(prev => {
+      const idx = prev.findIndex(p => p.id === id)
+      if (idx < 0) return prev
+      const t = idx + dir
+      if (t < 0 || t >= prev.length) return prev
+      const next = [...prev]; [next[idx], next[t]] = [next[t], next[idx]]
+      return next
+    })
   }
 
   const handleUpdateTaskMonth = async (taskId, newMonth) => {
@@ -1907,81 +1930,101 @@ export default function ArielHRPage() {
                 {contractorPayments.length === 0 ? (
                   <div style={{ color: '#888', fontSize: '13px' }}>אין קבלנים בנתונים</div>
                 ) : (
-                  <div className="ariel-card" style={{ display: 'inline-block' }}>
-                    <table className="ariel-table hr-summary-table" style={{ fontSize: '12px', width: 'auto' }}>
+                  <div style={{ display: 'inline-block' }}>
+                    <div style={{ marginBottom: '6px' }}>
+                      <button onClick={() => addContractorRow(null)} style={{ fontSize: '11px', padding: '2px 8px', cursor: 'pointer' }}>+ הוסף שורה</button>
+                    </div>
+                    <table className="ariel-table hr-summary-table" style={{ fontSize: '12px', width: 'auto', borderCollapse: 'collapse' }}>
                       <thead>
                         <tr>
-                          <th style={{ padding: '3px 6px' }}>כינוי קבלן</th>
-                          <th style={{ padding: '3px 6px' }}>חברה</th>
-                          <th style={{ padding: '3px 6px' }}>נמ&quot;ב %</th>
-                          <th style={{ padding: '3px 6px' }}>סוכם</th>
-                          <th style={{ padding: '3px 6px' }}>סופי לתשלום</th>
-                          <th style={{ padding: '3px 6px' }}>אחרי נמ&quot;ב</th>
-                          <th style={{ padding: '3px 6px' }}>כולל מע&quot;מ</th>
-                          <th style={{ padding: '3px 6px' }}>שולם</th>
-                          <th style={{ padding: '3px 6px' }}>לתשלום</th>
+                          <th style={{ padding: '2px 4px' }}></th>
+                          <th style={{ padding: '2px 4px' }}>כינוי קבלן</th>
+                          <th style={{ padding: '2px 4px' }}>חברה</th>
+                          <th style={{ padding: '2px 4px' }}>נמ&quot;ב %</th>
+                          <th style={{ padding: '2px 4px' }}>סוכם</th>
+                          <th style={{ padding: '2px 4px' }}>סופי</th>
+                          <th style={{ padding: '2px 4px' }}>אחרי נמ&quot;ב</th>
+                          <th style={{ padding: '2px 4px' }}>כולל מע&quot;מ</th>
+                          <th style={{ padding: '2px 4px' }}>שולם</th>
+                          <th style={{ padding: '2px 4px' }}>לתשלום היום</th>
                         </tr>
                       </thead>
                       <tbody>
                         {contractorPayments.map(p => {
-                          const inp = { border: '1px solid #ddd', borderRadius: '2px', padding: '1px 3px', textAlign: 'left', fontSize: '12px' }
+                          const inp = { border: '1px solid #ddd', borderRadius: '2px', padding: '1px 2px', fontSize: '12px', textAlign: 'right', direction: 'ltr' }
+                          const fmtN = (v) => v ? Number(v).toLocaleString('he-IL') : ''
                           return (
-                          <tr key={p.contractor}>
-                            <td style={{ padding: '2px 4px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{p.contractor}</td>
-                            <td style={{ padding: '2px 4px' }}>
+                          <tr key={p.id}>
+                            <td style={{ padding: '1px 2px', whiteSpace: 'nowrap' }}>
+                              <button onClick={() => moveContractorRow(p.id, -1)} title="העלה" style={{ fontSize: '9px', padding: '0 2px', cursor: 'pointer', border: '1px solid #ccc', background: '#f5f5f5' }}>&uarr;</button>
+                              <button onClick={() => moveContractorRow(p.id, 1)} title="הורד" style={{ fontSize: '9px', padding: '0 2px', cursor: 'pointer', border: '1px solid #ccc', background: '#f5f5f5' }}>&darr;</button>
+                              <button onClick={() => addContractorRow(p.id)} title="הוסף מתחת" style={{ fontSize: '9px', padding: '0 2px', cursor: 'pointer', border: '1px solid #ccc', background: '#f5f5f5' }}>+</button>
+                              <button onClick={() => deleteContractorRow(p.id)} title="מחק" style={{ fontSize: '9px', padding: '0 2px', cursor: 'pointer', border: '1px solid #ccc', background: '#fee', color: '#c00' }}>&times;</button>
+                            </td>
+                            <td style={{ padding: '1px 3px' }}>
+                              <input type="text" defaultValue={p.contractor}
+                                onBlur={e => updateContractorPayment(p.id, 'contractor', e.target.value)}
+                                style={{ ...inp, width: '70px', fontWeight: 'bold', textAlign: 'right', direction: 'rtl' }}
+                              />
+                            </td>
+                            <td style={{ padding: '1px 3px' }}>
                               <input type="text" defaultValue={p.company}
-                                onBlur={e => updateContractorPayment(p.contractor, 'company', e.target.value)}
-                                style={{ ...inp, width: '100px' }}
+                                onBlur={e => updateContractorPayment(p.id, 'company', e.target.value)}
+                                style={{ ...inp, width: '110px', textAlign: 'right', direction: 'rtl' }}
                               />
                             </td>
-                            <td style={{ padding: '2px 4px' }}>
+                            <td style={{ padding: '1px 3px' }}>
                               <input type="text" defaultValue={p.taxPct}
-                                onBlur={e => updateContractorPayment(p.contractor, 'taxPct', e.target.value)}
-                                style={{ ...inp, width: '40px', textAlign: 'center' }}
+                                onBlur={e => updateContractorPayment(p.id, 'taxPct', e.target.value)}
+                                style={{ ...inp, width: '35px', textAlign: 'center' }}
                               />
                             </td>
-                            <td className="ariel-num" style={{ padding: '2px 4px', fontWeight: 'bold' }}>{p.tableTotal.toLocaleString('he-IL')}</td>
-                            <td style={{ padding: '2px 4px' }}>
-                              <input type="number" defaultValue={p.finalAmount}
-                                onBlur={e => updateContractorPayment(p.contractor, 'finalAmount', e.target.value)}
-                                style={{ ...inp, width: '75px' }}
+                            <td style={{ padding: '1px 3px', textAlign: 'right', fontWeight: 'bold', direction: 'ltr' }}>{fmtN(p.tableTotal)}</td>
+                            <td style={{ padding: '1px 3px' }}>
+                              <input type="text" defaultValue={fmtN(p.finalAmount)}
+                                onBlur={e => updateContractorPayment(p.id, 'finalAmount', e.target.value.replace(/,/g, ''))}
+                                style={{ ...inp, width: '70px' }}
                               />
                             </td>
-                            <td style={{ padding: '2px 4px' }}>
-                              <input type="number" defaultValue={p.afterTaxDeduction}
-                                onBlur={e => updateContractorPayment(p.contractor, 'afterTaxDeduction', e.target.value)}
-                                style={{ ...inp, width: '75px' }}
+                            <td style={{ padding: '1px 3px' }}>
+                              <input type="text" defaultValue={fmtN(p.afterTaxDeduction)}
+                                onBlur={e => updateContractorPayment(p.id, 'afterTaxDeduction', e.target.value.replace(/,/g, ''))}
+                                style={{ ...inp, width: '70px' }}
                               />
                             </td>
-                            <td style={{ padding: '2px 4px' }}>
-                              <input type="number" defaultValue={p.withVat}
-                                onBlur={e => updateContractorPayment(p.contractor, 'withVat', e.target.value)}
-                                style={{ ...inp, width: '75px' }}
+                            <td style={{ padding: '1px 3px' }}>
+                              <input type="text" defaultValue={fmtN(p.withVat)}
+                                onBlur={e => updateContractorPayment(p.id, 'withVat', e.target.value.replace(/,/g, ''))}
+                                style={{ ...inp, width: '70px' }}
                               />
                             </td>
-                            <td style={{ padding: '2px 4px' }}>
-                              <input type="number" defaultValue={p.paidToDate}
-                                onBlur={e => updateContractorPayment(p.contractor, 'paidToDate', e.target.value)}
-                                style={{ ...inp, width: '75px' }}
+                            <td style={{ padding: '1px 3px' }}>
+                              <input type="text" defaultValue={fmtN(p.paidToDate)}
+                                onBlur={e => updateContractorPayment(p.id, 'paidToDate', e.target.value.replace(/,/g, ''))}
+                                style={{ ...inp, width: '70px' }}
                               />
                             </td>
-                            <td style={{ padding: '2px 4px' }}>
-                              <input type="number" defaultValue={p.payToday}
-                                onBlur={e => updateContractorPayment(p.contractor, 'payToday', e.target.value)}
-                                style={{ ...inp, width: '75px' }}
+                            <td style={{ padding: '1px 3px', display: 'flex', gap: '2px', alignItems: 'center' }}>
+                              <input type="text" defaultValue={fmtN(p.payToday)}
+                                onBlur={e => updateContractorPayment(p.id, 'payToday', e.target.value.replace(/,/g, ''))}
+                                style={{ ...inp, width: '70px', background: p.payTodayGreen ? '#d4edda' : '#fff' }}
                               />
+                              <button
+                                onClick={() => updateContractorPayment(p.id, 'payTodayGreen', !p.payTodayGreen)}
+                                style={{ width: '14px', height: '14px', fontSize: '8px', padding: 0, cursor: 'pointer', border: '1px solid #ccc', borderRadius: '2px', background: p.payTodayGreen ? '#4caf50' : '#eee', color: '#fff', lineHeight: '12px' }}
+                              >&bull;</button>
                             </td>
                           </tr>
                           )
                         })}
                         <tr style={{ fontWeight: 'bold', borderTop: '2px solid #333' }}>
-                          <td colSpan={3} style={{ padding: '3px 6px' }}>סה&quot;כ</td>
-                          <td className="ariel-num" style={{ padding: '3px 6px' }}>{contractorPayments.reduce((s, p) => s + p.tableTotal, 0).toLocaleString('he-IL')}</td>
-                          <td className="ariel-num" style={{ padding: '3px 6px' }}>{contractorPayments.reduce((s, p) => s + (Number(p.finalAmount) || 0), 0).toLocaleString('he-IL')}</td>
-                          <td className="ariel-num" style={{ padding: '3px 6px' }}>{contractorPayments.reduce((s, p) => s + (Number(p.afterTaxDeduction) || 0), 0).toLocaleString('he-IL')}</td>
-                          <td className="ariel-num" style={{ padding: '3px 6px' }}>{contractorPayments.reduce((s, p) => s + (Number(p.withVat) || 0), 0).toLocaleString('he-IL')}</td>
-                          <td className="ariel-num" style={{ padding: '3px 6px' }}>{contractorPayments.reduce((s, p) => s + (Number(p.paidToDate) || 0), 0).toLocaleString('he-IL')}</td>
-                          <td className="ariel-num" style={{ padding: '3px 6px' }}>{contractorPayments.reduce((s, p) => s + (Number(p.payToday) || 0), 0).toLocaleString('he-IL')}</td>
+                          <td colSpan={4} style={{ padding: '2px 4px' }}>סה&quot;כ</td>
+                          <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{contractorPayments.reduce((s, p) => s + (p.tableTotal || 0), 0).toLocaleString('he-IL')}</td>
+                          <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{contractorPayments.reduce((s, p) => s + (Number(p.finalAmount) || 0), 0).toLocaleString('he-IL')}</td>
+                          <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{contractorPayments.reduce((s, p) => s + (Number(p.afterTaxDeduction) || 0), 0).toLocaleString('he-IL')}</td>
+                          <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{contractorPayments.reduce((s, p) => s + (Number(p.withVat) || 0), 0).toLocaleString('he-IL')}</td>
+                          <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{contractorPayments.reduce((s, p) => s + (Number(p.paidToDate) || 0), 0).toLocaleString('he-IL')}</td>
+                          <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{contractorPayments.reduce((s, p) => s + (Number(p.payToday) || 0), 0).toLocaleString('he-IL')}</td>
                         </tr>
                       </tbody>
                     </table>
