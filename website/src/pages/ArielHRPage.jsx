@@ -768,7 +768,7 @@ export default function ArielHRPage() {
     { contractor: 'לא משוייך', company: '', taxPct: '' },
   ]
 
-  const initContractorPayments = () => {
+  const initContractorPayments = async () => {
     // Calculate table totals
     const rows = getActiveRows()
     const totals = {}
@@ -782,7 +782,16 @@ export default function ArielHRPage() {
       setContractorPayments(prev => prev.map(p => ({ ...p, tableTotal: totals[p.contractor] || 0 })))
       return
     }
-    // First time: load from default list
+    // Try loading from DB first
+    try {
+      const resp = await fetch(`${API_BASE}/api/hr/contractor-payments?sheet=${encodeURIComponent(selectedSheet)}`)
+      const result = await resp.json()
+      if (result.ok && result.data && result.data.length > 0) {
+        setContractorPayments(result.data.map(p => ({ ...p, tableTotal: totals[p.contractor] || 0 })))
+        return
+      }
+    } catch {}
+    // Fallback: load from default list
     setContractorPayments(DEFAULT_CONTRACTORS.map((d, i) => ({
       id: `cp_${i}`,
       contractor: d.contractor,
@@ -794,20 +803,32 @@ export default function ArielHRPage() {
     })))
   }
 
+  const saveContractorPaymentsToDb = useCallback((data) => {
+    fetch(`${API_BASE}/api/hr/contractor-payments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sheet: selectedSheet, data }),
+    }).catch(() => {})
+  }, [selectedSheet])
+
   const updateContractorPayment = (id, field, value) => {
-    setContractorPayments(prev => prev.map(p => {
-      if (p.id !== id) return p
-      const updated = { ...p, [field]: value }
-      // Auto-calc afterTaxDeduction and withVat when finalAmount or taxPct changes
-      if (field === 'finalAmount' || field === 'taxPct') {
-        const final = Number(updated.finalAmount) || 0
-        const pct = parseFloat(String(updated.taxPct).replace('%', '')) || 0
-        const afterTax = final > 0 ? Math.round(final * (1 - pct / 100)) : ''
-        updated.afterTaxDeduction = afterTax
-        updated.withVat = afterTax ? String(Math.round(Number(afterTax) * 1.18)) : ''
-      }
-      return updated
-    }))
+    setContractorPayments(prev => {
+      const next = prev.map(p => {
+        if (p.id !== id) return p
+        const updated = { ...p, [field]: value }
+        if (field === 'finalAmount' || field === 'taxPct') {
+          const final = Number(updated.finalAmount) || 0
+          const pct = parseFloat(String(updated.taxPct).replace('%', '')) || 0
+          const afterTax = final > 0 ? Math.round(final * (1 - pct / 100)) : ''
+          updated.afterTaxDeduction = afterTax
+          updated.withVat = afterTax ? String(Math.round(Number(afterTax) * 1.18)) : ''
+        }
+        return updated
+      })
+      // Auto-save to DB
+      setTimeout(() => saveContractorPaymentsToDb(next), 0)
+      return next
+    })
   }
 
   const fmtCP = (v) => {
@@ -821,12 +842,17 @@ export default function ArielHRPage() {
       const newRow = { id: `cp_${Date.now()}`, contractor: '', company: '', taxPct: '', tableTotal: 0, finalAmount: '', afterTaxDeduction: '', withVat: '', paidToDate: '', payToday: '', payTodayGreen: false, finalGreen: false }
       const next = [...prev]
       next.splice(idx + 1, 0, newRow)
+      setTimeout(() => saveContractorPaymentsToDb(next), 0)
       return next
     })
   }
 
   const deleteContractorRow = (id) => {
-    setContractorPayments(prev => prev.filter(p => p.id !== id))
+    setContractorPayments(prev => {
+      const next = prev.filter(p => p.id !== id)
+      setTimeout(() => saveContractorPaymentsToDb(next), 0)
+      return next
+    })
   }
 
   const moveContractorRow = (id, dir) => {
@@ -836,6 +862,7 @@ export default function ArielHRPage() {
       const t = idx + dir
       if (t < 0 || t >= prev.length) return prev
       const next = [...prev]; [next[idx], next[t]] = [next[t], next[idx]]
+      setTimeout(() => saveContractorPaymentsToDb(next), 0)
       return next
     })
   }

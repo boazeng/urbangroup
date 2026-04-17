@@ -2440,6 +2440,42 @@ def delete_task(task_id):
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/api/hr/contractor-payments", methods=["GET"])
+def get_contractor_payments():
+    """Get saved contractor payments for a sheet."""
+    sheet = request.args.get("sheet", "")
+    if not sheet:
+        return jsonify({"ok": False, "error": "Missing sheet"}), 400
+    try:
+        result = delivery_notes_db.get_contractor_payments(sheet)
+        if result and result.get("data"):
+            data = result["data"]
+            if isinstance(data, str):
+                import json as _json
+                data = _json.loads(data)
+            return jsonify({"ok": True, "data": data})
+        return jsonify({"ok": True, "data": None})
+    except Exception as e:
+        logger.error(f"Get contractor payments failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/hr/contractor-payments", methods=["POST"])
+def save_contractor_payments():
+    """Save contractor payments for a sheet."""
+    body = request.get_json(force=True)
+    sheet = body.get("sheet", "")
+    data = body.get("data", [])
+    if not sheet:
+        return jsonify({"ok": False, "error": "Missing sheet"}), 400
+    try:
+        delivery_notes_db.save_contractor_payments(sheet, data)
+        return jsonify({"ok": True})
+    except Exception as e:
+        logger.error(f"Save contractor payments failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 # ── Cinvoices (חשבוניות מרכזות) ─────────────────────────────
 
 @app.route("/api/hr/cinvoice", methods=["POST"])

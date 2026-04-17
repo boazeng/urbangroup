@@ -326,6 +326,27 @@ def list_tasks(status=None):
     return tasks
 
 
+def save_contractor_payments(sheet, data):
+    """Save contractor payments data for a sheet/month."""
+    now = datetime.utcnow().isoformat() + "Z"
+    item = _prepare_item({
+        "id": f"CP_{sheet}",
+        "data": data,
+        "updated_at": now,
+    })
+    _table.put_item(Item=item)
+    logger.info(f"Saved contractor payments for {sheet}")
+
+
+def get_contractor_payments(sheet):
+    """Get contractor payments data for a sheet/month."""
+    resp = _table.get_item(Key={"id": f"CP_{sheet}"})
+    item = resp.get("Item")
+    if not item:
+        return None
+    return _deserialize_item(item)
+
+
 def update_task(task_id, updates):
     """Update a task (description, status)."""
     now = datetime.utcnow().isoformat() + "Z"
