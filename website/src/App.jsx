@@ -29,6 +29,7 @@ import BotDiagnosticsPage from './pages/BotDiagnosticsPage'
 import PdfSignPage from './pages/PdfSignPage'
 import QrGeneratorPage from './pages/QrGeneratorPage'
 import ParkingPage from './pages/ParkingPage'
+import ParkingProjectsPage from './pages/ParkingProjectsPage'
 
 export default function App() {
   return (
@@ -54,6 +55,7 @@ export default function App() {
           <Route path="/ariel/invoice-manager" element={<ArielInvoiceManagerPage />} />
           <Route path="/ariel/delivery-manager" element={<ArielDeliveryManagerPage />} />
           <Route path="/parking" element={<ParkingPage />} />
+          <Route path="/parking/projects" element={<ParkingProjectsPage />} />
           <Route path="/energy" element={<EnergyPage />} />
           <Route path="/energy/invoices" element={<InvoicesPage />} />
           <Route path="/apps" element={<AppsPage />} />
