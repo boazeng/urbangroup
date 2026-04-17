@@ -1969,7 +1969,41 @@ export default function ArielHRPage() {
             {/* Contractor Payments table */}
             {showContractorPayments && (
               <div className="hr-site-summary" style={{ marginBottom: '12px', borderBottom: '2px solid #1976d2', paddingBottom: '12px' }}>
-                <h3 className="hr-site-summary-title">תשלומי קבלנים — חודש {selectedSheet}</h3>
+                <h3 className="hr-site-summary-title" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  תשלומי קבלנים — חודש {selectedSheet}
+                  <button
+                    onClick={async () => {
+                      const nicks = contractorPayments.filter(p => p.company).map(p => p.company)
+                      if (!nicks.length) return
+                      try {
+                        const resp = await fetch(`${API_BASE}/api/hr/contractor-lookup`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ contractors: nicks }),
+                        })
+                        const data = await resp.json()
+                        if (data.ok && data.results) {
+                          setContractorPayments(prev => {
+                            const next = prev.map(p => {
+                              const match = data.results[p.company]
+                              if (!match) return p
+                              return {
+                                ...p,
+                                priorityAccount: match.supname || p.priorityAccount || '',
+                                companyId: match.vatnum || p.companyId || '',
+                              }
+                            })
+                            setTimeout(() => saveContractorPaymentsToDb(next), 0)
+                            return next
+                          })
+                        }
+                      } catch {}
+                    }}
+                    style={{ fontSize: '11px', padding: '2px 10px', cursor: 'pointer', border: '1px solid #1976d2', background: '#e3f2fd', borderRadius: '4px', color: '#1976d2' }}
+                  >
+                    עדכון פרטי חברה
+                  </button>
+                </h3>
                 {contractorPayments.length === 0 ? (
                   <div style={{ color: '#888', fontSize: '13px' }}>אין קבלנים בנתונים</div>
                 ) : (

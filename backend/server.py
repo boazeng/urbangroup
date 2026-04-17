@@ -2476,6 +2476,59 @@ def save_contractor_payments():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/api/hr/contractor-lookup", methods=["POST"])
+def contractor_lookup():
+    """Look up contractor details from Priority SUPPLIERS by name."""
+    try:
+        body = request.get_json(force=True)
+        contractors = body.get("contractors", [])  # list of contractor nicknames
+        if not contractors:
+            return jsonify({"ok": True, "results": {}})
+
+        url = PRIORITY_URL_REAL
+        auth = HTTPBasicAuth(
+            os.getenv("PRIORITY_USERNAME", ""),
+            os.getenv("PRIORITY_PASSWORD", ""),
+        )
+        hdrs = {"Accept": "application/json", "OData-Version": "4.0"}
+
+        # Fetch all suppliers (paginated)
+        all_suppliers = []
+        skip = 0
+        while True:
+            api_url = f"{url}/SUPPLIERS?$select=SUPNAME,SUPDES,VATNUM&$top=500&$skip={skip}"
+            resp = http_requests.get(api_url, headers=hdrs, auth=auth, timeout=30)
+            resp.raise_for_status()
+            rows = resp.json().get("value", [])
+            if not rows:
+                break
+            all_suppliers.extend(rows)
+            skip += len(rows)
+            if len(rows) < 500:
+                break
+
+        # Match each contractor nickname to a supplier by searching SUPDES
+        results = {}
+        for nick in contractors:
+            nick_lower = nick.strip().lower()
+            if not nick_lower:
+                continue
+            for sup in all_suppliers:
+                supdes = (sup.get("SUPDES") or "").lower()
+                if nick_lower in supdes or supdes in nick_lower:
+                    results[nick] = {
+                        "supname": sup.get("SUPNAME", ""),
+                        "supdes": sup.get("SUPDES", ""),
+                        "vatnum": sup.get("VATNUM", ""),
+                    }
+                    break
+
+        return jsonify({"ok": True, "results": results})
+    except Exception as e:
+        logger.error(f"Contractor lookup failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 # ── Cinvoices (חשבוניות מרכזות) ─────────────────────────────
 
 @app.route("/api/hr/cinvoice", methods=["POST"])
