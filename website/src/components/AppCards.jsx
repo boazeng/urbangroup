@@ -37,11 +37,12 @@ const apps = [
   },
   {
     id: 'parking',
-    title: 'ניהול חניונים',
-    description: 'מעקב תפוסה, תחזוקה וניהול שוטף של חניונים',
+    title: 'חניה',
+    description: 'ניהול פרויקטים של מתקני חניה',
     icon: '🅿️',
     color: '#E53E3E',
-    ready: false,
+    link: '/parking',
+    ready: true,
   },
   {
     id: 'hr',
