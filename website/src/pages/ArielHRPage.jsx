@@ -1973,23 +1973,26 @@ export default function ArielHRPage() {
                   תשלומי קבלנים — חודש {selectedSheet}
                   <button
                     onClick={async () => {
-                      const nicks = contractorPayments.filter(p => p.company).map(p => p.company)
-                      if (!nicks.length) return
+                      // Collect rows that have a Priority account number
+                      const accounts = contractorPayments
+                        .filter(p => p.priorityAccount && p.priorityAccount.trim())
+                        .map(p => p.priorityAccount.trim())
+                      if (!accounts.length) { alert('אין מספרי חשבון פריורטי למילוי'); return }
                       try {
                         const resp = await fetch(`${API_BASE}/api/hr/contractor-lookup`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ contractors: nicks }),
+                          body: JSON.stringify({ accounts }),
                         })
                         const data = await resp.json()
                         if (data.ok && data.results) {
                           setContractorPayments(prev => {
                             const next = prev.map(p => {
-                              const match = data.results[p.company]
+                              const match = data.results[p.priorityAccount?.trim()]
                               if (!match) return p
                               return {
                                 ...p,
-                                priorityAccount: match.supname || p.priorityAccount || '',
+                                company: match.supdes || p.company || '',
                                 companyId: match.vatnum || p.companyId || '',
                               }
                             })

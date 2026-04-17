@@ -2478,11 +2478,11 @@ def save_contractor_payments():
 
 @app.route("/api/hr/contractor-lookup", methods=["POST"])
 def contractor_lookup():
-    """Look up contractor details from Priority SUPPLIERS by name."""
+    """Look up contractor details from Priority SUPPLIERS by account number (SUPNAME)."""
     try:
         body = request.get_json(force=True)
-        contractors = body.get("contractors", [])  # list of contractor nicknames
-        if not contractors:
+        accounts = body.get("accounts", [])  # list of Priority SUPNAME values
+        if not accounts:
             return jsonify({"ok": True, "results": {}})
 
         url = PRIORITY_URL_REAL
@@ -2492,36 +2492,20 @@ def contractor_lookup():
         )
         hdrs = {"Accept": "application/json", "OData-Version": "4.0"}
 
-        # Fetch all suppliers (paginated)
-        all_suppliers = []
-        skip = 0
-        while True:
-            api_url = f"{url}/SUPPLIERS?$select=SUPNAME,SUPDES,VATNUM&$top=500&$skip={skip}"
-            resp = http_requests.get(api_url, headers=hdrs, auth=auth, timeout=30)
-            resp.raise_for_status()
-            rows = resp.json().get("value", [])
-            if not rows:
-                break
-            all_suppliers.extend(rows)
-            skip += len(rows)
-            if len(rows) < 500:
-                break
-
-        # Match each contractor nickname to a supplier by searching SUPDES
         results = {}
-        for nick in contractors:
-            nick_lower = nick.strip().lower()
-            if not nick_lower:
+        for acc in accounts:
+            acc = str(acc).strip()
+            if not acc:
                 continue
-            for sup in all_suppliers:
-                supdes = (sup.get("SUPDES") or "").lower()
-                if nick_lower in supdes or supdes in nick_lower:
-                    results[nick] = {
-                        "supname": sup.get("SUPNAME", ""),
-                        "supdes": sup.get("SUPDES", ""),
-                        "vatnum": sup.get("VATNUM", ""),
+            api_url = f"{url}/SUPPLIERS?$filter=SUPNAME eq '{acc}'&$select=SUPNAME,SUPDES,VATNUM&$top=1"
+            resp = http_requests.get(api_url, headers=hdrs, auth=auth, timeout=15)
+            if resp.status_code < 400:
+                rows = resp.json().get("value", [])
+                if rows:
+                    results[acc] = {
+                        "supdes": rows[0].get("SUPDES", ""),
+                        "vatnum": rows[0].get("VATNUM", ""),
                     }
-                    break
 
         return jsonify({"ok": True, "results": results})
     except Exception as e:
