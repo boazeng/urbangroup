@@ -790,7 +790,7 @@ export default function ArielHRPage() {
       taxPct: d.taxPct,
       tableTotal: totals[d.contractor] || 0,
       finalAmount: '', afterTaxDeduction: '', withVat: '', paidToDate: '', payToday: '',
-      payTodayGreen: false,
+      payTodayGreen: false, finalGreen: false,
     })))
   }
 
@@ -798,11 +798,13 @@ export default function ArielHRPage() {
     setContractorPayments(prev => prev.map(p => {
       if (p.id !== id) return p
       const updated = { ...p, [field]: value }
-      // Auto-calc afterTaxDeduction when finalAmount or taxPct changes
+      // Auto-calc afterTaxDeduction and withVat when finalAmount or taxPct changes
       if (field === 'finalAmount' || field === 'taxPct') {
         const final = Number(updated.finalAmount) || 0
         const pct = parseFloat(String(updated.taxPct).replace('%', '')) || 0
-        updated.afterTaxDeduction = final > 0 ? String(Math.round(final * (1 - pct / 100))) : ''
+        const afterTax = final > 0 ? Math.round(final * (1 - pct / 100)) : ''
+        updated.afterTaxDeduction = afterTax
+        updated.withVat = afterTax ? String(Math.round(Number(afterTax) * 1.18)) : ''
       }
       return updated
     }))
@@ -816,7 +818,7 @@ export default function ArielHRPage() {
   const addContractorRow = (afterId) => {
     setContractorPayments(prev => {
       const idx = afterId ? prev.findIndex(p => p.id === afterId) : prev.length - 1
-      const newRow = { id: `cp_${Date.now()}`, contractor: '', company: '', taxPct: '', tableTotal: 0, finalAmount: '', afterTaxDeduction: '', withVat: '', paidToDate: '', payToday: '', payTodayGreen: false }
+      const newRow = { id: `cp_${Date.now()}`, contractor: '', company: '', taxPct: '', tableTotal: 0, finalAmount: '', afterTaxDeduction: '', withVat: '', paidToDate: '', payToday: '', payTodayGreen: false, finalGreen: false }
       const next = [...prev]
       next.splice(idx + 1, 0, newRow)
       return next
@@ -2000,17 +2002,18 @@ export default function ArielHRPage() {
                               >&larr;</button>
                               <input type="text" key={`final_${p.id}_${p.finalAmount}`} defaultValue={fmtCP(p.finalAmount)}
                                 onBlur={e => updateContractorPayment(p.id, 'finalAmount', e.target.value.replace(/,/g, ''))}
-                                style={{ ...inp, width: '70px' }}
+                                style={{ ...inp, width: '70px', background: p.finalGreen ? '#d4edda' : '#fff' }}
                               />
+                              <button
+                                onClick={() => updateContractorPayment(p.id, 'finalGreen', !p.finalGreen)}
+                                style={{ width: '14px', height: '14px', fontSize: '8px', padding: 0, cursor: 'pointer', border: '1px solid #ccc', borderRadius: '2px', background: p.finalGreen ? '#4caf50' : '#eee', color: '#fff', lineHeight: '12px' }}
+                              >&bull;</button>
                             </td>
                             <td style={{ padding: '1px 3px', textAlign: 'right', direction: 'ltr', background: '#f9f9f9' }}>
                               {fmtCP(p.afterTaxDeduction)}
                             </td>
-                            <td style={{ padding: '1px 3px' }}>
-                              <input type="text" defaultValue={fmtCP(p.withVat)}
-                                onBlur={e => updateContractorPayment(p.id, 'withVat', e.target.value.replace(/,/g, ''))}
-                                style={{ ...inp, width: '70px' }}
-                              />
+                            <td style={{ padding: '1px 3px', textAlign: 'right', direction: 'ltr', background: '#f9f9f9' }}>
+                              {fmtCP(p.withVat)}
                             </td>
                             <td style={{ padding: '1px 3px' }}>
                               <input type="text" defaultValue={fmtCP(p.paidToDate)}
