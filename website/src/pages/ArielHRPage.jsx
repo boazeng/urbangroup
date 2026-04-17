@@ -101,6 +101,8 @@ export default function ArielHRPage() {
   const [tasks, setTasks] = useState([])
   const [showTasks, setShowTasks] = useState(false)
   const [newTaskText, setNewTaskText] = useState('')
+  const [showContractorPayments, setShowContractorPayments] = useState(false)
+  const [contractorPayments, setContractorPayments] = useState([])
   const [nextNewId, setNextNewId] = useState(1)   // counter for new row temp IDs
 
   // Draggable grand totals order
@@ -736,6 +738,40 @@ export default function ArielHRPage() {
   const handleDeleteTask = async (taskId) => {
     await fetch(`${API_BASE}/api/hr/tasks/${taskId}`, { method: 'DELETE' })
     loadTasks()
+  }
+
+  const initContractorPayments = () => {
+    const rows = getActiveRows()
+    const byContractor = {}
+    for (const r of rows) {
+      const cont = cellVal(r[COL.CONTRACTOR])
+      if (!cont) continue
+      if (!byContractor[cont]) byContractor[cont] = { contractor: cont, company: '', tableTotal: 0 }
+      byContractor[cont].tableTotal += Number(r[COL.CONT_TOTAL]) || 0
+    }
+    // Merge with existing data (preserve user edits)
+    const existing = {}
+    for (const p of contractorPayments) existing[p.contractor] = p
+    const merged = Object.values(byContractor).map(b => {
+      const prev = existing[b.contractor] || {}
+      return {
+        contractor: b.contractor,
+        company: prev.company || '',
+        tableTotal: b.tableTotal,
+        finalAmount: prev.finalAmount ?? '',
+        afterTaxDeduction: prev.afterTaxDeduction ?? '',
+        withVat: prev.withVat ?? '',
+        paidToDate: prev.paidToDate ?? '',
+        payToday: prev.payToday ?? '',
+      }
+    })
+    setContractorPayments(merged)
+  }
+
+  const updateContractorPayment = (contractor, field, value) => {
+    setContractorPayments(prev => prev.map(p =>
+      p.contractor === contractor ? { ...p, [field]: value } : p
+    ))
   }
 
   const handleUpdateTaskMonth = async (taskId, newMonth) => {
@@ -1755,6 +1791,16 @@ export default function ArielHRPage() {
                 >
                   מטלות{tasks.length > 0 ? ` (${tasks.length})` : ''}
                 </button>
+                <button
+                  className={`hr-report-btn${showContractorPayments ? ' hr-toggle-active' : ''}`}
+                  onClick={() => {
+                    const next = !showContractorPayments
+                    setShowContractorPayments(next)
+                    if (next) initContractorPayments()
+                  }}
+                >
+                  תשלומי קבלנים
+                </button>
               </div>
             )}
 
@@ -1819,6 +1865,86 @@ export default function ArielHRPage() {
                             </td>
                           </tr>
                         ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Contractor Payments table */}
+            {showContractorPayments && (
+              <div className="hr-site-summary" style={{ marginBottom: '12px', borderBottom: '2px solid #1976d2', paddingBottom: '12px' }}>
+                <h3 className="hr-site-summary-title">תשלומי קבלנים — חודש {selectedSheet}</h3>
+                {contractorPayments.length === 0 ? (
+                  <div style={{ color: '#888', fontSize: '13px' }}>אין קבלנים בנתונים</div>
+                ) : (
+                  <div className="ariel-card hr-table-wrapper">
+                    <table className="ariel-table hr-summary-table" style={{ fontSize: '13px' }}>
+                      <thead>
+                        <tr>
+                          <th>כינוי קבלן</th>
+                          <th>שם חברה</th>
+                          <th>סוכם מהטבלה</th>
+                          <th>סכום סופי לתשלום</th>
+                          <th>לאחר ניכוי מס במקור</th>
+                          <th>כולל מע&quot;מ</th>
+                          <th>שולם עד היום</th>
+                          <th>לתשלום היום</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {contractorPayments.map(p => (
+                          <tr key={p.contractor}>
+                            <td style={{ fontWeight: 'bold' }}>{p.contractor}</td>
+                            <td>
+                              <input type="text" defaultValue={p.company}
+                                onBlur={e => updateContractorPayment(p.contractor, 'company', e.target.value)}
+                                style={{ width: '120px', border: '1px solid #ccc', borderRadius: '3px', padding: '2px 4px' }}
+                              />
+                            </td>
+                            <td className="ariel-num" style={{ fontWeight: 'bold' }}>{p.tableTotal.toLocaleString('he-IL')}</td>
+                            <td>
+                              <input type="number" defaultValue={p.finalAmount}
+                                onBlur={e => updateContractorPayment(p.contractor, 'finalAmount', e.target.value)}
+                                style={{ width: '90px', border: '1px solid #ccc', borderRadius: '3px', padding: '2px 4px', textAlign: 'left' }}
+                              />
+                            </td>
+                            <td>
+                              <input type="number" defaultValue={p.afterTaxDeduction}
+                                onBlur={e => updateContractorPayment(p.contractor, 'afterTaxDeduction', e.target.value)}
+                                style={{ width: '90px', border: '1px solid #ccc', borderRadius: '3px', padding: '2px 4px', textAlign: 'left' }}
+                              />
+                            </td>
+                            <td>
+                              <input type="number" defaultValue={p.withVat}
+                                onBlur={e => updateContractorPayment(p.contractor, 'withVat', e.target.value)}
+                                style={{ width: '90px', border: '1px solid #ccc', borderRadius: '3px', padding: '2px 4px', textAlign: 'left' }}
+                              />
+                            </td>
+                            <td>
+                              <input type="number" defaultValue={p.paidToDate}
+                                onBlur={e => updateContractorPayment(p.contractor, 'paidToDate', e.target.value)}
+                                style={{ width: '90px', border: '1px solid #ccc', borderRadius: '3px', padding: '2px 4px', textAlign: 'left' }}
+                              />
+                            </td>
+                            <td>
+                              <input type="number" defaultValue={p.payToday}
+                                onBlur={e => updateContractorPayment(p.contractor, 'payToday', e.target.value)}
+                                style={{ width: '90px', border: '1px solid #ccc', borderRadius: '3px', padding: '2px 4px', textAlign: 'left' }}
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                        <tr className="total-row" style={{ fontWeight: 'bold' }}>
+                          <td colSpan={2}>סה&quot;כ</td>
+                          <td className="ariel-num">{contractorPayments.reduce((s, p) => s + p.tableTotal, 0).toLocaleString('he-IL')}</td>
+                          <td className="ariel-num">{contractorPayments.reduce((s, p) => s + (Number(p.finalAmount) || 0), 0).toLocaleString('he-IL')}</td>
+                          <td className="ariel-num">{contractorPayments.reduce((s, p) => s + (Number(p.afterTaxDeduction) || 0), 0).toLocaleString('he-IL')}</td>
+                          <td className="ariel-num">{contractorPayments.reduce((s, p) => s + (Number(p.withVat) || 0), 0).toLocaleString('he-IL')}</td>
+                          <td className="ariel-num">{contractorPayments.reduce((s, p) => s + (Number(p.paidToDate) || 0), 0).toLocaleString('he-IL')}</td>
+                          <td className="ariel-num">{contractorPayments.reduce((s, p) => s + (Number(p.payToday) || 0), 0).toLocaleString('he-IL')}</td>
+                        </tr>
                       </tbody>
                     </table>
                   </div>
