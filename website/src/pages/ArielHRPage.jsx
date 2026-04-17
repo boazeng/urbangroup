@@ -1982,12 +1982,14 @@ export default function ArielHRPage() {
                         <tr>
                           <th style={{ padding: '2px 4px' }}></th>
                           <th style={{ padding: '2px 4px' }}>כינוי קבלן</th>
+                          <th style={{ padding: '2px 4px' }}>חשבון</th>
+                          <th style={{ padding: '2px 4px' }}>ח.פ.</th>
                           <th style={{ padding: '2px 4px' }}>חברה</th>
+                          <th style={{ padding: '2px 4px' }}>פטור</th>
                           <th style={{ padding: '2px 4px' }}>נמ&quot;ב %</th>
                           <th style={{ padding: '2px 4px' }}>סוכם</th>
                           <th style={{ padding: '2px 4px' }}>סופי</th>
                           <th style={{ padding: '2px 4px' }}>אחרי נמ&quot;ב</th>
-                          <th style={{ padding: '2px 4px' }}>פטור</th>
                           <th style={{ padding: '2px 4px' }}>כולל מע&quot;מ</th>
                           <th style={{ padding: '2px 4px' }}>שולם</th>
                           <th style={{ padding: '2px 4px' }}>לתשלום היום</th>
@@ -2011,9 +2013,28 @@ export default function ArielHRPage() {
                               />
                             </td>
                             <td style={{ padding: '1px 3px' }}>
+                              <input type="text" defaultValue={p.priorityAccount || ''}
+                                onBlur={e => updateContractorPayment(p.id, 'priorityAccount', e.target.value)}
+                                style={{ ...inp, width: '55px', textAlign: 'center' }}
+                              />
+                            </td>
+                            <td style={{ padding: '1px 3px' }}>
+                              <input type="text" defaultValue={p.companyId || ''}
+                                onBlur={e => updateContractorPayment(p.id, 'companyId', e.target.value)}
+                                maxLength={9}
+                                style={{ ...inp, width: '75px', textAlign: 'center', letterSpacing: '0.5px' }}
+                              />
+                            </td>
+                            <td style={{ padding: '1px 3px' }}>
                               <input type="text" defaultValue={p.company}
                                 onBlur={e => updateContractorPayment(p.id, 'company', e.target.value)}
                                 style={{ ...inp, width: '110px', textAlign: 'right', direction: 'rtl' }}
+                              />
+                            </td>
+                            <td style={{ padding: '1px 3px', textAlign: 'center' }}>
+                              <input type="checkbox" checked={!!p.taxExempt}
+                                onChange={e => updateContractorPayment(p.id, 'taxExempt', e.target.checked)}
+                                style={{ cursor: 'pointer' }}
                               />
                             </td>
                             <td style={{ padding: '1px 3px' }}>
@@ -2041,12 +2062,6 @@ export default function ArielHRPage() {
                             <td style={{ padding: '1px 3px', textAlign: 'right', direction: 'ltr', background: '#f9f9f9' }}>
                               {fmtCP(p.afterTaxDeduction)}
                             </td>
-                            <td style={{ padding: '1px 3px', textAlign: 'center' }}>
-                              <input type="checkbox" checked={!!p.taxExempt}
-                                onChange={e => updateContractorPayment(p.id, 'taxExempt', e.target.checked)}
-                                style={{ cursor: 'pointer' }}
-                              />
-                            </td>
                             <td style={{ padding: '1px 3px', textAlign: 'right', direction: 'ltr', background: '#f9f9f9' }}>
                               {fmtCP(p.withVat)}
                             </td>
@@ -2070,11 +2085,10 @@ export default function ArielHRPage() {
                           )
                         })}
                         <tr style={{ fontWeight: 'bold', borderTop: '2px solid #333' }}>
-                          <td colSpan={4} style={{ padding: '2px 4px' }}>סה&quot;כ</td>
+                          <td colSpan={6} style={{ padding: '2px 4px' }}>סה&quot;כ</td>
                           <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (p.tableTotal || 0), 0))}</td>
                           <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (Number(p.finalAmount) || 0), 0))}</td>
                           <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (Number(p.afterTaxDeduction) || 0), 0))}</td>
-                          <td></td>
                           <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (Number(p.withVat) || 0), 0))}</td>
                           <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (Number(p.paidToDate) || 0), 0))}</td>
                           <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (Number(p.payToday) || 0), 0))}</td>
