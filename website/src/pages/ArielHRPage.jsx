@@ -740,13 +740,40 @@ export default function ArielHRPage() {
     loadTasks()
   }
 
+  // Pre-defined contractor info (company name + tax deduction %)
+  const CONTRACTOR_INFO = {
+    'ויסאם': { company: 'א.ס. ניהול ברמה', taxPct: '0%' },
+    'GN': { company: 'אהרונוביץ ארט גרופ', taxPct: '2%' },
+    'נאיל': { company: 'נאיל ג\'ברין', taxPct: '3%' },
+    'פארס': { company: 'ס.א.ד - קשקוש', taxPct: '0%' },
+    'ראמי': { company: 'ראמי', taxPct: '5%' },
+    'מנסור': { company: 'רמי מנסור', taxPct: '5%' },
+    'איהב': { company: 'איהב', taxPct: '5%' },
+    'סלמן': { company: 'מ.ע.ע סלמן בעמ', taxPct: '2%' },
+    'נתי': { company: 'נתגאל', taxPct: '3%' },
+    'תאמר': { company: 'תאמר - פטור', taxPct: '3%' },
+    'אילן': { company: '', taxPct: '3%' },
+    'אבשלום': { company: 'לא ידוע', taxPct: '0%' },
+    'חונין': { company: 'חונין בניה והנדסה', taxPct: '3%' },
+    'יונתן': { company: 'יונתן', taxPct: '5%' },
+    'חאלד': { company: 'חח עבודות פיקוח', taxPct: '2%' },
+    'דאוויה': { company: 'בוני ירושלים', taxPct: '5%' },
+    'יוחאי': { company: '', taxPct: '' },
+    'ברוך': { company: 'שוהם', taxPct: '0%' },
+    'רפי': { company: 'רפי שריקי (עוסק פטור)', taxPct: '' },
+    'אחמד': { company: 'גמהור אחמד', taxPct: '5%' },
+    'ואגדי': { company: 'א.ס.ג פרחאת לבנין', taxPct: '3%' },
+    'תמיר': { company: 'תמיר עוז', taxPct: '0%' },
+  }
+
   const initContractorPayments = () => {
     const rows = getActiveRows()
     const byContractor = {}
     for (const r of rows) {
       const cont = cellVal(r[COL.CONTRACTOR])
       if (!cont) continue
-      if (!byContractor[cont]) byContractor[cont] = { contractor: cont, company: '', taxPct: '', tableTotal: 0 }
+      const info = CONTRACTOR_INFO[cont] || {}
+      if (!byContractor[cont]) byContractor[cont] = { contractor: cont, company: info.company || '', taxPct: info.taxPct || '', tableTotal: 0 }
       byContractor[cont].tableTotal += Number(r[COL.CONT_TOTAL]) || 0
     }
     // Merge with existing data (preserve user edits)
