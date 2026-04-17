@@ -799,7 +799,7 @@ export default function ArielHRPage() {
       taxPct: d.taxPct,
       tableTotal: totals[d.contractor] || 0,
       finalAmount: '', afterTaxDeduction: '', withVat: '', paidToDate: '', payToday: '',
-      payTodayGreen: false, finalGreen: false,
+      payTodayGreen: false, finalGreen: false, taxExempt: false,
     })))
   }
 
@@ -816,12 +816,13 @@ export default function ArielHRPage() {
       const next = prev.map(p => {
         if (p.id !== id) return p
         const updated = { ...p, [field]: value }
-        if (field === 'finalAmount' || field === 'taxPct') {
+        if (field === 'finalAmount' || field === 'taxPct' || field === 'taxExempt') {
           const final = Number(updated.finalAmount) || 0
           const pct = parseFloat(String(updated.taxPct).replace('%', '')) || 0
           const afterTax = final > 0 ? Math.round(final * (1 - pct / 100)) : ''
           updated.afterTaxDeduction = afterTax
-          updated.withVat = afterTax ? String(Math.round(Number(afterTax) * 1.18)) : ''
+          const vatMul = updated.taxExempt ? 1 : 1.18
+          updated.withVat = afterTax ? String(Math.round(Number(afterTax) * vatMul)) : ''
         }
         return updated
       })
@@ -839,7 +840,7 @@ export default function ArielHRPage() {
   const addContractorRow = (afterId) => {
     setContractorPayments(prev => {
       const idx = afterId ? prev.findIndex(p => p.id === afterId) : prev.length - 1
-      const newRow = { id: `cp_${Date.now()}`, contractor: '', company: '', taxPct: '', tableTotal: 0, finalAmount: '', afterTaxDeduction: '', withVat: '', paidToDate: '', payToday: '', payTodayGreen: false, finalGreen: false }
+      const newRow = { id: `cp_${Date.now()}`, contractor: '', company: '', taxPct: '', tableTotal: 0, finalAmount: '', afterTaxDeduction: '', withVat: '', paidToDate: '', payToday: '', payTodayGreen: false, finalGreen: false, taxExempt: false }
       const next = [...prev]
       next.splice(idx + 1, 0, newRow)
       setTimeout(() => saveContractorPaymentsToDb(next), 0)
@@ -1163,15 +1164,15 @@ export default function ArielHRPage() {
     let tablesHtml = `
       <div class="section">
         <h2>סיכום קבלנים</h2>
-        <table style="width:auto; margin: 0;">
-          <thead><tr><th style="min-width:120px">שם קבלן</th><th style="min-width:100px; text-align:right">סה"כ לתשלום</th></tr></thead>
+        <table style="width:auto; margin: 0; border: 1px solid #ccc;">
+          <thead><tr><th style="min-width:120px; border: 1px solid #ccc;">שם קבלן</th><th style="min-width:100px; text-align:right; border: 1px solid #ccc;">סה"כ לתשלום</th></tr></thead>
           <tbody>
             ${summaryRows.map(x =>
-              `<tr><td>${x.contractor}</td><td style="text-align:right; font-variant-numeric:tabular-nums">${fmtNum(x.total)}</td></tr>`
+              `<tr><td style="border: 1px solid #ddd;">${x.contractor}</td><td style="text-align:right; font-variant-numeric:tabular-nums; border: 1px solid #ddd;">${fmtNum(x.total)}</td></tr>`
             ).join('')}
             <tr class="total-row">
-              <td><strong>סה"כ כללי</strong></td>
-              <td style="text-align:right"><strong>${fmtNum(summaryGrand)}</strong></td>
+              <td style="border: 1px solid #ccc;"><strong>סה"כ כללי</strong></td>
+              <td style="text-align:right; border: 1px solid #ccc;"><strong>${fmtNum(summaryGrand)}</strong></td>
             </tr>
           </tbody>
         </table>
@@ -1986,6 +1987,7 @@ export default function ArielHRPage() {
                           <th style={{ padding: '2px 4px' }}>סוכם</th>
                           <th style={{ padding: '2px 4px' }}>סופי</th>
                           <th style={{ padding: '2px 4px' }}>אחרי נמ&quot;ב</th>
+                          <th style={{ padding: '2px 4px' }}>פטור</th>
                           <th style={{ padding: '2px 4px' }}>כולל מע&quot;מ</th>
                           <th style={{ padding: '2px 4px' }}>שולם</th>
                           <th style={{ padding: '2px 4px' }}>לתשלום היום</th>
@@ -2039,6 +2041,12 @@ export default function ArielHRPage() {
                             <td style={{ padding: '1px 3px', textAlign: 'right', direction: 'ltr', background: '#f9f9f9' }}>
                               {fmtCP(p.afterTaxDeduction)}
                             </td>
+                            <td style={{ padding: '1px 3px', textAlign: 'center' }}>
+                              <input type="checkbox" checked={!!p.taxExempt}
+                                onChange={e => updateContractorPayment(p.id, 'taxExempt', e.target.checked)}
+                                style={{ cursor: 'pointer' }}
+                              />
+                            </td>
                             <td style={{ padding: '1px 3px', textAlign: 'right', direction: 'ltr', background: '#f9f9f9' }}>
                               {fmtCP(p.withVat)}
                             </td>
@@ -2066,6 +2074,7 @@ export default function ArielHRPage() {
                           <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (p.tableTotal || 0), 0))}</td>
                           <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (Number(p.finalAmount) || 0), 0))}</td>
                           <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (Number(p.afterTaxDeduction) || 0), 0))}</td>
+                          <td></td>
                           <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (Number(p.withVat) || 0), 0))}</td>
                           <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (Number(p.paidToDate) || 0), 0))}</td>
                           <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (Number(p.payToday) || 0), 0))}</td>
