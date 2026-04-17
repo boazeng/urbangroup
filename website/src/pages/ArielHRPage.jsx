@@ -1163,15 +1163,15 @@ export default function ArielHRPage() {
     let tablesHtml = `
       <div class="section">
         <h2>סיכום קבלנים</h2>
-        <table>
-          <thead><tr><th>שם קבלן</th><th>סה"כ לתשלום</th></tr></thead>
+        <table style="width:auto; margin: 0;">
+          <thead><tr><th style="min-width:120px">שם קבלן</th><th style="min-width:100px; text-align:right">סה"כ לתשלום</th></tr></thead>
           <tbody>
             ${summaryRows.map(x =>
-              `<tr><td>${x.contractor}</td><td class="num">${fmtNum(x.total)}</td></tr>`
+              `<tr><td>${x.contractor}</td><td style="text-align:right; font-variant-numeric:tabular-nums">${fmtNum(x.total)}</td></tr>`
             ).join('')}
             <tr class="total-row">
               <td><strong>סה"כ כללי</strong></td>
-              <td class="num"><strong>${fmtNum(summaryGrand)}</strong></td>
+              <td style="text-align:right"><strong>${fmtNum(summaryGrand)}</strong></td>
             </tr>
           </tbody>
         </table>
