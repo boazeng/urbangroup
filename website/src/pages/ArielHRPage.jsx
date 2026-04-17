@@ -795,9 +795,22 @@ export default function ArielHRPage() {
   }
 
   const updateContractorPayment = (id, field, value) => {
-    setContractorPayments(prev => prev.map(p =>
-      p.id === id ? { ...p, [field]: value } : p
-    ))
+    setContractorPayments(prev => prev.map(p => {
+      if (p.id !== id) return p
+      const updated = { ...p, [field]: value }
+      // Auto-calc afterTaxDeduction when finalAmount or taxPct changes
+      if (field === 'finalAmount' || field === 'taxPct') {
+        const final = Number(updated.finalAmount) || 0
+        const pct = parseFloat(String(updated.taxPct).replace('%', '')) || 0
+        updated.afterTaxDeduction = final > 0 ? String(Math.round(final * (1 - pct / 100))) : ''
+      }
+      return updated
+    }))
+  }
+
+  const fmtCP = (v) => {
+    const n = Number(v)
+    return n ? n.toLocaleString('he-IL') : ''
   }
 
   const addContractorRow = (afterId) => {
@@ -1952,7 +1965,6 @@ export default function ArielHRPage() {
                       <tbody>
                         {contractorPayments.map(p => {
                           const inp = { border: '1px solid #ddd', borderRadius: '2px', padding: '1px 2px', fontSize: '12px', textAlign: 'right', direction: 'ltr' }
-                          const fmtN = (v) => v ? Number(v).toLocaleString('he-IL') : ''
                           return (
                           <tr key={p.id}>
                             <td style={{ padding: '1px 2px', whiteSpace: 'nowrap' }}>
@@ -1979,33 +1991,35 @@ export default function ArielHRPage() {
                                 style={{ ...inp, width: '35px', textAlign: 'center' }}
                               />
                             </td>
-                            <td style={{ padding: '1px 3px', textAlign: 'right', fontWeight: 'bold', direction: 'ltr' }}>{fmtN(p.tableTotal)}</td>
-                            <td style={{ padding: '1px 3px' }}>
-                              <input type="text" defaultValue={fmtN(p.finalAmount)}
+                            <td style={{ padding: '1px 3px', textAlign: 'right', fontWeight: 'bold', direction: 'ltr' }}>{fmtCP(p.tableTotal)}</td>
+                            <td style={{ padding: '1px 3px', display: 'flex', gap: '2px', alignItems: 'center' }}>
+                              <button
+                                onClick={() => updateContractorPayment(p.id, 'finalAmount', String(p.tableTotal))}
+                                title="העתק מסוכם"
+                                style={{ fontSize: '9px', padding: '0 2px', cursor: 'pointer', border: '1px solid #ccc', background: '#e3f2fd', lineHeight: '14px' }}
+                              >&larr;</button>
+                              <input type="text" key={`final_${p.id}_${p.finalAmount}`} defaultValue={fmtCP(p.finalAmount)}
                                 onBlur={e => updateContractorPayment(p.id, 'finalAmount', e.target.value.replace(/,/g, ''))}
                                 style={{ ...inp, width: '70px' }}
                               />
                             </td>
-                            <td style={{ padding: '1px 3px' }}>
-                              <input type="text" defaultValue={fmtN(p.afterTaxDeduction)}
-                                onBlur={e => updateContractorPayment(p.id, 'afterTaxDeduction', e.target.value.replace(/,/g, ''))}
-                                style={{ ...inp, width: '70px' }}
-                              />
+                            <td style={{ padding: '1px 3px', textAlign: 'right', direction: 'ltr', background: '#f9f9f9' }}>
+                              {fmtCP(p.afterTaxDeduction)}
                             </td>
                             <td style={{ padding: '1px 3px' }}>
-                              <input type="text" defaultValue={fmtN(p.withVat)}
+                              <input type="text" defaultValue={fmtCP(p.withVat)}
                                 onBlur={e => updateContractorPayment(p.id, 'withVat', e.target.value.replace(/,/g, ''))}
                                 style={{ ...inp, width: '70px' }}
                               />
                             </td>
                             <td style={{ padding: '1px 3px' }}>
-                              <input type="text" defaultValue={fmtN(p.paidToDate)}
+                              <input type="text" defaultValue={fmtCP(p.paidToDate)}
                                 onBlur={e => updateContractorPayment(p.id, 'paidToDate', e.target.value.replace(/,/g, ''))}
                                 style={{ ...inp, width: '70px' }}
                               />
                             </td>
                             <td style={{ padding: '1px 3px', display: 'flex', gap: '2px', alignItems: 'center' }}>
-                              <input type="text" defaultValue={fmtN(p.payToday)}
+                              <input type="text" defaultValue={fmtCP(p.payToday)}
                                 onBlur={e => updateContractorPayment(p.id, 'payToday', e.target.value.replace(/,/g, ''))}
                                 style={{ ...inp, width: '70px', background: p.payTodayGreen ? '#d4edda' : '#fff' }}
                               />
@@ -2019,12 +2033,12 @@ export default function ArielHRPage() {
                         })}
                         <tr style={{ fontWeight: 'bold', borderTop: '2px solid #333' }}>
                           <td colSpan={4} style={{ padding: '2px 4px' }}>סה&quot;כ</td>
-                          <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{contractorPayments.reduce((s, p) => s + (p.tableTotal || 0), 0).toLocaleString('he-IL')}</td>
-                          <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{contractorPayments.reduce((s, p) => s + (Number(p.finalAmount) || 0), 0).toLocaleString('he-IL')}</td>
-                          <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{contractorPayments.reduce((s, p) => s + (Number(p.afterTaxDeduction) || 0), 0).toLocaleString('he-IL')}</td>
-                          <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{contractorPayments.reduce((s, p) => s + (Number(p.withVat) || 0), 0).toLocaleString('he-IL')}</td>
-                          <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{contractorPayments.reduce((s, p) => s + (Number(p.paidToDate) || 0), 0).toLocaleString('he-IL')}</td>
-                          <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{contractorPayments.reduce((s, p) => s + (Number(p.payToday) || 0), 0).toLocaleString('he-IL')}</td>
+                          <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (p.tableTotal || 0), 0))}</td>
+                          <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (Number(p.finalAmount) || 0), 0))}</td>
+                          <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (Number(p.afterTaxDeduction) || 0), 0))}</td>
+                          <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (Number(p.withVat) || 0), 0))}</td>
+                          <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (Number(p.paidToDate) || 0), 0))}</td>
+                          <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (Number(p.payToday) || 0), 0))}</td>
                         </tr>
                       </tbody>
                     </table>
