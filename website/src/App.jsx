@@ -6,6 +6,7 @@ import HomePage from './pages/HomePage'
 import AppPage from './pages/AppPage'
 import InvoicesPage from './pages/InvoicesPage'
 import EnergyPage from './pages/EnergyPage'
+import EnergySystemPage from './pages/EnergySystemPage'
 import AppsPage from './pages/AppsPage'
 import SupplierInvoicesPage from './pages/SupplierInvoicesPage'
 import InvoicePrinterPage from './pages/InvoicePrinterPage'
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="/parking/projects" element={<ParkingProjectsPage />} />
           <Route path="/energy" element={<EnergyPage />} />
           <Route path="/energy/invoices" element={<InvoicesPage />} />
+          <Route path="/energy/system" element={<EnergySystemPage />} />
           <Route path="/apps" element={<AppsPage />} />
           <Route path="/apps/supplier-invoices" element={<SupplierInvoicesPage />} />
           <Route path="/apps/supplier-invoice-entry" element={<SupplierInvoiceEntryPage />} />
