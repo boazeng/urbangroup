@@ -326,6 +326,148 @@ def list_tasks(status=None):
     return tasks
 
 
+def save_customers_phone_cache(phone_map):
+    """Save customers-by-phone map to DB (id=CUSTOMERS_PHONE_CACHE). Compressed."""
+    import gzip, base64
+    now = datetime.utcnow().isoformat() + "Z"
+    raw = json.dumps(phone_map, ensure_ascii=False)
+    compressed = gzip.compress(raw.encode("utf-8"))
+    encoded = base64.b64encode(compressed).decode("ascii")
+    _table.put_item(Item={
+        "id": "CUSTOMERS_PHONE_CACHE",
+        "data_gz": encoded,
+        "count": len(phone_map),
+        "updated_at": now,
+    })
+    logger.info(f"Saved customers phone cache: {len(phone_map)} entries")
+
+
+def get_customers_phone_cache():
+    """Get customers-by-phone map from DB."""
+    import gzip, base64
+    resp = _table.get_item(Key={"id": "CUSTOMERS_PHONE_CACHE"})
+    item = resp.get("Item")
+    if not item:
+        return None
+    encoded = item.get("data_gz")
+    data = {}
+    if encoded:
+        try:
+            compressed = base64.b64decode(encoded)
+            raw = gzip.decompress(compressed).decode("utf-8")
+            data = json.loads(raw)
+        except Exception as e:
+            logger.error(f"Failed to decode customers phone cache: {e}")
+    return {
+        "data": data,
+        "count": int(item.get("count", 0)) if item.get("count") else 0,
+        "updated_at": item.get("updated_at", ""),
+    }
+
+
+def save_charging_sessions(month, rows, file_name=""):
+    """Save EV charging sessions for a specific month. Compressed since the file can be large."""
+    import gzip, base64
+    now = datetime.utcnow().isoformat() + "Z"
+    raw = json.dumps(rows, ensure_ascii=False)
+    compressed = gzip.compress(raw.encode("utf-8"))
+    encoded = base64.b64encode(compressed).decode("ascii")
+    _table.put_item(Item={
+        "id": f"CHARGING_SESSIONS_{month}",
+        "month": month,
+        "data_gz": encoded,
+        "count": len(rows),
+        "file_name": file_name,
+        "updated_at": now,
+    })
+    logger.info(f"Saved {len(rows)} charging sessions for {month} ({len(encoded)} bytes compressed)")
+
+
+def get_charging_sessions(month):
+    """Get charging sessions for a specific month."""
+    import gzip, base64
+    resp = _table.get_item(Key={"id": f"CHARGING_SESSIONS_{month}"})
+    item = resp.get("Item")
+    if not item:
+        return None
+    encoded = item.get("data_gz")
+    rows = []
+    if encoded:
+        try:
+            compressed = base64.b64decode(encoded)
+            raw = gzip.decompress(compressed).decode("utf-8")
+            rows = json.loads(raw)
+        except Exception as e:
+            logger.error(f"Failed to decode charging sessions: {e}")
+    return {
+        "rows": rows,
+        "count": int(item.get("count", 0)) if item.get("count") else 0,
+        "file_name": item.get("file_name", ""),
+        "updated_at": item.get("updated_at", ""),
+        "month": item.get("month", month),
+    }
+
+
+def list_charging_months():
+    """List all months that have saved charging sessions."""
+    resp = _table.scan(
+        FilterExpression="begins_with(id, :p)",
+        ExpressionAttributeValues={":p": "CHARGING_SESSIONS_"},
+        ProjectionExpression="id, #m, #c, file_name, updated_at",
+        ExpressionAttributeNames={"#m": "month", "#c": "count"},
+    )
+    items = resp.get("Items", [])
+    months = []
+    for item in items:
+        months.append({
+            "month": item.get("month") or item.get("id", "").replace("CHARGING_SESSIONS_", ""),
+            "count": int(item.get("count", 0)) if item.get("count") else 0,
+            "file_name": item.get("file_name", ""),
+            "updated_at": item.get("updated_at", ""),
+        })
+    months.sort(key=lambda x: x["month"], reverse=True)
+    return months
+
+
+def save_accounts_cache(accounts_map):
+    """Save accounts trial balance map to DB. Uses gzip compression to fit DynamoDB 400KB limit."""
+    import gzip, base64
+    now = datetime.utcnow().isoformat() + "Z"
+    raw_json = json.dumps(accounts_map, ensure_ascii=False)
+    compressed = gzip.compress(raw_json.encode("utf-8"))
+    encoded = base64.b64encode(compressed).decode("ascii")
+    _table.put_item(Item={
+        "id": "ACCOUNTS_CACHE",
+        "data_gz": encoded,
+        "count": len(accounts_map),
+        "updated_at": now,
+    })
+    logger.info(f"Saved accounts cache: {len(accounts_map)} accounts ({len(encoded)} bytes compressed)")
+
+
+def get_accounts_cache():
+    """Get cached accounts map. Returns dict with 'data' (decompressed) and 'updated_at', or None."""
+    import gzip, base64
+    resp = _table.get_item(Key={"id": "ACCOUNTS_CACHE"})
+    item = resp.get("Item")
+    if not item:
+        return None
+    encoded = item.get("data_gz")
+    data = {}
+    if encoded:
+        try:
+            compressed = base64.b64decode(encoded)
+            raw = gzip.decompress(compressed).decode("utf-8")
+            data = json.loads(raw)
+        except Exception as e:
+            logger.error(f"Failed to decode accounts cache: {e}")
+    return {
+        "data": data,
+        "count": int(item.get("count", 0)) if item.get("count") else 0,
+        "updated_at": item.get("updated_at", ""),
+    }
+
+
 def save_contractor_payments(sheet, data):
     """Save contractor payments data for a sheet/month."""
     now = datetime.utcnow().isoformat() + "Z"

@@ -1961,14 +1961,28 @@ def get_hr_sheet_data():
 
 @app.route("/api/hr/sheets", methods=["GET"])
 def get_hr_sheets():
-    """List available worksheets in the HR Excel file."""
+    """List available worksheets - merged from SharePoint Excel and DB-only months."""
+    sheets = []
     try:
         sp = _get_sp_connector()
         excel = sp.SharePointExcel(HR_SHARE_URL)
         sheets = excel.sheets()
-        return jsonify({"ok": True, "sheets": sheets})
     except Exception as e:
-        return jsonify({"ok": False, "error": str(e)}), 500
+        logger.warning(f"SharePoint sheets fetch failed: {e}")
+    # Add DB-only months (created via "Create Month" button)
+    try:
+        resp = delivery_notes_db._table.scan(
+            FilterExpression="begins_with(id, :p)",
+            ExpressionAttributeValues={":p": "HR_SHEET_"},
+            ProjectionExpression="id",
+        )
+        for item in resp.get("Items", []):
+            month = item.get("id", "").replace("HR_SHEET_", "")
+            if month and month not in sheets:
+                sheets.append(month)
+    except Exception as e:
+        logger.warning(f"DB sheets fetch failed: {e}")
+    return jsonify({"ok": True, "sheets": sheets})
 
 
 @app.route("/api/hr/save-changes", methods=["POST"])
@@ -2440,6 +2454,87 @@ def delete_task(task_id):
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/api/hr/create-month", methods=["POST"])
+def create_hr_month():
+    """Create a new HR month, optionally copying data from a source month.
+
+    Body:
+      newMonth: e.g. "4.26"
+      sourceMonth: optional, e.g. "3.26" - month to copy from
+    """
+    try:
+        body = request.get_json(force=True)
+        new_month = (body.get("newMonth") or "").strip()
+        source_month = (body.get("sourceMonth") or "").strip()
+
+        if not new_month:
+            return jsonify({"ok": False, "error": "Missing newMonth"}), 400
+
+        # Check if new month already exists
+        existing = delivery_notes_db.load_hr_sheet(new_month)
+        if existing:
+            return jsonify({"ok": False, "error": f"Month {new_month} already exists"}), 400
+
+        rows = []
+        filters = {}
+        # If source specified, copy from source
+        if source_month:
+            source_data = delivery_notes_db.load_hr_sheet(source_month)
+            if not source_data:
+                return jsonify({"ok": False, "error": f"Source month {source_month} not found"}), 400
+
+            # Column indices to clear in copied rows
+            CLEAR_COLS = {
+                1,    # TRACKING - מעקב
+                4,    # FILLING - מילוי
+                12,   # HOURS_REG - שעות רגילות
+                13,   # HOURS_125 - שעות 125%
+                14,   # HOURS_150 - שעות 150%
+                18,   # CUST_TOTAL - calculated, will be recalced
+                22,   # CONT_TOTAL - calculated
+                23,   # GAP - calculated
+            }
+
+            for row in source_data.get("rows", []):
+                new_row = list(row)
+                # Pad to 25 columns to be safe
+                while len(new_row) < 25:
+                    new_row.append('')
+                for c in CLEAR_COLS:
+                    if c < len(new_row):
+                        new_row[c] = ''
+                rows.append(new_row)
+            filters = source_data.get("filters", {})
+
+        # Save new month sheet
+        delivery_notes_db.save_hr_sheet(new_month, rows, filters)
+
+        # Copy contractor payments and clear finalAmount
+        if source_month:
+            cp = delivery_notes_db.get_contractor_payments(source_month)
+            if cp and cp.get("data"):
+                data = cp["data"]
+                if isinstance(data, str):
+                    import json as _json
+                    data = _json.loads(data)
+                new_data = []
+                for p in data:
+                    np = dict(p)
+                    np["finalAmount"] = ""
+                    np["afterTaxDeduction"] = ""
+                    np["withVat"] = ""
+                    np["payToday"] = ""
+                    np["finalGreen"] = False
+                    np["payTodayGreen"] = False
+                    new_data.append(np)
+                delivery_notes_db.save_contractor_payments(new_month, new_data)
+
+        return jsonify({"ok": True, "newMonth": new_month, "rowCount": len(rows)})
+    except Exception as e:
+        logger.error(f"Create HR month failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/hr/contractor-payments", methods=["GET"])
 def get_contractor_payments():
     """Get saved contractor payments for a sheet."""
@@ -2473,6 +2568,451 @@ def save_contractor_payments():
         return jsonify({"ok": True})
     except Exception as e:
         logger.error(f"Save contractor payments failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+def _fetch_trial_map_from_priority(url, hdrs, auth):
+    """Fetch all ACCOUNTS from Priority and build trial balance map."""
+    trial_map = {}
+    skip = 0
+    while True:
+        acc_url = f"{url}/ACCOUNTS?$select=ACCNAME,TRIALBALCODE,TRIALBALDES&$top=500&$skip={skip}"
+        r = http_requests.get(acc_url, headers=hdrs, auth=auth, timeout=60)
+        if r.status_code >= 400:
+            break
+        rows = r.json().get("value", [])
+        if not rows:
+            break
+        for a in rows:
+            an = (a.get("ACCNAME") or "").strip()
+            if an:
+                trial_map[an] = {
+                    "code": (a.get("TRIALBALCODE") or "").strip(),
+                    "desc": (a.get("TRIALBALDES") or "").strip(),
+                }
+        skip += len(rows)
+        if len(rows) < 500:
+            break
+        if skip > 50000:
+            break
+    return trial_map
+
+
+def _get_trial_map(url, hdrs, auth, force_refresh=False):
+    """Return trial balance map from DB cache. Only refreshes from Priority on explicit force_refresh."""
+    if force_refresh:
+        trial_map = _fetch_trial_map_from_priority(url, hdrs, auth)
+        if trial_map:
+            try:
+                delivery_notes_db.save_accounts_cache(trial_map)
+            except Exception as e:
+                logger.error(f"Failed to save accounts cache: {e}")
+        return trial_map
+
+    # Always read from DB - never auto-fetch
+    cached = delivery_notes_db.get_accounts_cache()
+    if cached and cached.get("data"):
+        return cached["data"]
+    return {}
+
+
+@app.route("/api/reports/accounts-status", methods=["GET"])
+def accounts_status():
+    """Get last sync info for accounts cache."""
+    try:
+        cached = delivery_notes_db.get_accounts_cache()
+        if not cached:
+            return jsonify({"ok": True, "count": 0, "updatedAt": None})
+        return jsonify({
+            "ok": True,
+            "count": cached.get("count", 0),
+            "updatedAt": cached.get("updated_at", ""),
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/reports/sync-accounts", methods=["POST"])
+def sync_accounts():
+    """Force refresh accounts trial balance map from Priority."""
+    try:
+        url = PRIORITY_URL_REAL
+        auth = HTTPBasicAuth(
+            os.getenv("PRIORITY_USERNAME", ""),
+            os.getenv("PRIORITY_PASSWORD", ""),
+        )
+        hdrs = {"Accept": "application/json", "OData-Version": "4.0"}
+        trial_map = _get_trial_map(url, hdrs, auth, force_refresh=True)
+        return jsonify({"ok": True, "count": len(trial_map)})
+    except Exception as e:
+        logger.error(f"Sync accounts failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/reports/profit-loss", methods=["POST"])
+def report_profit_loss():
+    """Fetch FNCTRANS for accounts matching '4XX-{branch}' in given date range."""
+    try:
+        body = request.get_json(force=True)
+        branch = str(body.get("branch", "")).strip()
+        date_type = body.get("dateType", "FNCDATE")  # FNCDATE or BALDATE
+        date_from = body.get("dateFrom", "")
+        date_to = body.get("dateTo", "")
+
+        if not branch or not date_from or not date_to:
+            return jsonify({"ok": False, "error": "Missing branch or dates"}), 400
+        if date_type not in ("FNCDATE", "BALDATE"):
+            date_type = "FNCDATE"
+
+        url = PRIORITY_URL_REAL
+        auth = HTTPBasicAuth(
+            os.getenv("PRIORITY_USERNAME", ""),
+            os.getenv("PRIORITY_PASSWORD", ""),
+        )
+        hdrs = {"Accept": "application/json", "OData-Version": "4.0"}
+
+        # Fetch finalized transactions for this branch in date range
+        # OData filter
+        flt = (
+            f"FINAL eq 'Y' and BRANCHNAME eq '{branch}' and "
+            f"{date_type} ge {date_from}T00:00:00Z and {date_type} le {date_to}T23:59:59Z"
+        )
+        select = "FNCNUM,FNCDATE,BALDATE,CURDATE,DETAILS,REFERENCE"
+        expand = "FNCITEMS_SUBFORM($select=ACCNAME,ACCDES,DEBIT1,CREDIT1,IACCNAME,DETAILS)"
+
+        all_rows = []
+        skip = 0
+        while True:
+            api_url = f"{url}/FNCTRANS?$filter={flt}&$select={select}&$expand={expand}&$top=500&$skip={skip}&$orderby={date_type} desc"
+            resp = http_requests.get(api_url, headers=hdrs, auth=auth, timeout=60)
+            if resp.status_code >= 400:
+                logger.error(f"P&L query failed: {resp.status_code} {resp.text[:200]}")
+                return jsonify({"ok": False, "error": resp.text[:200]}), 500
+            rows = resp.json().get("value", [])
+            if not rows:
+                break
+            all_rows.extend(rows)
+            skip += len(rows)
+            if len(rows) < 500:
+                break
+            if skip > 50000:
+                break
+
+        # Categorize by TRIALBALCODE: 400-490 = תקבולים, 6XX = הוצאות, 250-259 = הלוואות, else אחר
+        def categorize(acc):
+            t = trial_map.get((acc or "").strip())
+            if not t:
+                return 'אחר'
+            code = (t.get('code') or '').strip()
+            try:
+                n = int(code)
+                if 400 <= n <= 490:
+                    return 'תקבולים'
+                if 250 <= n <= 259:
+                    return 'הלוואות'
+                if n == 163:
+                    return 'חברות קשורות'
+            except ValueError:
+                pass
+            if code.startswith('6'):
+                return 'הוצאות'
+            return 'אחר'
+
+        # Get cached trial balance map (fetched once per hour)
+        trial_map = _get_trial_map(url, hdrs, auth)
+
+        def trial_section(acc):
+            t = trial_map.get((acc or "").strip())
+            if not t:
+                return ''
+            code = t.get('code', '')
+            desc = t.get('desc', '')
+            if code and desc:
+                return f"{code} - {desc}"
+            return code or desc or ''
+
+        def trial_code(acc):
+            t = trial_map.get((acc or "").strip())
+            return (t.get('code') if t else '') or ''
+
+        result_rows = []
+        for r in all_rows:
+            # Skip P-prefix transactions (חשבוניות עסקה - not real revenue/expense)
+            fncnum = (r.get('FNCNUM') or '').strip()
+            if fncnum.startswith('P'):
+                continue
+
+            items = r.get('FNCITEMS_SUBFORM') or []
+            for item in items:
+                acc = (item.get('ACCNAME') or '').strip()
+                if not acc:
+                    continue
+                acc_desc = item.get('ACCDES') or ''
+                opp = (item.get('IACCNAME') or '').strip()
+                debit = float(item.get('DEBIT1') or 0)
+                credit = float(item.get('CREDIT1') or 0)
+                line_details = item.get('DETAILS') or r.get('DETAILS', '')
+
+                result_rows.append({
+                    "category": categorize(acc),
+                    "trialSection": trial_section(acc),
+                    "trialCode": trial_code(acc),
+                    "account": acc,
+                    "accountDesc": acc_desc,
+                    "fncnum": fncnum,
+                    "fncDate": r.get('FNCDATE', ''),
+                    "balDate": r.get('BALDATE', ''),
+                    "details": line_details,
+                    "oppAccount": opp,
+                    "oppAccountDesc": '',
+                    "debit": debit,
+                    "credit": credit,
+                    "reference": r.get('REFERENCE', ''),
+                })
+
+        return jsonify({"ok": True, "rows": result_rows, "totalScanned": len(all_rows)})
+    except Exception as e:
+        logger.error(f"P&L report failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/energy/charging-months", methods=["GET"])
+def list_charging_months():
+    """List all months that have saved charging sessions."""
+    try:
+        months = delivery_notes_db.list_charging_months()
+        return jsonify({"ok": True, "months": months})
+    except Exception as e:
+        logger.error(f"List charging months failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/energy/charging-sessions", methods=["GET"])
+def get_charging_sessions():
+    """Get saved charging sessions for a specific month."""
+    try:
+        month = request.args.get("month", "").strip()
+        if not month:
+            return jsonify({"ok": False, "error": "Missing month parameter"}), 400
+        result = delivery_notes_db.get_charging_sessions(month)
+        if not result:
+            return jsonify({"ok": True, "rows": [], "count": 0, "fileName": "", "updatedAt": "", "month": month})
+        return jsonify({
+            "ok": True,
+            "rows": result.get("rows", []),
+            "count": result.get("count", 0),
+            "fileName": result.get("file_name", ""),
+            "updatedAt": result.get("updated_at", ""),
+            "month": result.get("month", month),
+        })
+    except Exception as e:
+        logger.error(f"Get charging sessions failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/energy/charging-sessions", methods=["POST"])
+def save_charging_sessions():
+    """Save charging sessions to DB for a specific month."""
+    try:
+        body = request.get_json(force=True)
+        month = (body.get("month") or "").strip()
+        rows = body.get("rows", [])
+        file_name = body.get("fileName", "")
+        if not month:
+            return jsonify({"ok": False, "error": "Missing month"}), 400
+        if not rows:
+            return jsonify({"ok": False, "error": "No rows"}), 400
+        delivery_notes_db.save_charging_sessions(month, rows, file_name)
+        return jsonify({"ok": True, "count": len(rows), "month": month})
+    except Exception as e:
+        logger.error(f"Save charging sessions failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+_HEBREW_MONTHS = {
+    1: "ינואר", 2: "פברואר", 3: "מרץ", 4: "אפריל",
+    5: "מאי", 6: "יוני", 7: "יולי", 8: "אוגוסט",
+    9: "ספטמבר", 10: "אוקטובר", 11: "נובמבר", 12: "דצמבר",
+}
+
+
+@app.route("/api/energy/create-invoices", methods=["POST"])
+def energy_create_invoices():
+    """Create draft customer invoices in Priority for energy charging.
+
+    Body:
+      month: "3.26"
+      customers: list of { custname, total } - one per customer
+      limit: optional, max number to create (for testing)
+    """
+    try:
+        body = request.get_json(force=True)
+        month_str = (body.get("month") or "").strip()
+        customers = body.get("customers") or []
+        limit = int(body.get("limit") or 0)
+
+        if not month_str or not customers:
+            return jsonify({"ok": False, "error": "Missing month or customers"}), 400
+
+        # Parse month "3.26" → month=3, year=2026
+        m_match = month_str.split(".")
+        if len(m_match) != 2:
+            return jsonify({"ok": False, "error": "Invalid month format. Expected M.YY"}), 400
+        try:
+            mm = int(m_match[0])
+            yy = int(m_match[1])
+            year = 2000 + yy if yy < 100 else yy
+        except ValueError:
+            return jsonify({"ok": False, "error": "Invalid month numbers"}), 400
+
+        # Invoice date = first of NEXT month
+        if mm == 12:
+            inv_year = year + 1
+            inv_month = 1
+        else:
+            inv_year = year
+            inv_month = mm + 1
+        inv_date = f"{inv_year:04d}-{inv_month:02d}-01"
+
+        # Hebrew month name for the file's month
+        hebrew_month = _HEBREW_MONTHS.get(mm, str(mm))
+        details = f"עמלת גביה {hebrew_month} {year}"
+        pdes = details  # also use as PDES
+
+        # Limit if requested
+        if limit > 0:
+            customers = customers[:limit]
+
+        url = PRIORITY_URL_REAL
+        auth = HTTPBasicAuth(
+            os.getenv("PRIORITY_USERNAME", ""),
+            os.getenv("PRIORITY_PASSWORD", ""),
+        )
+        hdrs = {"Accept": "application/json", "OData-Version": "4.0", "Content-Type": "application/json"}
+
+        results = []
+        for cust in customers:
+            custname = str(cust.get("custname") or "").strip()
+            total = float(cust.get("total") or 0)
+            if not custname or total <= 0:
+                results.append({"custname": custname, "ok": False, "error": "Missing custname or total"})
+                continue
+
+            try:
+                # Net price (Priority adds VAT) — divide gross by 1.18
+                net_price = round(total / 1.18, 2)
+                body = {
+                    "CUSTNAME": custname,
+                    "BRANCHNAME": "110",
+                    "IVDATE": inv_date,
+                    "DETAILS": details,
+                    "CINVOICEITEMS_SUBFORM": [{
+                        "PARTNAME": "000",
+                        "TQUANT": 1,
+                        "PRICE": net_price,
+                        "PDES": pdes,
+                    }],
+                }
+                resp = http_requests.post(f"{url}/CINVOICES", json=body, headers=hdrs, auth=auth, timeout=30)
+                if resp.status_code >= 400:
+                    err_text = resp.text[:300]
+                    results.append({"custname": custname, "ok": False, "error": f"Priority {resp.status_code}: {err_text}"})
+                    continue
+                data = resp.json()
+                ivnum = data.get("IVNUM", "")
+                results.append({
+                    "custname": custname,
+                    "ok": True,
+                    "ivnum": ivnum,
+                    "amount": total,
+                    "netPrice": net_price,
+                })
+            except Exception as e:
+                results.append({"custname": custname, "ok": False, "error": str(e)})
+
+        return jsonify({"ok": True, "invDate": inv_date, "details": details, "results": results})
+    except Exception as e:
+        logger.error(f"Energy create invoices failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/energy/sync-customers", methods=["POST"])
+def sync_customers_phone():
+    """Force fetch all customers from Priority and save phone-map to DB."""
+    try:
+        url = PRIORITY_URL_REAL
+        auth = HTTPBasicAuth(
+            os.getenv("PRIORITY_USERNAME", ""),
+            os.getenv("PRIORITY_PASSWORD", ""),
+        )
+        hdrs = {"Accept": "application/json", "OData-Version": "4.0"}
+
+        phone_map = {}  # normalized phone → {custname, custdes}
+        skip = 0
+        while True:
+            api_url = f"{url}/CUSTOMERS?$select=CUSTNAME,CUSTDES,PHONE&$top=500&$skip={skip}"
+            resp = http_requests.get(api_url, headers=hdrs, auth=auth, timeout=60)
+            resp.raise_for_status()
+            rows = resp.json().get("value", [])
+            if not rows:
+                break
+            for r in rows:
+                p = (r.get("PHONE") or "").strip()
+                if not p:
+                    continue
+                digits = "".join(c for c in p if c.isdigit())
+                if not digits:
+                    continue
+                key = digits[-9:] if len(digits) >= 9 else digits
+                if key not in phone_map:
+                    phone_map[key] = {"custname": r.get("CUSTNAME", ""), "custdes": r.get("CUSTDES", "")}
+            skip += len(rows)
+            if len(rows) < 500:
+                break
+
+        delivery_notes_db.save_customers_phone_cache(phone_map)
+        return jsonify({"ok": True, "count": len(phone_map)})
+    except Exception as e:
+        logger.error(f"Sync customers failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/energy/customers-status", methods=["GET"])
+def customers_phone_status():
+    """Get last sync info for customers cache."""
+    try:
+        cached = delivery_notes_db.get_customers_phone_cache()
+        if not cached:
+            return jsonify({"ok": True, "count": 0, "updatedAt": None})
+        return jsonify({"ok": True, "count": cached.get("count", 0), "updatedAt": cached.get("updated_at", "")})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/energy/customers-by-phone", methods=["POST"])
+def customers_by_phone():
+    """Look up customer numbers by phones from DB cache (NOT from Priority)."""
+    try:
+        body = request.get_json(force=True)
+        phones = body.get("phones", [])
+        if not phones:
+            return jsonify({"ok": True, "results": {}})
+
+        cached = delivery_notes_db.get_customers_phone_cache()
+        phone_map = (cached or {}).get("data", {})
+        if not phone_map:
+            return jsonify({"ok": False, "error": "אין נתוני לקוחות ב-DB. סנכרן קודם."}), 400
+
+        results = {}
+        for phone in phones:
+            digits = "".join(c for c in str(phone) if c.isdigit())
+            key = digits[-9:] if len(digits) >= 9 else digits
+            if key in phone_map:
+                results[phone] = phone_map[key]
+
+        return jsonify({"ok": True, "results": results, "totalScanned": len(phone_map)})
+    except Exception as e:
+        logger.error(f"Customers by phone lookup failed: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
@@ -2865,10 +3405,10 @@ if __name__ == "__main__":
     print("Urban Group Backend API")
     print(f"Priority Demo: {PRIORITY_URL_DEMO}")
     print(f"Priority Real: {PRIORITY_URL_REAL}")
-    print("Starting on http://localhost:5001")
+    print("Starting on http://localhost:5000")
     app.run(
         host="0.0.0.0",
-        port=5001,
+        port=5000,
         debug=True,
         exclude_patterns=["*/WindowsApps/*", "*/encodings/*"],
     )

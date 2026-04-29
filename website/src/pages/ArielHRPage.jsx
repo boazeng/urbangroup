@@ -117,6 +117,9 @@ export default function ArielHRPage() {
 
   // Sheet (month) selector
   const [availableSheets, setAvailableSheets] = useState([])
+  const [showCreateMonth, setShowCreateMonth] = useState(false)
+  const [newMonthName, setNewMonthName] = useState('')
+  const [sourceMonthName, setSourceMonthName] = useState('')
   const [selectedSheet, setSelectedSheet] = useState(() => localStorage.getItem('hr-last-sheet') || '3.26')
 
   // Priority sync state
@@ -264,6 +267,9 @@ export default function ArielHRPage() {
   }
 
   useEffect(() => { loadData() }, [selectedSheet])
+
+  // Clear contractor payments when sheet changes - they'll be reloaded from DB on next open
+  useEffect(() => { setContractorPayments([]) }, [selectedSheet])
 
   // Auto-load parts on mount for auto-fill
   useEffect(() => {
@@ -769,7 +775,7 @@ export default function ArielHRPage() {
   ]
 
   const initContractorPayments = async () => {
-    // Calculate table totals
+    // Calculate table totals for current sheet
     const rows = getActiveRows()
     const totals = {}
     for (const r of rows) {
@@ -777,12 +783,7 @@ export default function ArielHRPage() {
       if (!cont) continue
       totals[cont] = (totals[cont] || 0) + (Number(r[COL.CONT_TOTAL]) || 0)
     }
-    if (contractorPayments.length > 0) {
-      // Just refresh totals, keep user edits
-      setContractorPayments(prev => prev.map(p => ({ ...p, tableTotal: totals[p.contractor] || 0 })))
-      return
-    }
-    // Try loading from DB first
+    // Always load from DB for the current sheet (so switching months reloads)
     try {
       const resp = await fetch(`${API_BASE}/api/hr/contractor-payments?sheet=${encodeURIComponent(selectedSheet)}`)
       const result = await resp.json()
@@ -1685,6 +1686,93 @@ export default function ArielHRPage() {
           <button className="hr-refresh-btn" onClick={refreshFromExcel} disabled={loading}>
             {loading ? 'טוען...' : 'רענן מאקסל'}
           </button>
+          <button
+            className="hr-toggle-extra-btn"
+            style={{ background: '#16a34a', color: '#fff', borderColor: '#16a34a' }}
+            onClick={() => {
+              setNewMonthName('')
+              setSourceMonthName(selectedSheet || '')
+              setShowCreateMonth(true)
+            }}
+          >
+            צור חודש
+          </button>
+          {showCreateMonth && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+              <div style={{ background: '#fff', borderRadius: '8px', padding: '24px', minWidth: '400px', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
+                <h3 style={{ margin: '0 0 16px', color: '#1e3a5f' }}>יצירת חודש חדש</h3>
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', color: '#555', marginBottom: '4px' }}>שם החודש החדש (פורמט M.YY):</label>
+                  <input
+                    type="text"
+                    value={newMonthName}
+                    onChange={e => setNewMonthName(e.target.value)}
+                    placeholder="למשל 4.26"
+                    style={{ width: '100%', padding: '8px 10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '14px' }}
+                    autoFocus
+                  />
+                </div>
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', color: '#555', marginBottom: '4px' }}>חודש מקור (להעתקת נתונים):</label>
+                  <select
+                    value={sourceMonthName}
+                    onChange={e => setSourceMonthName(e.target.value)}
+                    style={{ width: '100%', padding: '8px 10px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '14px' }}
+                  >
+                    <option value="">— ללא העתקה (חודש ריק) —</option>
+                    {availableSheets.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => setShowCreateMonth(false)}
+                    style={{ padding: '8px 16px', background: '#eee', color: '#333', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    ביטול
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const nm = newMonthName.trim()
+                      if (!nm) { alert('יש להזין שם חודש'); return }
+                      if (!/^\d{1,2}\.\d{2}$/.test(nm)) { alert('פורמט לא תקין. נדרש M.YY (למשל 4.26)'); return }
+                      if (availableSheets.includes(nm)) { alert(`חודש ${nm} כבר קיים`); return }
+                      const msg = sourceMonthName
+                        ? `האם אתה בטוח שברצונך ליצור חודש ${nm} עם נתונים מ-${sourceMonthName}?\n(שעות, מעקב ומילוי יתאפסו)`
+                        : `האם אתה בטוח שברצונך ליצור חודש ${nm} ריק?`
+                      if (!confirm(msg)) return
+                      try {
+                        const resp = await fetch(`${API_BASE}/api/hr/create-month`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ newMonth: nm, sourceMonth: sourceMonthName }),
+                        })
+                        const data = await resp.json()
+                        if (!data.ok) {
+                          alert(`שגיאה: ${data.error}`)
+                          return
+                        }
+                        setShowCreateMonth(false)
+                        alert(`חודש ${nm} נוצר בהצלחה (${data.rowCount} שורות הועתקו)`)
+                        // Refresh sheet list to include new month, then switch
+                        try {
+                          const r2 = await fetch(`${API_BASE}/api/hr/sheets`)
+                          const d2 = await r2.json()
+                          if (d2.ok) setAvailableSheets(d2.sheets)
+                        } catch {}
+                        setSelectedSheet(nm)
+                        localStorage.setItem('hr-last-sheet', nm)
+                      } catch (e) {
+                        alert(`שגיאה: ${e.message}`)
+                      }
+                    }}
+                    style={{ padding: '8px 16px', background: '#16a34a', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                  >
+                    צור חודש
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           <button
             className={`hr-toggle-extra-btn hr-show-all-btn${showAll ? ' hr-toggle-active' : ''}`}
             onClick={() => setShowAll(v => !v)}

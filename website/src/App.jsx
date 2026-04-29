@@ -7,6 +7,8 @@ import AppPage from './pages/AppPage'
 import InvoicesPage from './pages/InvoicesPage'
 import EnergyPage from './pages/EnergyPage'
 import EnergySystemPage from './pages/EnergySystemPage'
+import ReportsPage from './pages/ReportsPage'
+import ProfitLossReportPage from './pages/ProfitLossReportPage'
 import AppsPage from './pages/AppsPage'
 import SupplierInvoicesPage from './pages/SupplierInvoicesPage'
 import InvoicePrinterPage from './pages/InvoicePrinterPage'
@@ -60,6 +62,8 @@ export default function App() {
           <Route path="/energy" element={<EnergyPage />} />
           <Route path="/energy/invoices" element={<InvoicesPage />} />
           <Route path="/energy/system" element={<EnergySystemPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/reports/profit-loss" element={<ProfitLossReportPage />} />
           <Route path="/apps" element={<AppsPage />} />
           <Route path="/apps/supplier-invoices" element={<SupplierInvoicesPage />} />
           <Route path="/apps/supplier-invoice-entry" element={<SupplierInvoiceEntryPage />} />
