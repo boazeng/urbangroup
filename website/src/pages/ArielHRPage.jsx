@@ -168,11 +168,23 @@ export default function ArielHRPage() {
     }, 1500)
   }, [selectedSheet])
 
+  // Sort months M.YY descending (newest first)
+  const sortMonthsDesc = (sheets) => {
+    return [...sheets].sort((a, b) => {
+      const pa = a.split('.').map(Number)
+      const pb = b.split('.').map(Number)
+      const ya = pa[1] || 0, ma = pa[0] || 0
+      const yb = pb[1] || 0, mb = pb[0] || 0
+      if (ya !== yb) return yb - ya
+      return mb - ma
+    })
+  }
+
   useEffect(() => {
     fetch(`${API_BASE}/api/hr/sheets`)
       .then(safeJson)
       .then(data => {
-        if (data.ok) setAvailableSheets(data.sheets)
+        if (data.ok) setAvailableSheets(sortMonthsDesc(data.sheets))
       })
       .catch(() => {})
   }, [])
@@ -1162,6 +1174,17 @@ export default function ArielHRPage() {
       .sort((a, b) => b.total - a.total)
     const summaryGrand = summaryRows.reduce((s, x) => s + x.total, 0)
 
+    // Build sites summary
+    const bySite = {}
+    for (const r of rows) {
+      const site = cellVal(r[COL.SITE]) || 'ללא אתר'
+      const customer = cellVal(r[COL.CUSTOMER]) || ''
+      if (!bySite[site]) bySite[site] = { site, customer, total: 0 }
+      bySite[site].total += Number(r[COL.CONT_TOTAL]) || 0
+    }
+    const sitesRows = Object.values(bySite).sort((a, b) => b.total - a.total)
+    const sitesGrand = sitesRows.reduce((s, x) => s + x.total, 0)
+
     let tablesHtml = `
       <div class="section">
         <h2>סיכום קבלנים</h2>
@@ -1174,6 +1197,30 @@ export default function ArielHRPage() {
             <tr class="total-row">
               <td style="border: 1px solid #ccc;"><strong>סה"כ כללי</strong></td>
               <td style="text-align:right; border: 1px solid #ccc;"><strong>${fmtNum(summaryGrand)}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section">
+        <h2>סיכום אתרים</h2>
+        <table style="width:auto; margin: 0; border: 1px solid #ccc;">
+          <thead><tr>
+            <th style="min-width:120px; border: 1px solid #ccc;">אתר</th>
+            <th style="min-width:140px; border: 1px solid #ccc;">לקוח</th>
+            <th style="min-width:100px; text-align:right; border: 1px solid #ccc;">סה"כ לתשלום</th>
+          </tr></thead>
+          <tbody>
+            ${sitesRows.map(x =>
+              `<tr>
+                <td style="border: 1px solid #ddd;">${x.site}</td>
+                <td style="border: 1px solid #ddd;">${x.customer}</td>
+                <td style="text-align:right; font-variant-numeric:tabular-nums; border: 1px solid #ddd;">${fmtNum(x.total)}</td>
+              </tr>`
+            ).join('')}
+            <tr class="total-row">
+              <td colspan="2" style="border: 1px solid #ccc;"><strong>סה"כ כללי</strong></td>
+              <td style="text-align:right; border: 1px solid #ccc;"><strong>${fmtNum(sitesGrand)}</strong></td>
             </tr>
           </tbody>
         </table>
@@ -1757,7 +1804,7 @@ export default function ArielHRPage() {
                         try {
                           const r2 = await fetch(`${API_BASE}/api/hr/sheets`)
                           const d2 = await r2.json()
-                          if (d2.ok) setAvailableSheets(d2.sheets)
+                          if (d2.ok) setAvailableSheets(sortMonthsDesc(d2.sheets))
                         } catch {}
                         setSelectedSheet(nm)
                         localStorage.setItem('hr-last-sheet', nm)
