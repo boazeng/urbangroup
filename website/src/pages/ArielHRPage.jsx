@@ -1140,7 +1140,11 @@ export default function ArielHRPage() {
 
   // Generate contractor PDF report
   const generateContractorReport = () => {
-    const rows = getActiveRows()
+    let rows = getActiveRows()
+    // If a contractor is selected, always filter to that contractor only
+    if (selectedContractor) {
+      rows = rows.filter(r => String(r[COL.CONTRACTOR] || '').trim() === selectedContractor)
+    }
     if (rows.length === 0) return
 
     const byContractor = {}
