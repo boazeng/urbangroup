@@ -77,6 +77,20 @@ export default function PdfConvertPage() {
   }
 
   const convertAll = async () => {
+    // Try to ask for a directory if the browser supports File System Access API
+    let dirHandle = null
+    if (window.showDirectoryPicker) {
+      try {
+        dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' })
+      } catch (e) {
+        if (e.name === 'AbortError') return  // User cancelled
+        // Otherwise fall back to downloads
+      }
+    } else {
+      const proceed = confirm('הדפדפן לא תומך בבחירת תיקייה. הקבצים יישמרו בתיקיית ההורדות. להמשיך?')
+      if (!proceed) return
+    }
+
     setBusy(true)
     const updated = [...files]
     for (let i = 0; i < updated.length; i++) {
@@ -88,7 +102,6 @@ export default function PdfConvertPage() {
         const f = item.file
         let bytes
         if (isPdf(f)) {
-          // Already PDF - just keep bytes
           const buf = await f.arrayBuffer()
           bytes = new Uint8Array(buf)
         } else if (isImage(f)) {
@@ -96,7 +109,17 @@ export default function PdfConvertPage() {
         } else {
           throw new Error('סוג קובץ לא נתמך (תמיכה ב-PDF ותמונות בלבד)')
         }
-        downloadBlob(bytes, nameToPdf(f.name))
+        const outName = nameToPdf(f.name)
+        if (dirHandle) {
+          // Save to chosen directory
+          const fileHandle = await dirHandle.getFileHandle(outName, { create: true })
+          const writable = await fileHandle.createWritable()
+          await writable.write(bytes)
+          await writable.close()
+        } else {
+          // Fallback: regular download
+          downloadBlob(bytes, outName)
+        }
         updated[i] = { ...item, status: 'done', error: '' }
         setFiles([...updated])
       } catch (e) {
