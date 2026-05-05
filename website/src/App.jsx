@@ -30,6 +30,7 @@ import BotTrainingPage from './pages/BotTrainingPage'
 import BotFlowEditorPage from './pages/BotFlowEditor/BotFlowEditorPage'
 import BotDiagnosticsPage from './pages/BotDiagnosticsPage'
 import PdfSignPage from './pages/PdfSignPage'
+import PdfConvertPage from './pages/PdfConvertPage'
 import QrGeneratorPage from './pages/QrGeneratorPage'
 import ParkingPage from './pages/ParkingPage'
 import ParkingProjectsPage from './pages/ParkingProjectsPage'
@@ -70,6 +71,7 @@ export default function App() {
           <Route path="/apps/invoice-printer" element={<InvoicePrinterPage />} />
           <Route path="/apps/pdf-tools" element={<PdfToolsPage />} />
           <Route path="/apps/pdf-sign" element={<PdfSignPage />} />
+          <Route path="/apps/pdf-convert" element={<PdfConvertPage />} />
           <Route path="/app/:appId" element={<AppPage />} />
           <Route path="*" element={<HomePage />} />
         </Routes>

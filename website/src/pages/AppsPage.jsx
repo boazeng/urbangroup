@@ -41,6 +41,13 @@ export default function AppsPage() {
               <p className="ariel-section-desc">הטענת PDF, הצבת תמונת חתימה בגרירה ושמירה</p>
               <span className="ariel-section-action">פתיחה &larr;</span>
             </Link>
+
+            <Link to="/apps/pdf-convert" className="ariel-section-card">
+              <span className="ariel-section-icon">🔄</span>
+              <h3 className="ariel-section-title">המרה לקובץ PDF</h3>
+              <p className="ariel-section-desc">המרת תמונות וקבצים ל-PDF — תומך במספר קבצים בו-זמנית</p>
+              <span className="ariel-section-action">פתיחה &larr;</span>
+            </Link>
           </div>
         </section>
       </div>
