@@ -211,6 +211,7 @@ export default function EnergySystemPage() {
   const [saving, setSaving] = useState(false)
   const [month, setMonth] = useState('')
   const [availableMonths, setAvailableMonths] = useState([])
+  const [showCommittees, setShowCommittees] = useState(false)
   const [custStatus, setCustStatus] = useState({ count: 0, updatedAt: '' })
 
   const loadCustStatus = () => {
@@ -336,6 +337,27 @@ export default function EnergySystemPage() {
     amount: filteredRows.reduce((s, r) => s + (Number(r['AMOUNT (WITH TAXES)']) || 0), 0),
   }), [filteredRows])
 
+  // Committees summary (grouped by PARTNER/site)
+  const committeesSummary = useMemo(() => {
+    if (!rows.length) return { sites: [], grand: { sessions: 0, kwh: 0, energy: 0, service: 0, idling: 0, amount: 0 } }
+    const groups = {}
+    for (const r of rows) {
+      const key = (r['PARTNER'] || 'ללא אתר').trim()
+      if (!groups[key]) groups[key] = []
+      groups[key].push(r)
+    }
+    const calc = (arr) => ({
+      sessions: arr.length,
+      kwh: arr.reduce((s, r) => s + (Number(r['CONSUMPTION (KWH)']) || 0), 0),
+      energy: arr.reduce((s, r) => s + (Number(r['ENERGY PRICE (WITH TAXES)']) || 0), 0),
+      service: arr.reduce((s, r) => s + (Number(r['SERVICE FEE (WITH TAXES)']) || 0), 0),
+      idling: arr.reduce((s, r) => s + (Number(r['IDLING FEE (WITH TAXES)']) || 0), 0),
+      amount: arr.reduce((s, r) => s + (Number(r['AMOUNT (WITH TAXES)']) || 0), 0),
+    })
+    const sites = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'he')).map(site => ({ site, ...calc(groups[site]) }))
+    return { sites, grand: calc(rows) }
+  }, [rows])
+
   return (
     <div className="ariel-page">
       <div className="container">
@@ -368,9 +390,9 @@ export default function EnergySystemPage() {
             )}
             {rows.length > 0 && (
               <button
-                onClick={generateCommitteesReport}
-                style={{ padding: '8px 20px', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
-              >📄 סיכום ועדים</button>
+                onClick={() => setShowCommittees(v => !v)}
+                style={{ padding: '8px 20px', background: showCommittees ? '#5b21b6' : '#7c3aed', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
+              >📄 סיכום ועדים{showCommittees ? ' ✓' : ''}</button>
             )}
             {rows.length > 0 && Object.keys(phoneToCust).length > 0 && (
               <button
@@ -465,6 +487,53 @@ export default function EnergySystemPage() {
         {error && (
           <div style={{ background: '#fee', color: '#c00', padding: '8px 12px', borderRadius: '6px', marginBottom: '12px' }}>{error}</div>
         )}
+
+        {showCommittees && rows.length > 0 && (() => {
+          const fN = (n) => n.toLocaleString('he-IL', { maximumFractionDigits: 2 })
+          const { sites, grand } = committeesSummary
+          return (
+            <div style={{ marginBottom: '16px', padding: '12px', background: '#f9fafb', borderRadius: '8px', border: '2px solid #7c3aed' }}>
+              <h3 style={{ margin: '0 0 10px', color: '#5b21b6', fontSize: '15px' }}>סיכום ועדים — {sites.length} אתרים, {grand.sessions} סשנים</h3>
+              <div style={{ overflowX: 'auto', maxHeight: '50vh' }}>
+                <table className="ariel-table" style={{ fontSize: '12px', borderCollapse: 'collapse', width: 'auto' }}>
+                  <thead style={{ position: 'sticky', top: 0, background: '#5b21b6', color: '#fff' }}>
+                    <tr>
+                      <th style={{ padding: '6px 10px', border: '1px solid #5b21b6', textAlign: 'right' }}>אתר</th>
+                      <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>סשנים</th>
+                      <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>kWh</th>
+                      <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>עלות חשמל</th>
+                      <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>עלות שירות</th>
+                      <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>השבתה</th>
+                      <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>סה"כ ₪</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sites.map(s => (
+                      <tr key={s.site} style={{ background: '#fff' }}>
+                        <td style={{ padding: '4px 10px', border: '1px solid #ddd', whiteSpace: 'nowrap' }}>{s.site}</td>
+                        <td style={{ padding: '4px 10px', border: '1px solid #ddd', textAlign: 'left', direction: 'ltr' }}>{s.sessions}</td>
+                        <td style={{ padding: '4px 10px', border: '1px solid #ddd', textAlign: 'left', direction: 'ltr' }}>{fN(s.kwh)}</td>
+                        <td style={{ padding: '4px 10px', border: '1px solid #ddd', textAlign: 'left', direction: 'ltr' }}>{fN(s.energy)}</td>
+                        <td style={{ padding: '4px 10px', border: '1px solid #ddd', textAlign: 'left', direction: 'ltr' }}>{fN(s.service)}</td>
+                        <td style={{ padding: '4px 10px', border: '1px solid #ddd', textAlign: 'left', direction: 'ltr' }}>{fN(s.idling)}</td>
+                        <td style={{ padding: '4px 10px', border: '1px solid #ddd', textAlign: 'left', direction: 'ltr', fontWeight: 'bold' }}>{fN(s.amount)}</td>
+                      </tr>
+                    ))}
+                    <tr style={{ background: '#f0fdf4', fontWeight: 'bold' }}>
+                      <td style={{ padding: '6px 10px', border: '1px solid #ccc' }}>סה"כ כללי</td>
+                      <td style={{ padding: '6px 10px', border: '1px solid #ccc', textAlign: 'left', direction: 'ltr' }}>{grand.sessions}</td>
+                      <td style={{ padding: '6px 10px', border: '1px solid #ccc', textAlign: 'left', direction: 'ltr' }}>{fN(grand.kwh)}</td>
+                      <td style={{ padding: '6px 10px', border: '1px solid #ccc', textAlign: 'left', direction: 'ltr' }}>{fN(grand.energy)}</td>
+                      <td style={{ padding: '6px 10px', border: '1px solid #ccc', textAlign: 'left', direction: 'ltr' }}>{fN(grand.service)}</td>
+                      <td style={{ padding: '6px 10px', border: '1px solid #ccc', textAlign: 'left', direction: 'ltr' }}>{fN(grand.idling)}</td>
+                      <td style={{ padding: '6px 10px', border: '1px solid #ccc', textAlign: 'left', direction: 'ltr' }}>{fN(grand.amount)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        })()}
 
         {rows.length > 0 && (
           <>
