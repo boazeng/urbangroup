@@ -2947,7 +2947,8 @@ def sync_customers_phone():
         )
         hdrs = {"Accept": "application/json", "OData-Version": "4.0"}
 
-        phone_map = {}  # normalized phone → {custname, custdes, ctypecode, ctypename}
+        phone_map = {}  # normalized phone → customer info
+        name_map = {}   # normalized custdes → customer info
         skip = 0
         while True:
             api_url = f"{url}/CUSTOMERS?$select=CUSTNAME,CUSTDES,PHONE,CTYPECODE,CTYPENAME&$top=500&$skip={skip}"
@@ -2957,26 +2958,33 @@ def sync_customers_phone():
             if not rows:
                 break
             for r in rows:
+                custname = r.get("CUSTNAME", "") or ""
+                custdes = r.get("CUSTDES", "") or ""
+                ctypecode = r.get("CTYPECODE") or ""
+                ctypename = r.get("CTYPENAME") or ""
+                info = {
+                    "custname": custname,
+                    "custdes": custdes,
+                    "ctypecode": ctypecode,
+                    "ctypename": ctypename,
+                }
+                # Phone-based key
                 p = (r.get("PHONE") or "").strip()
-                if not p:
-                    continue
                 digits = "".join(c for c in p if c.isdigit())
-                if not digits:
-                    continue
-                key = digits[-9:] if len(digits) >= 9 else digits
-                if key not in phone_map:
-                    phone_map[key] = {
-                        "custname": r.get("CUSTNAME", ""),
-                        "custdes": r.get("CUSTDES", ""),
-                        "ctypecode": r.get("CTYPECODE") or "",
-                        "ctypename": r.get("CTYPENAME") or "",
-                    }
+                if digits:
+                    key = digits[-9:] if len(digits) >= 9 else digits
+                    if key not in phone_map:
+                        phone_map[key] = info
+                # Name-based key (lowercased + trimmed for matching)
+                nkey = custdes.strip().lower()
+                if nkey and nkey not in name_map:
+                    name_map[nkey] = info
             skip += len(rows)
             if len(rows) < 500:
                 break
 
-        delivery_notes_db.save_customers_phone_cache(phone_map)
-        return jsonify({"ok": True, "count": len(phone_map)})
+        delivery_notes_db.save_customers_phone_cache(phone_map, name_map)
+        return jsonify({"ok": True, "count": len(phone_map), "nameCount": len(name_map)})
     except Exception as e:
         logger.error(f"Sync customers failed: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -2991,6 +2999,29 @@ def customers_phone_status():
             return jsonify({"ok": True, "count": 0, "updatedAt": None})
         return jsonify({"ok": True, "count": cached.get("count", 0), "updatedAt": cached.get("updated_at", "")})
     except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/energy/customers-by-name", methods=["POST"])
+def customers_by_name():
+    """Look up customer numbers by exact name match (CUSTDES) from DB cache."""
+    try:
+        body = request.get_json(force=True)
+        names = body.get("names", [])
+        if not names:
+            return jsonify({"ok": True, "results": {}})
+        cached = delivery_notes_db.get_customers_phone_cache()
+        name_map = (cached or {}).get("name_map", {})
+        if not name_map:
+            return jsonify({"ok": False, "error": "אין נתוני שמות לקוחות ב-DB. סנכרן קודם."}), 400
+        results = {}
+        for n in names:
+            k = (str(n) or "").strip().lower()
+            if k in name_map:
+                results[n] = name_map[k]
+        return jsonify({"ok": True, "results": results, "totalScanned": len(name_map)})
+    except Exception as e:
+        logger.error(f"Customers by name lookup failed: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
 

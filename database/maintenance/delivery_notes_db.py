@@ -326,41 +326,54 @@ def list_tasks(status=None):
     return tasks
 
 
-def save_customers_phone_cache(phone_map):
-    """Save customers-by-phone map to DB (id=CUSTOMERS_PHONE_CACHE). Compressed."""
+def save_customers_phone_cache(phone_map, name_map=None):
+    """Save customers-by-phone (and optionally by-name) maps to DB."""
     import gzip, base64
     now = datetime.utcnow().isoformat() + "Z"
     raw = json.dumps(phone_map, ensure_ascii=False)
     compressed = gzip.compress(raw.encode("utf-8"))
     encoded = base64.b64encode(compressed).decode("ascii")
-    _table.put_item(Item={
+    item = {
         "id": "CUSTOMERS_PHONE_CACHE",
         "data_gz": encoded,
         "count": len(phone_map),
         "updated_at": now,
-    })
-    logger.info(f"Saved customers phone cache: {len(phone_map)} entries")
+    }
+    if name_map is not None:
+        raw_n = json.dumps(name_map, ensure_ascii=False)
+        compressed_n = gzip.compress(raw_n.encode("utf-8"))
+        item["name_map_gz"] = base64.b64encode(compressed_n).decode("ascii")
+        item["name_count"] = len(name_map)
+    _table.put_item(Item=item)
+    logger.info(f"Saved customers cache: {len(phone_map)} phones, {len(name_map or {})} names")
 
 
 def get_customers_phone_cache():
-    """Get customers-by-phone map from DB."""
+    """Get customers cache (phone + name maps)."""
     import gzip, base64
     resp = _table.get_item(Key={"id": "CUSTOMERS_PHONE_CACHE"})
     item = resp.get("Item")
     if not item:
         return None
-    encoded = item.get("data_gz")
     data = {}
+    name_map = {}
+    encoded = item.get("data_gz")
     if encoded:
         try:
-            compressed = base64.b64decode(encoded)
-            raw = gzip.decompress(compressed).decode("utf-8")
-            data = json.loads(raw)
+            data = json.loads(gzip.decompress(base64.b64decode(encoded)).decode("utf-8"))
         except Exception as e:
             logger.error(f"Failed to decode customers phone cache: {e}")
+    encoded_n = item.get("name_map_gz")
+    if encoded_n:
+        try:
+            name_map = json.loads(gzip.decompress(base64.b64decode(encoded_n)).decode("utf-8"))
+        except Exception as e:
+            logger.error(f"Failed to decode customers name cache: {e}")
     return {
         "data": data,
+        "name_map": name_map,
         "count": int(item.get("count", 0)) if item.get("count") else 0,
+        "name_count": int(item.get("name_count", 0)) if item.get("name_count") else 0,
         "updated_at": item.get("updated_at", ""),
     }
 

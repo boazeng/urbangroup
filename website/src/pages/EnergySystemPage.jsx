@@ -212,6 +212,7 @@ export default function EnergySystemPage() {
   const [month, setMonth] = useState('')
   const [availableMonths, setAvailableMonths] = useState([])
   const [showCommittees, setShowCommittees] = useState(false)
+  const [siteToCust, setSiteToCust] = useState({})  // site name → customer info
   const [custStatus, setCustStatus] = useState({ count: 0, updatedAt: '' })
 
   const loadCustStatus = () => {
@@ -390,7 +391,25 @@ export default function EnergySystemPage() {
             )}
             {rows.length > 0 && (
               <button
-                onClick={() => setShowCommittees(v => !v)}
+                onClick={async () => {
+                  const next = !showCommittees
+                  setShowCommittees(next)
+                  if (next) {
+                    // Lookup customer numbers by site name
+                    const sites = [...new Set(rows.map(r => (r['PARTNER'] || '').trim()).filter(Boolean))]
+                    if (sites.length) {
+                      try {
+                        const r = await fetch(`${API_BASE}/api/energy/customers-by-name`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ names: sites }),
+                        })
+                        const d = await r.json()
+                        if (d.ok && d.results) setSiteToCust(d.results)
+                      } catch {}
+                    }
+                  }
+                }}
                 style={{ padding: '8px 20px', background: showCommittees ? '#5b21b6' : '#7c3aed', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
               >📄 סיכום ועדים{showCommittees ? ' ✓' : ''}</button>
             )}
@@ -499,6 +518,9 @@ export default function EnergySystemPage() {
                   <thead style={{ position: 'sticky', top: 0, background: '#5b21b6', color: '#fff' }}>
                     <tr>
                       <th style={{ padding: '6px 10px', border: '1px solid #5b21b6', textAlign: 'right' }}>אתר</th>
+                      <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>מס לקוח</th>
+                      <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>קוד סיווג</th>
+                      <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>תאור סיווג</th>
                       <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>סשנים</th>
                       <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>kWh</th>
                       <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>עלות חשמל</th>
@@ -508,9 +530,15 @@ export default function EnergySystemPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {sites.map(s => (
+                    {sites.map(s => {
+                      const cust = siteToCust[s.site]
+                      const matchBg = cust ? '#d4edda' : undefined
+                      return (
                       <tr key={s.site} style={{ background: '#fff' }}>
                         <td style={{ padding: '4px 10px', border: '1px solid #ddd', whiteSpace: 'nowrap' }}>{s.site}</td>
+                        <td style={{ padding: '4px 10px', border: '1px solid #ddd', background: matchBg, fontWeight: 'bold' }}>{cust ? cust.custname : ''}</td>
+                        <td style={{ padding: '4px 10px', border: '1px solid #ddd', background: matchBg, textAlign: 'center' }}>{cust ? cust.ctypecode : ''}</td>
+                        <td style={{ padding: '4px 10px', border: '1px solid #ddd', background: matchBg }}>{cust ? cust.ctypename : ''}</td>
                         <td style={{ padding: '4px 10px', border: '1px solid #ddd', textAlign: 'left', direction: 'ltr' }}>{s.sessions}</td>
                         <td style={{ padding: '4px 10px', border: '1px solid #ddd', textAlign: 'left', direction: 'ltr' }}>{fN(s.kwh)}</td>
                         <td style={{ padding: '4px 10px', border: '1px solid #ddd', textAlign: 'left', direction: 'ltr' }}>{fN(s.energy)}</td>
@@ -518,9 +546,10 @@ export default function EnergySystemPage() {
                         <td style={{ padding: '4px 10px', border: '1px solid #ddd', textAlign: 'left', direction: 'ltr' }}>{fN(s.idling)}</td>
                         <td style={{ padding: '4px 10px', border: '1px solid #ddd', textAlign: 'left', direction: 'ltr', fontWeight: 'bold' }}>{fN(s.amount)}</td>
                       </tr>
-                    ))}
+                      )
+                    })}
                     <tr style={{ background: '#f0fdf4', fontWeight: 'bold' }}>
-                      <td style={{ padding: '6px 10px', border: '1px solid #ccc' }}>סה"כ כללי</td>
+                      <td colSpan={4} style={{ padding: '6px 10px', border: '1px solid #ccc' }}>סה"כ כללי</td>
                       <td style={{ padding: '6px 10px', border: '1px solid #ccc', textAlign: 'left', direction: 'ltr' }}>{grand.sessions}</td>
                       <td style={{ padding: '6px 10px', border: '1px solid #ccc', textAlign: 'left', direction: 'ltr' }}>{fN(grand.kwh)}</td>
                       <td style={{ padding: '6px 10px', border: '1px solid #ccc', textAlign: 'left', direction: 'ltr' }}>{fN(grand.energy)}</td>
