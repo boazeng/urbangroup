@@ -2894,13 +2894,14 @@ def energy_generate_committee_reports():
             wb = Workbook()
             ws = wb.active
             ws.title = "Report"
-            ws.sheet_view.rightToLeft = False  # data is in English
+            ws.sheet_view.rightToLeft = True
 
             # Title row
-            ws.cell(row=1, column=1, value=f"{site_name} — {month}")
+            ws.cell(row=1, column=1, value=f"שימוש בחשמל - {site_name} - {month}")
             ws.cell(row=1, column=1).font = Font(bold=True, size=14, color="1E3A5F")
+            ws.cell(row=1, column=1).alignment = Alignment(horizontal="center", vertical="center")
             ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(COL_DEFS))
-            ws.row_dimensions[1].height = 22
+            ws.row_dimensions[1].height = 26
 
             # Header row (row 3)
             for c_idx, (_, label, _w, _f) in enumerate(COL_DEFS, start=1):
