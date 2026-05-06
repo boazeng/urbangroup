@@ -459,6 +459,53 @@ export default function EnergySystemPage() {
                 style={{ padding: '8px 20px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
               >📑 הפק חשבונית</button>
             )}
+            {rows.length > 0 && Object.keys(phoneToCust).length > 0 && Object.keys(siteToCust).length > 0 && (
+              <button
+                onClick={async () => {
+                  // Build sites list: for each site with a mapped customer, group user totals
+                  const EXCLUDED_SITE = 'איתן ניהול מבנים - מטרופארק'
+                  const siteData = {}
+                  for (const r of rows) {
+                    const partner = (r['PARTNER'] || '').trim()
+                    if (!partner || partner === EXCLUDED_SITE) continue
+                    const siteCust = siteToCust[partner]
+                    if (!siteCust) continue
+                    const phone = r['MEMBER NUMBER']
+                    const userM = phoneToCust[phone]
+                    if (!userM) continue
+                    const userCust = userM.custname
+                    const energy = Number(r['ENERGY PRICE (WITH TAXES)']) || 0
+                    if (energy <= 0) continue
+                    if (!siteData[partner]) siteData[partner] = { siteName: partner, siteCustname: siteCust.custname, users: {} }
+                    if (!siteData[partner].users[userCust]) siteData[partner].users[userCust] = 0
+                    siteData[partner].users[userCust] += energy
+                  }
+                  const list = Object.values(siteData).map(s => ({
+                    siteName: s.siteName,
+                    siteCustname: s.siteCustname,
+                    users: Object.entries(s.users).map(([cn, amt]) => ({ custname: cn, amount: amt })),
+                  })).filter(s => s.users.length > 0)
+                  if (!list.length) { alert('אין נתונים לפקודות יומן'); return }
+                  if (!confirm(`לרשום ${list.length} פקודות יומן בסניף 110?`)) return
+                  try {
+                    const r2 = await fetch(`${API_BASE}/api/energy/create-journal-entries`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ month, sites: list }),
+                    })
+                    const d = await r2.json()
+                    if (d.ok) {
+                      const lines = d.results.map(r =>
+                        r.ok ? `✓ ${r.site}: ${r.fncnum} (${r.userCount} משתמשים, ${r.total.toLocaleString('he-IL')} ₪)`
+                             : `✗ ${r.site}: ${r.error}`
+                      ).join('\n')
+                      alert(`תאריך: ${d.fncDate}\nפרטים: ${d.details}\n\n${lines}`)
+                    } else { alert(`שגיאה: ${d.error}`) }
+                  } catch (e) { alert(`שגיאה: ${e.message}`) }
+                }}
+                style={{ padding: '8px 20px', background: '#0891b2', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
+              >📒 רישום פקודת יומן</button>
+            )}
           </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
           <input ref={inputRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }}

@@ -2836,6 +2836,106 @@ _HEBREW_MONTHS = {
 }
 
 
+@app.route("/api/energy/create-journal-entries", methods=["POST"])
+def energy_create_journal_entries():
+    """Create journal entries (FNCTRANS) for electricity usage per site.
+
+    For each site:
+    - Debit: site's customer account (gross total)
+    - Credit: each user customer with their portion (sums equal to debit)
+
+    Body:
+      month: "3.26"
+      sites: [{ siteCustname, users: [{custname, amount}, ...] }]
+    """
+    try:
+        body = request.get_json(force=True)
+        month_str = (body.get("month") or "").strip()
+        sites = body.get("sites") or []
+
+        if not month_str or not sites:
+            return jsonify({"ok": False, "error": "Missing month or sites"}), 400
+
+        # Parse month → end-of-month date
+        m_match = month_str.split(".")
+        if len(m_match) != 2:
+            return jsonify({"ok": False, "error": "Invalid month format"}), 400
+        try:
+            mm = int(m_match[0])
+            yy = int(m_match[1])
+            year = 2000 + yy if yy < 100 else yy
+        except ValueError:
+            return jsonify({"ok": False, "error": "Invalid month numbers"}), 400
+
+        # Last day of month
+        from calendar import monthrange
+        last_day = monthrange(year, mm)[1]
+        fnc_date = f"{year:04d}-{mm:02d}-{last_day:02d}"
+
+        hebrew_month = _HEBREW_MONTHS.get(mm, str(mm))
+        details = f"שימוש בחשמל {hebrew_month} {year}"
+
+        url = PRIORITY_URL_REAL
+        auth = HTTPBasicAuth(
+            os.getenv("PRIORITY_USERNAME", ""),
+            os.getenv("PRIORITY_PASSWORD", ""),
+        )
+        hdrs = {"Accept": "application/json", "OData-Version": "4.0", "Content-Type": "application/json"}
+
+        results = []
+        for site in sites:
+            site_cust = str(site.get("siteCustname") or "").strip()
+            users = site.get("users") or []
+            site_name = site.get("siteName", "")
+            if not site_cust or not users:
+                results.append({"site": site_name, "ok": False, "error": "Missing site customer or users"})
+                continue
+
+            # Build subform: 1 debit + N credits
+            total = sum(float(u.get("amount") or 0) for u in users)
+            if total <= 0:
+                results.append({"site": site_name, "ok": False, "error": "Total amount is zero"})
+                continue
+
+            subform = [{"ACCNAME": f"{site_cust}-110", "DEBIT1": round(total, 2), "CREDIT1": 0, "DETAILS": details}]
+            for u in users:
+                cn = str(u.get("custname") or "").strip()
+                amt = float(u.get("amount") or 0)
+                if cn and amt > 0:
+                    subform.append({"ACCNAME": f"{cn}-110", "DEBIT1": 0, "CREDIT1": round(amt, 2), "DETAILS": details})
+
+            body_post = {
+                "FNCDATE": fnc_date,
+                "BALDATE": fnc_date,
+                "BRANCHNAME": "110",
+                "DETAILS": details,
+                "FNCITEMS_SUBFORM": subform,
+            }
+            try:
+                resp = http_requests.post(f"{url}/FNCTRANS", json=body_post, headers=hdrs, auth=auth, timeout=60)
+                if resp.status_code >= 400:
+                    err = resp.text[:300]
+                    results.append({"site": site_name, "ok": False, "error": f"Priority {resp.status_code}: {err}"})
+                    continue
+                data = resp.json()
+                fncnum = data.get("FNCNUM", "")
+                results.append({
+                    "site": site_name,
+                    "siteCustname": site_cust,
+                    "ok": True,
+                    "fncnum": fncnum,
+                    "total": total,
+                    "userCount": len([u for u in users if (u.get("amount") or 0) > 0]),
+                })
+            except Exception as e:
+                results.append({"site": site_name, "ok": False, "error": str(e)})
+
+        return jsonify({"ok": True, "fncDate": fnc_date, "details": details, "results": results})
+    except Exception as e:
+        logger.error(f"Energy journal entries failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/energy/create-invoices", methods=["POST"])
 def energy_create_invoices():
     """Create draft customer invoices in Priority for energy charging.
