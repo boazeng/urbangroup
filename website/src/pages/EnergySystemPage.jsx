@@ -13,6 +13,8 @@ const COLS = [
   { key: 'MEMBER NAME', label: 'שם חבר', width: 120 },
   { key: 'MEMBER NUMBER', label: 'טלפון', width: 110 },
   { key: '_PRIORITY_CUST', label: 'מס לקוח (פריוריטי)', width: 110 },
+  { key: '_CTYPECODE', label: 'קוד סיווג', width: 70 },
+  { key: '_CTYPENAME', label: 'תאור סיווג', width: 110 },
   { key: 'TOKEN TYPE', label: 'סוג', width: 70 },
   { key: 'CONSUMPTION (KWH)', label: 'kWh', width: 60, num: true },
   { key: 'CHARGING DURATION', label: 'משך טעינה', width: 80 },
@@ -508,11 +510,16 @@ export default function EnergySystemPage() {
                         let val
                         if (c.key === '_PRIORITY_CUST') {
                           val = custMatch ? `${custMatch.custname}` : ''
+                        } else if (c.key === '_CTYPECODE') {
+                          val = custMatch ? (custMatch.ctypecode || '') : ''
+                        } else if (c.key === '_CTYPENAME') {
+                          val = custMatch ? (custMatch.ctypename || '') : ''
                         } else {
                           val = c.num ? fmtNum(r[c.key]) : (r[c.key] || '')
                         }
+                        const isMatchCol = c.key === '_PRIORITY_CUST' || c.key === '_CTYPECODE' || c.key === '_CTYPENAME'
                         return (
-                          <td key={c.key} style={{ padding: '4px 8px', textAlign: c.num ? 'left' : 'right', whiteSpace: 'nowrap', direction: c.num ? 'ltr' : 'rtl', background: c.key === '_PRIORITY_CUST' && val ? '#d4edda' : undefined }}
+                          <td key={c.key} style={{ padding: '4px 8px', textAlign: c.num ? 'left' : 'right', whiteSpace: 'nowrap', direction: c.num ? 'ltr' : 'rtl', background: isMatchCol && val ? '#d4edda' : undefined }}
                               title={c.key === '_PRIORITY_CUST' && custMatch ? custMatch.custdes : undefined}>
                             {val}
                           </td>

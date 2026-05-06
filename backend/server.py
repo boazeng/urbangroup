@@ -2947,10 +2947,10 @@ def sync_customers_phone():
         )
         hdrs = {"Accept": "application/json", "OData-Version": "4.0"}
 
-        phone_map = {}  # normalized phone → {custname, custdes}
+        phone_map = {}  # normalized phone → {custname, custdes, ctypecode, ctypename}
         skip = 0
         while True:
-            api_url = f"{url}/CUSTOMERS?$select=CUSTNAME,CUSTDES,PHONE&$top=500&$skip={skip}"
+            api_url = f"{url}/CUSTOMERS?$select=CUSTNAME,CUSTDES,PHONE,CTYPECODE,CTYPENAME&$top=500&$skip={skip}"
             resp = http_requests.get(api_url, headers=hdrs, auth=auth, timeout=60)
             resp.raise_for_status()
             rows = resp.json().get("value", [])
@@ -2965,7 +2965,12 @@ def sync_customers_phone():
                     continue
                 key = digits[-9:] if len(digits) >= 9 else digits
                 if key not in phone_map:
-                    phone_map[key] = {"custname": r.get("CUSTNAME", ""), "custdes": r.get("CUSTDES", "")}
+                    phone_map[key] = {
+                        "custname": r.get("CUSTNAME", ""),
+                        "custdes": r.get("CUSTDES", ""),
+                        "ctypecode": r.get("CTYPECODE") or "",
+                        "ctypename": r.get("CTYPENAME") or "",
+                    }
             skip += len(rows)
             if len(rows) < 500:
                 break
