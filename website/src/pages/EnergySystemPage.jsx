@@ -509,22 +509,30 @@ export default function EnergySystemPage() {
             {rows.length > 0 && (
               <button
                 onClick={async () => {
-                  // Group rows by PARTNER (site)
-                  const EXCLUDED_SITE = 'איתן ניהול מבנים - מטרופארק'
+                  // Group rows by PARTNER (site) - include all sites including מטרופארק
                   const groups = {}
                   for (const r of rows) {
                     const site = (r['PARTNER'] || 'ללא אתר').trim()
-                    if (site === EXCLUDED_SITE) continue
                     if (!groups[site]) groups[site] = []
                     groups[site].push(r)
                   }
                   const sites = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'he'))
                   if (!sites.length) { alert('אין אתרים להפקת דוחות'); return }
 
-                  const COLS = ['EVSE ID', 'EVSE NAME', 'PARTNER', 'MEMBER NAME', 'MEMBER NUMBER',
-                                'CONSUMPTION (KWH)', 'ENERGY PRICE (WITH TAXES)', 'STOP REASON', 'STARTED AT', 'ENDED AT']
+                  // Hebrew headers
+                  const COL_DEFS = [
+                    { key: 'EVSE ID',                     label: 'מזהה עמדה' },
+                    { key: 'EVSE NAME',                   label: 'שם עמדה' },
+                    { key: 'PARTNER',                     label: 'אתר' },
+                    { key: 'MEMBER NAME',                 label: 'שם משתמש' },
+                    { key: 'MEMBER NUMBER',               label: 'טלפון' },
+                    { key: 'CONSUMPTION (KWH)',           label: 'צריכה (kWh)' },
+                    { key: 'ENERGY PRICE (WITH TAXES)',   label: 'עלות חשמל (כולל מע"מ)' },
+                    { key: 'STOP REASON',                 label: 'סיבת הפסקה' },
+                    { key: 'STARTED AT',                  label: 'התחלה' },
+                    { key: 'ENDED AT',                    label: 'סיום' },
+                  ]
 
-                  // Try directory picker (Chrome/Edge)
                   let dirHandle = null
                   if (window.showDirectoryPicker) {
                     try {
@@ -536,12 +544,20 @@ export default function EnergySystemPage() {
                     if (!confirm(`להוריד ${sites.length} קבצי Excel (אחד לכל אתר)?`)) return
                   }
 
-                  // Build Excel for each site
                   const safeFileName = (n) => n.replace(/[\\/:*?"<>|]/g, '_').slice(0, 80)
                   let okCount = 0
                   for (const site of sites) {
-                    const data = [COLS, ...groups[site].map(r => COLS.map(c => r[c] ?? ''))]
-                    const ws = XLSX.utils.aoa_to_sheet(data)
+                    const siteRows = groups[site]
+                    const headers = COL_DEFS.map(c => c.label)
+                    const dataRows = siteRows.map(r => COL_DEFS.map(c => r[c.key] ?? ''))
+                    // Add total row for עלות חשמל
+                    const energyIdx = COL_DEFS.findIndex(c => c.key === 'ENERGY PRICE (WITH TAXES)')
+                    const totalEnergy = siteRows.reduce((s, r) => s + (Number(r['ENERGY PRICE (WITH TAXES)']) || 0), 0)
+                    const totalRow = COL_DEFS.map((_, i) => i === energyIdx - 1 ? 'סה"כ' : (i === energyIdx ? Math.round(totalEnergy * 100) / 100 : ''))
+                    const sheetData = [headers, ...dataRows, totalRow]
+
+                    const ws = XLSX.utils.aoa_to_sheet(sheetData)
+                    ws['!cols'] = COL_DEFS.map(() => ({ wch: 18 }))
                     const wb = XLSX.utils.book_new()
                     XLSX.utils.book_append_sheet(wb, ws, 'דוח')
                     const arrBuf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
