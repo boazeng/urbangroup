@@ -2836,6 +2836,182 @@ _HEBREW_MONTHS = {
 }
 
 
+@app.route("/api/energy/generate-committee-reports", methods=["POST"])
+def energy_generate_committee_reports():
+    """Generate styled Excel reports per site (using openpyxl) and optionally upload to SharePoint.
+
+    Body:
+      month: "4.26"
+      sites: [{ siteName, rows: [...session row dicts...] }]
+      saveSharePoint: bool
+      saveLocal: bool (if true, returns files as base64 for browser to download)
+    """
+    try:
+        body = request.get_json(force=True)
+        month = (body.get("month") or "").strip()
+        sites = body.get("sites") or []
+        save_sharepoint = bool(body.get("saveSharePoint"))
+        save_local = bool(body.get("saveLocal"))
+        if not month or not sites:
+            return jsonify({"ok": False, "error": "Missing month or sites"}), 400
+
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+        from openpyxl.utils import get_column_letter
+        import io as _io
+        import base64 as _b64
+
+        # Column definitions: (key, label, width, format)
+        COL_DEFS = [
+            ("EVSE ID",                       "EVSE ID",                       14, None),
+            ("EVSE NAME",                     "EVSE NAME",                     22, None),
+            ("PARTNER",                       "PARTNER",                       28, None),
+            ("MEMBER NAME",                   "MEMBER NAME",                   22, None),
+            ("MEMBER NUMBER",                 "MEMBER NUMBER",                 16, None),
+            ("CONSUMPTION (KWH)",             "CONSUMPTION (KWH)",             14, "#,##0.00"),
+            ("ENERGY PRICE (WITH TAXES)",     "ENERGY PRICE (WITH TAXES)",     16, "#,##0.00"),
+            ("STOP REASON",                   "STOP REASON",                   28, None),
+            ("STARTED AT",                    "STARTED AT",                    20, None),
+            ("ENDED AT",                      "ENDED AT",                      20, None),
+        ]
+
+        # Styling constants
+        thin = Side(border_style="thin", color="999999")
+        border = Border(left=thin, right=thin, top=thin, bottom=thin)
+        header_font = Font(bold=True, color="FFFFFF", size=11, name="Calibri")
+        header_fill = PatternFill("solid", fgColor="1E3A5F")
+        center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        right = Alignment(horizontal="right", vertical="center")
+        total_font = Font(bold=True, size=11)
+        total_fill = PatternFill("solid", fgColor="DCFCE7")
+
+        def safe_filename(name):
+            for c in '\\/:*?"<>|':
+                name = name.replace(c, "_")
+            return name[:80]
+
+        def build_xlsx(site_name, site_rows):
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Report"
+            ws.sheet_view.rightToLeft = False  # data is in English
+
+            # Title row
+            ws.cell(row=1, column=1, value=f"{site_name} — {month}")
+            ws.cell(row=1, column=1).font = Font(bold=True, size=14, color="1E3A5F")
+            ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(COL_DEFS))
+            ws.row_dimensions[1].height = 22
+
+            # Header row (row 3)
+            for c_idx, (_, label, _w, _f) in enumerate(COL_DEFS, start=1):
+                cell = ws.cell(row=3, column=c_idx, value=label)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = center
+                cell.border = border
+            ws.row_dimensions[3].height = 28
+
+            # Data rows
+            r = 4
+            total_energy = 0.0
+            for src in site_rows:
+                for c_idx, (key, _label, _w, fmt) in enumerate(COL_DEFS, start=1):
+                    val = src.get(key, "")
+                    if key == "CONSUMPTION (KWH)" or key == "ENERGY PRICE (WITH TAXES)":
+                        try:
+                            val = float(val) if val not in ("", None) else 0
+                            if key == "ENERGY PRICE (WITH TAXES)":
+                                total_energy += val
+                        except Exception:
+                            val = 0
+                    cell = ws.cell(row=r, column=c_idx, value=val)
+                    cell.border = border
+                    if fmt:
+                        cell.number_format = fmt
+                    cell.alignment = right
+                    if r % 2 == 0:
+                        cell.fill = PatternFill("solid", fgColor="F9FAFB")
+                r += 1
+
+            # Total row
+            total_row = r
+            energy_idx = next(i for i, (k, *_r) in enumerate(COL_DEFS, start=1) if k == "ENERGY PRICE (WITH TAXES)")
+            for c_idx in range(1, len(COL_DEFS) + 1):
+                cell = ws.cell(row=total_row, column=c_idx)
+                cell.border = border
+                cell.fill = total_fill
+                cell.font = total_font
+                if c_idx == energy_idx - 1:
+                    cell.value = "TOTAL"
+                    cell.alignment = center
+                elif c_idx == energy_idx:
+                    cell.value = round(total_energy, 2)
+                    cell.number_format = "#,##0.00"
+                    cell.alignment = right
+
+            # Column widths
+            for c_idx, (_, _l, w, _f) in enumerate(COL_DEFS, start=1):
+                ws.column_dimensions[get_column_letter(c_idx)].width = w
+
+            # Freeze header
+            ws.freeze_panes = "A4"
+
+            buf = _io.BytesIO()
+            wb.save(buf)
+            return buf.getvalue()
+
+        # SharePoint setup if requested
+        sp_ctx = None
+        if save_sharepoint:
+            try:
+                sp = _get_sp_connector()
+                site = sp.get_site("Urbanenergy")
+                drives = sp.get_drives(site["id"])
+                doc_drive = next((d for d in drives if d.get("name") in ("Documents", "Shared Documents", "מסמכים")), drives[0] if drives else None)
+                if not doc_drive:
+                    raise Exception("No drive found")
+                base_folder = "פרויקטים/החזרים ועדי בתים/וועדים"
+                try: sp.create_folder(doc_drive["id"], base_folder, month)
+                except: pass
+                sp_ctx = {"sp": sp, "drive_id": doc_drive["id"], "folder": f"{base_folder}/{month}"}
+            except Exception as e:
+                logger.error(f"SharePoint setup failed: {e}")
+                sp_ctx = {"error": str(e)}
+
+        files_for_local = []
+        sp_results = []
+        for s in sites:
+            site_name = (s.get("siteName") or "").strip()
+            site_rows = s.get("rows") or []
+            if not site_name or not site_rows:
+                continue
+            try:
+                xlsx_bytes = build_xlsx(site_name, site_rows)
+                file_name = f"{safe_filename(site_name)} - {month}.xlsx"
+                if save_local:
+                    files_for_local.append({"fileName": file_name, "contentB64": _b64.b64encode(xlsx_bytes).decode("ascii")})
+                if sp_ctx and "error" not in sp_ctx:
+                    try:
+                        item = sp_ctx["sp"].upload_file(sp_ctx["drive_id"], sp_ctx["folder"], file_name, xlsx_bytes)
+                        sp_results.append({"fileName": file_name, "ok": True, "webUrl": item.get("webUrl", "")})
+                    except Exception as e:
+                        sp_results.append({"fileName": file_name, "ok": False, "error": str(e)})
+            except Exception as e:
+                logger.error(f"Build xlsx for {site_name} failed: {e}")
+
+        resp = {"ok": True, "month": month, "siteCount": len(sites)}
+        if save_local:
+            resp["files"] = files_for_local
+        if save_sharepoint:
+            resp["sharepoint"] = sp_results
+            if sp_ctx and "error" in sp_ctx:
+                resp["sharepointError"] = sp_ctx["error"]
+        return jsonify(resp)
+    except Exception as e:
+        logger.error(f"Generate committee reports failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/energy/upload-reports", methods=["POST"])
 def energy_upload_reports():
     """Upload Excel reports to SharePoint folder per month.

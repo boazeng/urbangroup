@@ -510,33 +510,18 @@ export default function EnergySystemPage() {
             {rows.length > 0 && (
               <button
                 onClick={async () => {
-                  // Group rows by PARTNER (site) - include all sites including מטרופארק
+                  // Group rows by site
                   const groups = {}
                   for (const r of rows) {
                     const site = (r['PARTNER'] || 'ללא אתר').trim()
                     if (!groups[site]) groups[site] = []
                     groups[site].push(r)
                   }
-                  const sites = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'he'))
-                  if (!sites.length) { alert('אין אתרים להפקת דוחות'); return }
+                  const siteNames = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'he'))
+                  if (!siteNames.length) { alert('אין אתרים להפקת דוחות'); return }
 
-                  // Hebrew headers
-                  const COL_DEFS = [
-                    { key: 'EVSE ID',                     label: 'מזהה עמדה' },
-                    { key: 'EVSE NAME',                   label: 'שם עמדה' },
-                    { key: 'PARTNER',                     label: 'אתר' },
-                    { key: 'MEMBER NAME',                 label: 'שם משתמש' },
-                    { key: 'MEMBER NUMBER',               label: 'טלפון' },
-                    { key: 'CONSUMPTION (KWH)',           label: 'צריכה (kWh)' },
-                    { key: 'ENERGY PRICE (WITH TAXES)',   label: 'עלות חשמל (כולל מע"מ)' },
-                    { key: 'STOP REASON',                 label: 'סיבת הפסקה' },
-                    { key: 'STARTED AT',                  label: 'התחלה' },
-                    { key: 'ENDED AT',                    label: 'סיום' },
-                  ]
-
-                  // Ask user where to save: SharePoint, local folder, or both
                   const choice = prompt(
-                    `כיצד לשמור ${sites.length} קבצי Excel?\n\n` +
+                    `כיצד לשמור ${siteNames.length} קבצי Excel?\n\n` +
                     `1 — SharePoint בלבד (תיקיית ${month})\n` +
                     `2 — תיקייה במחשב בלבד\n` +
                     `3 — שניהם`,
@@ -547,86 +532,63 @@ export default function EnergySystemPage() {
                   const saveLocal = choice === '2' || choice === '3'
 
                   let dirHandle = null
-                  if (saveLocal) {
-                    if (window.showDirectoryPicker) {
-                      try {
-                        dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' })
-                      } catch (e) {
-                        if (e.name === 'AbortError') return
-                      }
-                    }
-                  }
-
-                  const safeFileName = (n) => n.replace(/[\\/:*?"<>|]/g, '_').slice(0, 80)
-                  let localOk = 0
-                  const spFiles = []
-                  for (const site of sites) {
-                    const siteRows = groups[site]
-                    const headers = COL_DEFS.map(c => c.label)
-                    const dataRows = siteRows.map(r => COL_DEFS.map(c => r[c.key] ?? ''))
-                    const energyIdx = COL_DEFS.findIndex(c => c.key === 'ENERGY PRICE (WITH TAXES)')
-                    const totalEnergy = siteRows.reduce((s, r) => s + (Number(r['ENERGY PRICE (WITH TAXES)']) || 0), 0)
-                    const totalRow = COL_DEFS.map((_, i) => i === energyIdx - 1 ? 'סה"כ' : (i === energyIdx ? Math.round(totalEnergy * 100) / 100 : ''))
-                    const sheetData = [headers, ...dataRows, totalRow]
-
-                    const ws = XLSX.utils.aoa_to_sheet(sheetData)
-                    ws['!cols'] = COL_DEFS.map(() => ({ wch: 18 }))
-                    const wb = XLSX.utils.book_new()
-                    XLSX.utils.book_append_sheet(wb, ws, 'דוח')
-                    const arrBuf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-                    const fileName = `${safeFileName(site)} - ${month}.xlsx`
-
-                    if (saveLocal) {
-                      if (dirHandle) {
-                        try {
-                          const fh = await dirHandle.getFileHandle(fileName, { create: true })
-                          const w = await fh.createWritable()
-                          await w.write(arrBuf)
-                          await w.close()
-                          localOk++
-                        } catch (e) { /* skip */ }
-                      } else {
-                        const blob = new Blob([arrBuf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-                        const url = URL.createObjectURL(blob)
-                        const a = document.createElement('a')
-                        a.href = url; a.download = fileName
-                        document.body.appendChild(a); a.click(); document.body.removeChild(a)
-                        setTimeout(() => URL.revokeObjectURL(url), 1000)
-                        localOk++
-                      }
-                    }
-                    if (saveSP) {
-                      // Convert ArrayBuffer to base64
-                      let binary = ''
-                      const bytes = new Uint8Array(arrBuf)
-                      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
-                      const b64 = btoa(binary)
-                      spFiles.push({ fileName, contentB64: b64 })
-                    }
-                  }
-
-                  let spMsg = ''
-                  if (saveSP && spFiles.length) {
+                  if (saveLocal && window.showDirectoryPicker) {
                     try {
-                      const r = await fetch(`${API_BASE}/api/energy/upload-reports`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ month, files: spFiles }),
-                      })
-                      const d = await r.json()
-                      if (d.ok) {
-                        const ok = d.results.filter(x => x.ok).length
-                        spMsg = `\n📁 ב-SharePoint (${d.folder}): ${ok} מתוך ${spFiles.length}`
-                      } else {
-                        spMsg = `\n📁 SharePoint: שגיאה — ${d.error}`
-                      }
+                      dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' })
                     } catch (e) {
-                      spMsg = `\n📁 SharePoint: שגיאה — ${e.message}`
+                      if (e.name === 'AbortError') return
                     }
                   }
 
-                  const localMsg = saveLocal ? `\n💾 מקומית: ${localOk} מתוך ${sites.length}` : ''
-                  alert(`הופקו דוחות:${localMsg}${spMsg}`)
+                  // Backend generates styled xlsx and (optionally) uploads to SharePoint
+                  const sitesPayload = siteNames.map(s => ({ siteName: s, rows: groups[s] }))
+                  try {
+                    const r = await fetch(`${API_BASE}/api/energy/generate-committee-reports`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ month, sites: sitesPayload, saveSharePoint: saveSP, saveLocal }),
+                    })
+                    const d = await r.json()
+                    if (!d.ok) { alert(`שגיאה: ${d.error}`); return }
+
+                    let localOk = 0
+                    if (saveLocal && d.files) {
+                      for (const f of d.files) {
+                        const bin = atob(f.contentB64)
+                        const arr = new Uint8Array(bin.length)
+                        for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i)
+                        if (dirHandle) {
+                          try {
+                            const fh = await dirHandle.getFileHandle(f.fileName, { create: true })
+                            const w = await fh.createWritable()
+                            await w.write(arr)
+                            await w.close()
+                            localOk++
+                          } catch (e) { /* skip */ }
+                        } else {
+                          const blob = new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+                          const url = URL.createObjectURL(blob)
+                          const a = document.createElement('a')
+                          a.href = url; a.download = f.fileName
+                          document.body.appendChild(a); a.click(); document.body.removeChild(a)
+                          setTimeout(() => URL.revokeObjectURL(url), 1000)
+                          localOk++
+                        }
+                      }
+                    }
+                    let msg = `הופקו דוחות (${siteNames.length} אתרים):`
+                    if (saveLocal) msg += `\n💾 מקומית: ${localOk}`
+                    if (saveSP) {
+                      if (d.sharepointError) msg += `\n📁 SharePoint: שגיאה — ${d.sharepointError}`
+                      else {
+                        const okN = (d.sharepoint || []).filter(x => x.ok).length
+                        msg += `\n📁 SharePoint: ${okN}`
+                      }
+                    }
+                    alert(msg)
+                  } catch (e) {
+                    alert(`שגיאה: ${e.message}`)
+                  }
                 }}
                 style={{ padding: '8px 20px', background: '#0d9488', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
               >📊 הפק דוחות לוועדי בתים</button>
