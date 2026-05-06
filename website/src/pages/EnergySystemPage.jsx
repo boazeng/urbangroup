@@ -417,23 +417,30 @@ export default function EnergySystemPage() {
               <button
                 onClick={async () => {
                   // Group by customer (using phoneToCust mapping) and sum SERVICE FEE (gross, incl VAT)
+                  // Skip customers whose sessions are at the excluded site
+                  const EXCLUDED_SITE = 'איתן ניהול מבנים - מטרופארק'
                   const byCust = {}
+                  const excludedCusts = new Set()
                   for (const r of rows) {
                     const phone = r['MEMBER NUMBER']
                     const m = phoneToCust[phone]
                     if (!m) continue
                     const cust = m.custname
+                    const partner = (r['PARTNER'] || '').trim()
+                    if (partner === EXCLUDED_SITE) { excludedCusts.add(cust); continue }
                     if (!byCust[cust]) byCust[cust] = { custname: cust, custdes: m.custdes, total: 0 }
                     byCust[cust].total += Number(r['SERVICE FEE (WITH TAXES)']) || 0
                   }
+                  // Also remove any customer that had ANY session at the excluded site
+                  for (const c of excludedCusts) delete byCust[c]
                   const list = Object.values(byCust).filter(c => c.total > 0)
                   if (!list.length) { alert('אין לקוחות להפקת חשבונית'); return }
-                  if (!confirm(`להפיק 2 חשבוניות ראשונות (טיוטא) מתוך ${list.length} לקוחות, סניף 110?`)) return
+                  if (!confirm(`להפיק ${list.length} חשבוניות (טיוטא) בסניף 110?\n(לא כולל לקוחות באתר "${EXCLUDED_SITE}")`)) return
                   try {
                     const resp = await fetch(`${API_BASE}/api/energy/create-invoices`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ month, customers: list, limit: 2 }),
+                      body: JSON.stringify({ month, customers: list }),
                     })
                     const d = await resp.json()
                     if (d.ok) {
