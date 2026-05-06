@@ -506,6 +506,69 @@ export default function EnergySystemPage() {
                 style={{ padding: '8px 20px', background: '#0891b2', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
               >📒 רישום פקודת יומן</button>
             )}
+            {rows.length > 0 && (
+              <button
+                onClick={async () => {
+                  // Group rows by PARTNER (site)
+                  const EXCLUDED_SITE = 'איתן ניהול מבנים - מטרופארק'
+                  const groups = {}
+                  for (const r of rows) {
+                    const site = (r['PARTNER'] || 'ללא אתר').trim()
+                    if (site === EXCLUDED_SITE) continue
+                    if (!groups[site]) groups[site] = []
+                    groups[site].push(r)
+                  }
+                  const sites = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'he'))
+                  if (!sites.length) { alert('אין אתרים להפקת דוחות'); return }
+
+                  const COLS = ['EVSE ID', 'EVSE NAME', 'PARTNER', 'MEMBER NAME', 'MEMBER NUMBER',
+                                'CONSUMPTION (KWH)', 'ENERGY PRICE (WITH TAXES)', 'STOP REASON', 'STARTED AT', 'ENDED AT']
+
+                  // Try directory picker (Chrome/Edge)
+                  let dirHandle = null
+                  if (window.showDirectoryPicker) {
+                    try {
+                      dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' })
+                    } catch (e) {
+                      if (e.name === 'AbortError') return
+                    }
+                  } else {
+                    if (!confirm(`להוריד ${sites.length} קבצי Excel (אחד לכל אתר)?`)) return
+                  }
+
+                  // Build Excel for each site
+                  const safeFileName = (n) => n.replace(/[\\/:*?"<>|]/g, '_').slice(0, 80)
+                  let okCount = 0
+                  for (const site of sites) {
+                    const data = [COLS, ...groups[site].map(r => COLS.map(c => r[c] ?? ''))]
+                    const ws = XLSX.utils.aoa_to_sheet(data)
+                    const wb = XLSX.utils.book_new()
+                    XLSX.utils.book_append_sheet(wb, ws, 'דוח')
+                    const arrBuf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+                    const fileName = `${safeFileName(site)} - ${month}.xlsx`
+                    if (dirHandle) {
+                      try {
+                        const fh = await dirHandle.getFileHandle(fileName, { create: true })
+                        const w = await fh.createWritable()
+                        await w.write(arrBuf)
+                        await w.close()
+                        okCount++
+                      } catch (e) { /* skip */ }
+                    } else {
+                      const blob = new Blob([arrBuf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement('a')
+                      a.href = url; a.download = fileName
+                      document.body.appendChild(a); a.click(); document.body.removeChild(a)
+                      setTimeout(() => URL.revokeObjectURL(url), 1000)
+                      okCount++
+                    }
+                  }
+                  alert(`הופקו ${okCount} דוחות מתוך ${sites.length} אתרים`)
+                }}
+                style={{ padding: '8px 20px', background: '#0d9488', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
+              >📊 הפק דוחות לוועדי בתים</button>
+            )}
           </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
           <input ref={inputRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }}
