@@ -158,6 +158,52 @@ def list_files(drive_id, folder_path=""):
     return resp.json().get("value", [])
 
 
+def create_folder(drive_id, parent_path, folder_name):
+    """Create a folder under parent_path in a drive (idempotent — reuses if exists).
+
+    Args:
+        drive_id: Drive ID
+        parent_path: Parent folder path (e.g. 'General/Reports'). Empty = root.
+        folder_name: New folder name
+
+    Returns:
+        dict: folder item info
+    """
+    if parent_path:
+        url = f"{GRAPH_BASE}/drives/{drive_id}/root:/{parent_path}:/children"
+    else:
+        url = f"{GRAPH_BASE}/drives/{drive_id}/root/children"
+    body = {
+        "name": folder_name,
+        "folder": {},
+        "@microsoft.graph.conflictBehavior": "replace",
+    }
+    resp = requests.post(url, headers={**_headers(), "Content-Type": "application/json"},
+                        json=body, timeout=15)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def upload_file(drive_id, folder_path, file_name, file_bytes):
+    """Upload a file to a SharePoint folder.
+
+    Args:
+        drive_id: Drive ID
+        folder_path: Folder path (e.g. 'Reports/2026'). Empty = root.
+        file_name: Target file name
+        file_bytes: Raw file bytes
+
+    Returns:
+        dict: uploaded item info
+    """
+    target_path = f"{folder_path}/{file_name}".lstrip("/") if folder_path else file_name
+    url = f"{GRAPH_BASE}/drives/{drive_id}/root:/{target_path}:/content"
+    headers = {**_headers(), "Content-Type": "application/octet-stream"}
+    resp = requests.put(url, headers=headers, data=file_bytes, timeout=60)
+    resp.raise_for_status()
+    return resp.json()
+
+
 def resolve_share_link(share_url):
     """Resolve a SharePoint sharing link to a drive item.
 

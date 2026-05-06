@@ -2836,6 +2836,75 @@ _HEBREW_MONTHS = {
 }
 
 
+@app.route("/api/energy/upload-reports", methods=["POST"])
+def energy_upload_reports():
+    """Upload Excel reports to SharePoint folder per month.
+
+    Body:
+      month: "4.26"
+      files: [{ fileName, contentB64 }]   (base64-encoded xlsx bytes)
+    """
+    try:
+        body = request.get_json(force=True)
+        month = (body.get("month") or "").strip()
+        files = body.get("files") or []
+        if not month or not files:
+            return jsonify({"ok": False, "error": "Missing month or files"}), 400
+
+        # SharePoint location:
+        # site: https://yaelisrael.sharepoint.com/Urbanenergy
+        # library: Shared Documents (default 'documents' drive)
+        # folder: פרויקטים/החזרים ועדי בתים/וועדים/{month}
+        sp = _get_sp_connector()
+        try:
+            site = sp.get_site("Urbanenergy")
+            site_id = site["id"]
+        except Exception as e:
+            return jsonify({"ok": False, "error": f"Failed to get SharePoint site: {e}"}), 500
+
+        drives = sp.get_drives(site_id)
+        # Find the Documents drive
+        doc_drive = None
+        for d in drives:
+            if d.get("name") in ("Documents", "Shared Documents", "מסמכים"):
+                doc_drive = d
+                break
+        if not doc_drive:
+            doc_drive = drives[0] if drives else None
+        if not doc_drive:
+            return jsonify({"ok": False, "error": "No drive found"}), 500
+        drive_id = doc_drive["id"]
+
+        base_folder = "פרויקטים/החזרים ועדי בתים/וועדים"
+        # Ensure month subfolder exists
+        try:
+            sp.create_folder(drive_id, base_folder, month)
+        except Exception as e:
+            logger.warning(f"create_folder failed (may already exist): {e}")
+
+        target_folder = f"{base_folder}/{month}"
+
+        import base64 as _b64
+        results = []
+        for f in files:
+            file_name = (f.get("fileName") or "").strip()
+            content_b64 = f.get("contentB64") or ""
+            if not file_name or not content_b64:
+                results.append({"fileName": file_name, "ok": False, "error": "Missing data"})
+                continue
+            try:
+                raw = _b64.b64decode(content_b64)
+                item = sp.upload_file(drive_id, target_folder, file_name, raw)
+                results.append({"fileName": file_name, "ok": True, "webUrl": item.get("webUrl", "")})
+            except Exception as e:
+                results.append({"fileName": file_name, "ok": False, "error": str(e)})
+
+        return jsonify({"ok": True, "month": month, "folder": target_folder, "results": results})
+    except Exception as e:
+        logger.error(f"Upload reports failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/energy/create-journal-entries", methods=["POST"])
 def energy_create_journal_entries():
     """Create journal entries (FNCTRANS) for electricity usage per site.
@@ -3051,7 +3120,7 @@ def sync_customers_phone():
         name_map = {}   # normalized custdes → customer info
         skip = 0
         while True:
-            api_url = f"{url}/CUSTOMERS?$select=CUSTNAME,CUSTDES,PHONE,CTYPECODE,CTYPENAME&$top=500&$skip={skip}"
+            api_url = f"{url}/CUSTOMERS?$select=CUSTNAME,CUSTDES,PHONE,CTYPECODE,CTYPENAME,EMAIL&$top=500&$skip={skip}"
             resp = http_requests.get(api_url, headers=hdrs, auth=auth, timeout=60)
             resp.raise_for_status()
             rows = resp.json().get("value", [])
@@ -3062,11 +3131,13 @@ def sync_customers_phone():
                 custdes = r.get("CUSTDES", "") or ""
                 ctypecode = r.get("CTYPECODE") or ""
                 ctypename = r.get("CTYPENAME") or ""
+                email = r.get("EMAIL") or ""
                 info = {
                     "custname": custname,
                     "custdes": custdes,
                     "ctypecode": ctypecode,
                     "ctypename": ctypename,
+                    "email": email,
                 }
                 # Phone-based key
                 p = (r.get("PHONE") or "").strip()

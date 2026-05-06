@@ -213,6 +213,7 @@ export default function EnergySystemPage() {
   const [availableMonths, setAvailableMonths] = useState([])
   const [showCommittees, setShowCommittees] = useState(false)
   const [siteToCust, setSiteToCust] = useState({})  // site name → customer info
+  const [emailOverrides, setEmailOverrides] = useState({})  // site name → manual email override
   const [custStatus, setCustStatus] = useState({ count: 0, updatedAt: '' })
 
   const loadCustStatus = () => {
@@ -533,24 +534,36 @@ export default function EnergySystemPage() {
                     { key: 'ENDED AT',                    label: 'סיום' },
                   ]
 
+                  // Ask user where to save: SharePoint, local folder, or both
+                  const choice = prompt(
+                    `כיצד לשמור ${sites.length} קבצי Excel?\n\n` +
+                    `1 — SharePoint בלבד (תיקיית ${month})\n` +
+                    `2 — תיקייה במחשב בלבד\n` +
+                    `3 — שניהם`,
+                    '1'
+                  )
+                  if (choice === null) return
+                  const saveSP = choice === '1' || choice === '3'
+                  const saveLocal = choice === '2' || choice === '3'
+
                   let dirHandle = null
-                  if (window.showDirectoryPicker) {
-                    try {
-                      dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' })
-                    } catch (e) {
-                      if (e.name === 'AbortError') return
+                  if (saveLocal) {
+                    if (window.showDirectoryPicker) {
+                      try {
+                        dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' })
+                      } catch (e) {
+                        if (e.name === 'AbortError') return
+                      }
                     }
-                  } else {
-                    if (!confirm(`להוריד ${sites.length} קבצי Excel (אחד לכל אתר)?`)) return
                   }
 
                   const safeFileName = (n) => n.replace(/[\\/:*?"<>|]/g, '_').slice(0, 80)
-                  let okCount = 0
+                  let localOk = 0
+                  const spFiles = []
                   for (const site of sites) {
                     const siteRows = groups[site]
                     const headers = COL_DEFS.map(c => c.label)
                     const dataRows = siteRows.map(r => COL_DEFS.map(c => r[c.key] ?? ''))
-                    // Add total row for עלות חשמל
                     const energyIdx = COL_DEFS.findIndex(c => c.key === 'ENERGY PRICE (WITH TAXES)')
                     const totalEnergy = siteRows.reduce((s, r) => s + (Number(r['ENERGY PRICE (WITH TAXES)']) || 0), 0)
                     const totalRow = COL_DEFS.map((_, i) => i === energyIdx - 1 ? 'סה"כ' : (i === energyIdx ? Math.round(totalEnergy * 100) / 100 : ''))
@@ -562,25 +575,58 @@ export default function EnergySystemPage() {
                     XLSX.utils.book_append_sheet(wb, ws, 'דוח')
                     const arrBuf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
                     const fileName = `${safeFileName(site)} - ${month}.xlsx`
-                    if (dirHandle) {
-                      try {
-                        const fh = await dirHandle.getFileHandle(fileName, { create: true })
-                        const w = await fh.createWritable()
-                        await w.write(arrBuf)
-                        await w.close()
-                        okCount++
-                      } catch (e) { /* skip */ }
-                    } else {
-                      const blob = new Blob([arrBuf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-                      const url = URL.createObjectURL(blob)
-                      const a = document.createElement('a')
-                      a.href = url; a.download = fileName
-                      document.body.appendChild(a); a.click(); document.body.removeChild(a)
-                      setTimeout(() => URL.revokeObjectURL(url), 1000)
-                      okCount++
+
+                    if (saveLocal) {
+                      if (dirHandle) {
+                        try {
+                          const fh = await dirHandle.getFileHandle(fileName, { create: true })
+                          const w = await fh.createWritable()
+                          await w.write(arrBuf)
+                          await w.close()
+                          localOk++
+                        } catch (e) { /* skip */ }
+                      } else {
+                        const blob = new Blob([arrBuf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.href = url; a.download = fileName
+                        document.body.appendChild(a); a.click(); document.body.removeChild(a)
+                        setTimeout(() => URL.revokeObjectURL(url), 1000)
+                        localOk++
+                      }
+                    }
+                    if (saveSP) {
+                      // Convert ArrayBuffer to base64
+                      let binary = ''
+                      const bytes = new Uint8Array(arrBuf)
+                      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+                      const b64 = btoa(binary)
+                      spFiles.push({ fileName, contentB64: b64 })
                     }
                   }
-                  alert(`הופקו ${okCount} דוחות מתוך ${sites.length} אתרים`)
+
+                  let spMsg = ''
+                  if (saveSP && spFiles.length) {
+                    try {
+                      const r = await fetch(`${API_BASE}/api/energy/upload-reports`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ month, files: spFiles }),
+                      })
+                      const d = await r.json()
+                      if (d.ok) {
+                        const ok = d.results.filter(x => x.ok).length
+                        spMsg = `\n📁 ב-SharePoint (${d.folder}): ${ok} מתוך ${spFiles.length}`
+                      } else {
+                        spMsg = `\n📁 SharePoint: שגיאה — ${d.error}`
+                      }
+                    } catch (e) {
+                      spMsg = `\n📁 SharePoint: שגיאה — ${e.message}`
+                    }
+                  }
+
+                  const localMsg = saveLocal ? `\n💾 מקומית: ${localOk} מתוך ${sites.length}` : ''
+                  alert(`הופקו דוחות:${localMsg}${spMsg}`)
                 }}
                 style={{ padding: '8px 20px', background: '#0d9488', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
               >📊 הפק דוחות לוועדי בתים</button>
@@ -654,6 +700,7 @@ export default function EnergySystemPage() {
                       <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>מס לקוח</th>
                       <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>קוד סיווג</th>
                       <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>תאור סיווג</th>
+                      <th style={{ padding: '6px 10px', border: '1px solid #5b21b6', minWidth: '180px' }}>מייל לשליחה</th>
                       <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>סשנים</th>
                       <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>kWh</th>
                       <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>עלות חשמל</th>
@@ -672,6 +719,14 @@ export default function EnergySystemPage() {
                         <td style={{ padding: '4px 10px', border: '1px solid #ddd', background: matchBg, fontWeight: 'bold' }}>{cust ? cust.custname : ''}</td>
                         <td style={{ padding: '4px 10px', border: '1px solid #ddd', background: matchBg, textAlign: 'center' }}>{cust ? cust.ctypecode : ''}</td>
                         <td style={{ padding: '4px 10px', border: '1px solid #ddd', background: matchBg }}>{cust ? cust.ctypename : ''}</td>
+                        <td style={{ padding: '2px 4px', border: '1px solid #ddd' }}>
+                          <input
+                            type="email"
+                            value={emailOverrides[s.site] !== undefined ? emailOverrides[s.site] : (cust?.email || '')}
+                            onChange={e => setEmailOverrides(prev => ({ ...prev, [s.site]: e.target.value }))}
+                            style={{ width: '100%', border: '1px solid #ddd', borderRadius: '3px', padding: '2px 4px', fontSize: '11px', direction: 'ltr', textAlign: 'left' }}
+                          />
+                        </td>
                         <td style={{ padding: '4px 10px', border: '1px solid #ddd', textAlign: 'left', direction: 'ltr' }}>{s.sessions}</td>
                         <td style={{ padding: '4px 10px', border: '1px solid #ddd', textAlign: 'left', direction: 'ltr' }}>{fN(s.kwh)}</td>
                         <td style={{ padding: '4px 10px', border: '1px solid #ddd', textAlign: 'left', direction: 'ltr' }}>{fN(s.energy)}</td>
