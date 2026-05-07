@@ -2836,6 +2836,107 @@ _HEBREW_MONTHS = {
 }
 
 
+_COMMITTEE_COL_DEFS = [
+    ("EVSE ID",                       "EVSE ID",                       14, None),
+    ("EVSE NAME",                     "EVSE NAME",                     22, None),
+    ("PARTNER",                       "PARTNER",                       28, None),
+    ("MEMBER NAME",                   "MEMBER NAME",                   22, None),
+    ("MEMBER NUMBER",                 "MEMBER NUMBER",                 16, None),
+    ("CONSUMPTION (KWH)",             "CONSUMPTION (KWH)",             14, "#,##0.00"),
+    ("ENERGY PRICE (WITH TAXES)",     "ENERGY PRICE (WITH TAXES)",     16, "#,##0.00"),
+    ("STOP REASON",                   "STOP REASON",                   28, None),
+    ("STARTED AT",                    "STARTED AT",                    20, None),
+    ("ENDED AT",                      "ENDED AT",                      20, None),
+]
+
+
+def _build_committee_xlsx(site_name, site_rows, month):
+    """Build a styled committee xlsx report. Returns (bytes, total_energy_price)."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+    from openpyxl.utils import get_column_letter
+    import io as _io
+
+    thin = Side(border_style="thin", color="999999")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    header_font = Font(bold=True, color="FFFFFF", size=11, name="Calibri")
+    header_fill = PatternFill("solid", fgColor="1E3A5F")
+    center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    right = Alignment(horizontal="right", vertical="center")
+    total_font = Font(bold=True, size=11)
+    total_fill = PatternFill("solid", fgColor="DCFCE7")
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Report"
+    ws.sheet_view.rightToLeft = True
+
+    ws.cell(row=1, column=1, value=f"שימוש בחשמל - {site_name} - {month}")
+    ws.cell(row=1, column=1).font = Font(bold=True, size=14, color="1E3A5F")
+    ws.cell(row=1, column=1).alignment = Alignment(horizontal="center", vertical="center")
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(_COMMITTEE_COL_DEFS))
+    ws.row_dimensions[1].height = 26
+
+    for c_idx, (_, label, _w, _f) in enumerate(_COMMITTEE_COL_DEFS, start=1):
+        cell = ws.cell(row=3, column=c_idx, value=label)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center
+        cell.border = border
+    ws.row_dimensions[3].height = 28
+
+    r = 4
+    total_energy = 0.0
+    for src in site_rows:
+        for c_idx, (key, _label, _w, fmt) in enumerate(_COMMITTEE_COL_DEFS, start=1):
+            val = src.get(key, "")
+            if key == "CONSUMPTION (KWH)" or key == "ENERGY PRICE (WITH TAXES)":
+                try:
+                    val = float(val) if val not in ("", None) else 0
+                    if key == "ENERGY PRICE (WITH TAXES)":
+                        total_energy += val
+                except Exception:
+                    val = 0
+            cell = ws.cell(row=r, column=c_idx, value=val)
+            cell.border = border
+            if fmt:
+                cell.number_format = fmt
+            cell.alignment = right
+            if r % 2 == 0:
+                cell.fill = PatternFill("solid", fgColor="F9FAFB")
+        r += 1
+
+    total_row = r
+    energy_idx = next(i for i, (k, *_r) in enumerate(_COMMITTEE_COL_DEFS, start=1) if k == "ENERGY PRICE (WITH TAXES)")
+    for c_idx in range(1, len(_COMMITTEE_COL_DEFS) + 1):
+        cell = ws.cell(row=total_row, column=c_idx)
+        cell.border = border
+        cell.fill = total_fill
+        cell.font = total_font
+        if c_idx == energy_idx - 1:
+            cell.value = "TOTAL"
+            cell.alignment = center
+        elif c_idx == energy_idx:
+            cell.value = round(total_energy, 2)
+            cell.number_format = "#,##0.00"
+            cell.alignment = right
+
+    for c_idx, (_, _l, w, _f) in enumerate(_COMMITTEE_COL_DEFS, start=1):
+        ws.column_dimensions[get_column_letter(c_idx)].width = w
+
+    ws.freeze_panes = "A4"
+
+    buf = _io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue(), round(total_energy, 2)
+
+
+def _safe_committee_filename(name):
+    for c in '\\/:*?"<>|':
+        name = name.replace(c, "_")
+    return name[:80]
+
+
 @app.route("/api/energy/generate-committee-reports", methods=["POST"])
 def energy_generate_committee_reports():
     """Generate styled Excel reports per site (using openpyxl) and optionally upload to SharePoint.
@@ -2855,111 +2956,7 @@ def energy_generate_committee_reports():
         if not month or not sites:
             return jsonify({"ok": False, "error": "Missing month or sites"}), 400
 
-        from openpyxl import Workbook
-        from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
-        from openpyxl.utils import get_column_letter
-        import io as _io
         import base64 as _b64
-
-        # Column definitions: (key, label, width, format)
-        COL_DEFS = [
-            ("EVSE ID",                       "EVSE ID",                       14, None),
-            ("EVSE NAME",                     "EVSE NAME",                     22, None),
-            ("PARTNER",                       "PARTNER",                       28, None),
-            ("MEMBER NAME",                   "MEMBER NAME",                   22, None),
-            ("MEMBER NUMBER",                 "MEMBER NUMBER",                 16, None),
-            ("CONSUMPTION (KWH)",             "CONSUMPTION (KWH)",             14, "#,##0.00"),
-            ("ENERGY PRICE (WITH TAXES)",     "ENERGY PRICE (WITH TAXES)",     16, "#,##0.00"),
-            ("STOP REASON",                   "STOP REASON",                   28, None),
-            ("STARTED AT",                    "STARTED AT",                    20, None),
-            ("ENDED AT",                      "ENDED AT",                      20, None),
-        ]
-
-        # Styling constants
-        thin = Side(border_style="thin", color="999999")
-        border = Border(left=thin, right=thin, top=thin, bottom=thin)
-        header_font = Font(bold=True, color="FFFFFF", size=11, name="Calibri")
-        header_fill = PatternFill("solid", fgColor="1E3A5F")
-        center = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        right = Alignment(horizontal="right", vertical="center")
-        total_font = Font(bold=True, size=11)
-        total_fill = PatternFill("solid", fgColor="DCFCE7")
-
-        def safe_filename(name):
-            for c in '\\/:*?"<>|':
-                name = name.replace(c, "_")
-            return name[:80]
-
-        def build_xlsx(site_name, site_rows):
-            wb = Workbook()
-            ws = wb.active
-            ws.title = "Report"
-            ws.sheet_view.rightToLeft = True
-
-            # Title row
-            ws.cell(row=1, column=1, value=f"שימוש בחשמל - {site_name} - {month}")
-            ws.cell(row=1, column=1).font = Font(bold=True, size=14, color="1E3A5F")
-            ws.cell(row=1, column=1).alignment = Alignment(horizontal="center", vertical="center")
-            ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(COL_DEFS))
-            ws.row_dimensions[1].height = 26
-
-            # Header row (row 3)
-            for c_idx, (_, label, _w, _f) in enumerate(COL_DEFS, start=1):
-                cell = ws.cell(row=3, column=c_idx, value=label)
-                cell.font = header_font
-                cell.fill = header_fill
-                cell.alignment = center
-                cell.border = border
-            ws.row_dimensions[3].height = 28
-
-            # Data rows
-            r = 4
-            total_energy = 0.0
-            for src in site_rows:
-                for c_idx, (key, _label, _w, fmt) in enumerate(COL_DEFS, start=1):
-                    val = src.get(key, "")
-                    if key == "CONSUMPTION (KWH)" or key == "ENERGY PRICE (WITH TAXES)":
-                        try:
-                            val = float(val) if val not in ("", None) else 0
-                            if key == "ENERGY PRICE (WITH TAXES)":
-                                total_energy += val
-                        except Exception:
-                            val = 0
-                    cell = ws.cell(row=r, column=c_idx, value=val)
-                    cell.border = border
-                    if fmt:
-                        cell.number_format = fmt
-                    cell.alignment = right
-                    if r % 2 == 0:
-                        cell.fill = PatternFill("solid", fgColor="F9FAFB")
-                r += 1
-
-            # Total row
-            total_row = r
-            energy_idx = next(i for i, (k, *_r) in enumerate(COL_DEFS, start=1) if k == "ENERGY PRICE (WITH TAXES)")
-            for c_idx in range(1, len(COL_DEFS) + 1):
-                cell = ws.cell(row=total_row, column=c_idx)
-                cell.border = border
-                cell.fill = total_fill
-                cell.font = total_font
-                if c_idx == energy_idx - 1:
-                    cell.value = "TOTAL"
-                    cell.alignment = center
-                elif c_idx == energy_idx:
-                    cell.value = round(total_energy, 2)
-                    cell.number_format = "#,##0.00"
-                    cell.alignment = right
-
-            # Column widths
-            for c_idx, (_, _l, w, _f) in enumerate(COL_DEFS, start=1):
-                ws.column_dimensions[get_column_letter(c_idx)].width = w
-
-            # Freeze header
-            ws.freeze_panes = "A4"
-
-            buf = _io.BytesIO()
-            wb.save(buf)
-            return buf.getvalue()
 
         # SharePoint setup if requested
         sp_ctx = None
@@ -2987,8 +2984,8 @@ def energy_generate_committee_reports():
             if not site_name or not site_rows:
                 continue
             try:
-                xlsx_bytes = build_xlsx(site_name, site_rows)
-                file_name = f"{safe_filename(site_name)} - {month}.xlsx"
+                xlsx_bytes, _total = _build_committee_xlsx(site_name, site_rows, month)
+                file_name = f"{_safe_committee_filename(site_name)} - {month}.xlsx"
                 if save_local:
                     files_for_local.append({"fileName": file_name, "contentB64": _b64.b64encode(xlsx_bytes).decode("ascii")})
                 if sp_ctx and "error" not in sp_ctx:
@@ -3010,6 +3007,90 @@ def energy_generate_committee_reports():
         return jsonify(resp)
     except Exception as e:
         logger.error(f"Generate committee reports failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/energy/send-committee-emails", methods=["POST"])
+def energy_send_committee_emails():
+    """Send committee reports via email.
+
+    Body:
+      month: "4.26"
+      sites: [{ siteName, rows: [...] }]
+      testRecipient: optional override (string). When provided, ALL emails go there.
+    """
+    try:
+        body = request.get_json(force=True)
+        month = (body.get("month") or "").strip()
+        sites = body.get("sites") or []
+        test_recipient = (body.get("testRecipient") or "").strip()
+        if not month or not sites:
+            return jsonify({"ok": False, "error": "Missing month or sites"}), 400
+
+        gmail_user = os.getenv("URBANGROUP_GMAIL_USER", "urbangroup300@gmail.com")
+        gmail_pass = os.getenv("URBANGROUP_GMAIL_APP_PASSWORD", "")
+        if not gmail_pass:
+            return jsonify({"ok": False, "error": "Missing URBANGROUP_GMAIL_APP_PASSWORD env var"}), 500
+
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.base import MIMEBase
+        from email.mime.text import MIMEText
+        from email.header import Header
+        from email.utils import formataddr
+        from email import encoders
+        import smtplib
+        from datetime import datetime as _dt
+
+        today_str = _dt.now().strftime("%d/%m/%Y")
+        sender_label = formataddr((str(Header("אנרגיה אורבנית", "utf-8")), gmail_user))
+
+        results = []
+        with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+            smtp.starttls()
+            smtp.login(gmail_user, gmail_pass)
+
+            for s in sites:
+                site_name = (s.get("siteName") or "").strip()
+                site_rows = s.get("rows") or []
+                if not site_name or not site_rows:
+                    continue
+                try:
+                    xlsx_bytes, total = _build_committee_xlsx(site_name, site_rows, month)
+                    file_name = f"{_safe_committee_filename(site_name)} - {month}.xlsx"
+
+                    recipient = test_recipient or "yael.israel303@gmail.com"
+
+                    msg = MIMEMultipart()
+                    msg["Subject"] = str(Header(f"דוח שימוש בחשמל - {site_name} - {month}", "utf-8"))
+                    msg["From"] = sender_label
+                    msg["To"] = recipient
+
+                    body_text = (
+                        f"בתאריך {today_str} הועבר לחשבונכם סך {total:,.2f} ש\"ח.\n"
+                        f"מצ\"ב דוח מפרט.\n"
+                    )
+                    msg.attach(MIMEText(body_text, "plain", "utf-8"))
+
+                    part = MIMEBase("application", "vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    part.set_payload(xlsx_bytes)
+                    encoders.encode_base64(part)
+                    part.add_header(
+                        "Content-Disposition",
+                        "attachment",
+                        filename=("utf-8", "", file_name),
+                    )
+                    msg.attach(part)
+
+                    smtp.send_message(msg)
+                    results.append({"siteName": site_name, "ok": True, "to": recipient, "total": total})
+                except Exception as e:
+                    logger.error(f"Send email for {site_name} failed: {e}")
+                    results.append({"siteName": site_name, "ok": False, "error": str(e)})
+
+        ok_count = sum(1 for r in results if r.get("ok"))
+        return jsonify({"ok": True, "sent": ok_count, "total": len(results), "results": results})
+    except Exception as e:
+        logger.error(f"Send committee emails failed: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
 

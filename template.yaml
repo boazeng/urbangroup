@@ -72,6 +72,13 @@ Parameters:
     Type: String
     NoEcho: true
     Default: ""
+  UrbanGroupGmailUser:
+    Type: String
+    Default: "urbangroup300@gmail.com"
+  UrbanGroupGmailAppPassword:
+    Type: String
+    NoEcho: true
+    Default: ""
 
 Globals:
   Function:
@@ -144,6 +151,8 @@ Resources:
           SHAREPOINT_SITE_URL: "https://yaelisrael.sharepoint.com"
           GMAIL_USER: !Ref GmailUser
           GMAIL_APP_PASSWORD: !Ref GmailAppPassword
+          URBANGROUP_GMAIL_USER: !Ref UrbanGroupGmailUser
+          URBANGROUP_GMAIL_APP_PASSWORD: !Ref UrbanGroupGmailAppPassword
       Policies:
         - S3ReadPolicy:
             BucketName: !Sub urbangroup-templates-${Stage}

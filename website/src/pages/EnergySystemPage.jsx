@@ -593,6 +593,47 @@ export default function EnergySystemPage() {
                 style={{ padding: '8px 20px', background: '#0d9488', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
               >📊 הפק דוחות לוועדי בתים</button>
             )}
+            {rows.length > 0 && (
+              <button
+                onClick={async () => {
+                  const groups = {}
+                  for (const r of rows) {
+                    const site = (r['PARTNER'] || 'ללא אתר').trim()
+                    if (!groups[site]) groups[site] = []
+                    groups[site].push(r)
+                  }
+                  const siteNames = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'he'))
+                  if (!siteNames.length) { alert('אין אתרים לשליחה'); return }
+
+                  const testTo = prompt(
+                    `שליחה לבדיקה — לאיזו כתובת לשלוח את כל ${siteNames.length} הדוחות?`,
+                    'yael.israel303@gmail.com'
+                  )
+                  if (testTo === null) return
+                  if (!confirm(`שלח ${siteNames.length} דוחות לכתובת ${testTo}?`)) return
+
+                  const sitesPayload = siteNames.map(s => ({ siteName: s, rows: groups[s] }))
+                  try {
+                    const r = await fetch(`${API_BASE}/api/energy/send-committee-emails`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ month, sites: sitesPayload, testRecipient: testTo }),
+                    })
+                    const d = await r.json()
+                    if (!d.ok) { alert(`שגיאה: ${d.error}`); return }
+                    const failed = (d.results || []).filter(x => !x.ok)
+                    let msg = `נשלחו ${d.sent}/${d.total} דוחות`
+                    if (failed.length) {
+                      msg += `\nכשלים:\n` + failed.slice(0, 5).map(f => `• ${f.siteName}: ${f.error}`).join('\n')
+                    }
+                    alert(msg)
+                  } catch (e) {
+                    alert(`שגיאה: ${e.message}`)
+                  }
+                }}
+                style={{ padding: '8px 20px', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
+              >📧 שלח דוחות במייל</button>
+            )}
           </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
           <input ref={inputRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }}
