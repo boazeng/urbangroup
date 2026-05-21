@@ -2168,6 +2168,7 @@ export default function ArielHRPage() {
                           <th style={{ padding: '2px 4px' }}>אחרי נמ&quot;ב</th>
                           <th style={{ padding: '2px 4px' }}>כולל מע&quot;מ</th>
                           <th style={{ padding: '2px 4px' }}>שולם</th>
+                          <th style={{ padding: '2px 4px' }}>יתרה לתשלום</th>
                           <th style={{ padding: '2px 4px' }}>לתשלום היום</th>
                         </tr>
                       </thead>
@@ -2247,6 +2248,9 @@ export default function ArielHRPage() {
                                 style={{ ...inp, width: '70px' }}
                               />
                             </td>
+                            <td style={{ padding: '1px 3px', textAlign: 'right', direction: 'ltr', background: '#f9f9f9', fontWeight: 'bold' }}>
+                              {fmtCP((Number(p.withVat) || 0) - (Number(p.paidToDate) || 0))}
+                            </td>
                             <td style={{ padding: '1px 3px', display: 'flex', gap: '2px', alignItems: 'center' }}>
                               <input type="text" defaultValue={fmtCP(p.payToday)}
                                 onBlur={e => updateContractorPayment(p.id, 'payToday', e.target.value.replace(/,/g, ''))}
@@ -2267,6 +2271,7 @@ export default function ArielHRPage() {
                           <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (Number(p.afterTaxDeduction) || 0), 0))}</td>
                           <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (Number(p.withVat) || 0), 0))}</td>
                           <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (Number(p.paidToDate) || 0), 0))}</td>
+                          <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + ((Number(p.withVat) || 0) - (Number(p.paidToDate) || 0)), 0))}</td>
                           <td style={{ padding: '2px 4px', textAlign: 'right', direction: 'ltr' }}>{fmtCP(contractorPayments.reduce((s, p) => s + (Number(p.payToday) || 0), 0))}</td>
                         </tr>
                       </tbody>
