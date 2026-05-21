@@ -2243,7 +2243,7 @@ export default function ArielHRPage() {
                               {fmtCP(p.withVat)}
                             </td>
                             <td style={{ padding: '1px 3px' }}>
-                              <input type="text" defaultValue={fmtCP(p.paidToDate)}
+                              <input type="text" key={`paid_${p.id}_${p.paidToDate}`} defaultValue={fmtCP(p.paidToDate)}
                                 onBlur={e => updateContractorPayment(p.id, 'paidToDate', e.target.value.replace(/,/g, ''))}
                                 style={{ ...inp, width: '70px' }}
                               />
@@ -2252,6 +2252,14 @@ export default function ArielHRPage() {
                               {fmtCP((Number(p.withVat) || 0) - (Number(p.paidToDate) || 0))}
                             </td>
                             <td style={{ padding: '1px 3px', display: 'flex', gap: '2px', alignItems: 'center' }}>
+                              <button
+                                onClick={() => {
+                                  const newPaid = (Number(p.paidToDate) || 0) + (Number(p.payToday) || 0)
+                                  updateContractorPayment(p.id, 'paidToDate', String(newPaid))
+                                }}
+                                title="הוסף לשולם"
+                                style={{ width: '14px', height: '14px', fontSize: '11px', padding: 0, cursor: 'pointer', border: '1px solid #ccc', borderRadius: '2px', background: '#e3f2fd', color: '#1565c0', lineHeight: '12px', fontWeight: 'bold' }}
+                              >+</button>
                               <input type="text" defaultValue={fmtCP(p.payToday)}
                                 onBlur={e => updateContractorPayment(p.id, 'payToday', e.target.value.replace(/,/g, ''))}
                                 style={{ ...inp, width: '70px', background: p.payTodayGreen ? '#d4edda' : '#fff' }}
