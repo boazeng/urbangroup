@@ -2256,11 +2256,12 @@ export default function ArielHRPage() {
                                 onClick={() => {
                                   const newPaid = (Number(p.paidToDate) || 0) + (Number(p.payToday) || 0)
                                   updateContractorPayment(p.id, 'paidToDate', String(newPaid))
+                                  updateContractorPayment(p.id, 'payToday', '')
                                 }}
-                                title="הוסף לשולם"
+                                title="הוסף לשולם ואפס לתשלום היום"
                                 style={{ width: '14px', height: '14px', fontSize: '11px', padding: 0, cursor: 'pointer', border: '1px solid #ccc', borderRadius: '2px', background: '#e3f2fd', color: '#1565c0', lineHeight: '12px', fontWeight: 'bold' }}
                               >+</button>
-                              <input type="text" defaultValue={fmtCP(p.payToday)}
+                              <input type="text" key={`pay_${p.id}_${p.payToday}`} defaultValue={fmtCP(p.payToday)}
                                 onBlur={e => updateContractorPayment(p.id, 'payToday', e.target.value.replace(/,/g, ''))}
                                 style={{ ...inp, width: '70px', background: p.payTodayGreen ? '#d4edda' : '#fff' }}
                               />
