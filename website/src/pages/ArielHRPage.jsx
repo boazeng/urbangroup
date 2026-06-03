@@ -80,6 +80,7 @@ export default function ArielHRPage() {
   const [editedRows, setEditedRows] = useState([])  // working copy with edits
   const [dirtyKeys, setDirtyKeys] = useState(new Set()) // "excelRow:colIdx" keys
   const [deletedRows, setDeletedRows] = useState(new Set()) // ROW_INDEX values marked for deletion
+  const [hasReorder, setHasReorder] = useState(false) // true after user reordered rows via up/down
   const [filters, setFilters] = useState({
     customers: [], sites: [], contractors: [], customer_sites: {}
   })
@@ -1056,6 +1057,25 @@ export default function ArielHRPage() {
     if (activeOnly) setActiveOnly(false)
   }
 
+  // Move a row up (-1) or down (+1) in the filtered/visible order.
+  // Swaps with the adjacent visible row inside editedRows.
+  const handleMoveRow = (excelRow, direction) => {
+    const filteredIdx = filteredRows.findIndex(r => r[COL.ROW_INDEX] === excelRow)
+    if (filteredIdx === -1) return
+    const targetFilteredIdx = filteredIdx + direction
+    if (targetFilteredIdx < 0 || targetFilteredIdx >= filteredRows.length) return
+    const targetExcelRow = filteredRows[targetFilteredIdx][COL.ROW_INDEX]
+    setEditedRows(prev => {
+      const fromIdx = prev.findIndex(r => r[COL.ROW_INDEX] === excelRow)
+      const toIdx = prev.findIndex(r => r[COL.ROW_INDEX] === targetExcelRow)
+      if (fromIdx === -1 || toIdx === -1) return prev
+      const next = [...prev]
+      ;[next[fromIdx], next[toIdx]] = [next[toIdx], next[fromIdx]]
+      return next
+    })
+    setHasReorder(true)
+  }
+
   // Mark row for deletion (toggle)
   const handleDeleteRow = useCallback((excelRow) => {
     setDeletedRows(prev => {
@@ -1395,7 +1415,7 @@ export default function ArielHRPage() {
 
   // Save changes — DB first, then Excel in background
   const handleSave = async () => {
-    if (dirtyKeys.size === 0 && deletedRows.size === 0) return
+    if (dirtyKeys.size === 0 && deletedRows.size === 0 && !hasReorder) return
     setSaving(true)
     setError('')
 
@@ -1438,10 +1458,11 @@ export default function ArielHRPage() {
       setFilters(updatedFilters)
       setDirtyKeys(new Set())
       setDeletedRows(new Set())
+      setHasReorder(false)
       setLocalSaveStatus('')
 
       // 4. Collect info for Excel sync
-      const hasStructuralChanges = [...dirtyKeys].some(k => k.split(':')[0].startsWith('new_')) || deletedRows.size > 0
+      const hasStructuralChanges = [...dirtyKeys].some(k => k.split(':')[0].startsWith('new_')) || deletedRows.size > 0 || hasReorder
 
       const changes = []
       if (!hasStructuralChanges) {
@@ -1475,7 +1496,7 @@ export default function ArielHRPage() {
   }
 
   const hasFilter = showAll || showUnfilled || showUnsent || selectedContractor || selectedCustomer || selectedSite
-  const hasDirty = dirtyKeys.size > 0 || deletedRows.size > 0
+  const hasDirty = dirtyKeys.size > 0 || deletedRows.size > 0 || hasReorder
 
   return (
     <div className="ariel-page hr-page">
@@ -2301,6 +2322,7 @@ export default function ArielHRPage() {
                   <thead>
                     <tr>
                       <th className="hr-td-row-num">#</th>
+                      <th style={{ width: '16px', padding: 0 }}></th>
                       {visibleCols.map(col => (
                         <th key={col.idx} className={`${col.type === 'num' ? 'ariel-num' : ''}${col.xnarrow ? ' hr-td-xnarrow' : col.narrow ? ' hr-td-narrow' : ''}${col.wide ? ' hr-td-wide' : ''}`}>
                           {col.label}
@@ -2318,6 +2340,20 @@ export default function ArielHRPage() {
                             <button className="hr-add-row-btn" onClick={() => handleDuplicateRow(excelRow)} title="שכפל שורה">+</button>
                             <span>{i + 1}</span>
                             <button className="hr-delete-row-btn" onClick={() => handleDeleteRow(excelRow)} title={isDeleted ? 'בטל מחיקה' : 'מחק שורה'}>&#128465;</button>
+                          </td>
+                          <td style={{ width: '16px', padding: '0 1px', textAlign: 'center', lineHeight: 0 }}>
+                            <button
+                              onClick={() => handleMoveRow(excelRow, -1)}
+                              disabled={i === 0}
+                              title="הזז למעלה"
+                              style={{ display: 'block', width: '14px', height: '11px', fontSize: '9px', lineHeight: '9px', padding: 0, margin: '0 auto', cursor: i === 0 ? 'not-allowed' : 'pointer', border: '1px solid #ccc', background: '#f5f5f5', color: '#333', opacity: i === 0 ? 0.3 : 1 }}
+                            >&uarr;</button>
+                            <button
+                              onClick={() => handleMoveRow(excelRow, 1)}
+                              disabled={i === filteredRows.length - 1}
+                              title="הזז למטה"
+                              style={{ display: 'block', width: '14px', height: '11px', fontSize: '9px', lineHeight: '9px', padding: 0, margin: '1px auto 0', cursor: i === filteredRows.length - 1 ? 'not-allowed' : 'pointer', border: '1px solid #ccc', background: '#f5f5f5', color: '#333', opacity: i === filteredRows.length - 1 ? 0.3 : 1 }}
+                            >&darr;</button>
                           </td>
                           {visibleCols.map(col => {
                             const key = `${excelRow}:${col.idx}`
