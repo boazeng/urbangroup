@@ -1969,17 +1969,24 @@ def get_hr_sheets():
         sheets = excel.sheets()
     except Exception as e:
         logger.warning(f"SharePoint sheets fetch failed: {e}")
-    # Add DB-only months (created via "Create Month" button)
+    # Add DB-only months (created via "Create Month" button).
+    # Paginate — DynamoDB scan returns 1MB per page and the table is large.
     try:
-        resp = delivery_notes_db._table.scan(
-            FilterExpression="begins_with(id, :p)",
-            ExpressionAttributeValues={":p": "HR_SHEET_"},
-            ProjectionExpression="id",
-        )
-        for item in resp.get("Items", []):
-            month = item.get("id", "").replace("HR_SHEET_", "")
-            if month and month not in sheets:
-                sheets.append(month)
+        scan_kwargs = {
+            "FilterExpression": "begins_with(id, :p)",
+            "ExpressionAttributeValues": {":p": "HR_SHEET_"},
+            "ProjectionExpression": "id",
+        }
+        while True:
+            resp = delivery_notes_db._table.scan(**scan_kwargs)
+            for item in resp.get("Items", []):
+                month = item.get("id", "").replace("HR_SHEET_", "")
+                if month and month not in sheets:
+                    sheets.append(month)
+            last_key = resp.get("LastEvaluatedKey")
+            if not last_key:
+                break
+            scan_kwargs["ExclusiveStartKey"] = last_key
     except Exception as e:
         logger.warning(f"DB sheets fetch failed: {e}")
     return jsonify({"ok": True, "sheets": sheets})
