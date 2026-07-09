@@ -3048,6 +3048,7 @@ def energy_send_committee_emails():
         from email.utils import formataddr
         from email import encoders
         import smtplib
+        import re
         from datetime import datetime as _dt
 
         today_str = _dt.now().strftime("%d/%m/%Y")
@@ -3065,10 +3066,12 @@ def energy_send_committee_emails():
                 if not site_name or not site_rows:
                     continue
 
-                recipient = test_recipient or site_email
-                if not recipient:
+                raw_recipient = test_recipient or site_email
+                recipients = [a.strip() for a in re.split(r"[,;]", raw_recipient) if a.strip()]
+                if not recipients:
                     results.append({"siteName": site_name, "ok": False, "error": "אין כתובת מייל לוועד זה"})
                     continue
+                recipient = ", ".join(recipients)
 
                 try:
                     xlsx_bytes, total = _build_committee_xlsx(site_name, site_rows, month)
@@ -3084,6 +3087,7 @@ def energy_send_committee_emails():
                             body_template
                             .replace("{date}", today_str)
                             .replace("{total}", f"{total:,.2f}")
+                            .replace("{month}", month)
                             .replace("{site}", site_name)
                         )
                     else:

@@ -218,7 +218,7 @@ export default function EnergySystemPage() {
   const [testMode, setTestMode] = useState(false)
   const [testEmail, setTestEmail] = useState('yael.israel303@gmail.com')
   const [messageText, setMessageText] = useState(
-    'בתאריך {date} הועבר לחשבונכם סך {total} ש"ח.\nמצ"ב דוח מפרט.'
+    'שלום,\nביום {date} הועבר לחשבונכם סך {total} ש"ח בגין חודש {month}.\nמצ"ב פירוט.'
   )
   const [sendingSite, setSendingSite] = useState('')
 
@@ -670,7 +670,7 @@ export default function EnergySystemPage() {
               </div>
               <div>
                 <label style={{ fontSize: '12px', color: '#5b21b6', display: 'block', marginBottom: '4px' }}>
-                  טקסט בגוף ההודעה (אפשר להשתמש ב-{'{date}'}, {'{total}'}, {'{site}'}):
+                  טקסט בגוף ההודעה (אפשר להשתמש ב-{'{date}'}, {'{total}'}, {'{month}'}, {'{site}'}):
                 </label>
                 <textarea
                   value={messageText}
@@ -772,6 +772,9 @@ export default function EnergySystemPage() {
                         <td style={{ padding: '2px 4px', border: '1px solid #ddd' }}>
                           <input
                             type="email"
+                            multiple
+                            title="אפשר להזין כמה כתובות מייל, מופרדות בפסיק"
+                            placeholder="mail1@x.com, mail2@x.com"
                             value={emailOverrides[s.site] !== undefined ? emailOverrides[s.site] : (cust?.email || '')}
                             onChange={e => setEmailOverrides(prev => ({ ...prev, [s.site]: e.target.value }))}
                             style={{ width: '100%', border: '1px solid #ddd', borderRadius: '3px', padding: '2px 4px', fontSize: '11px', direction: 'ltr', textAlign: 'left' }}
