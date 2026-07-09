@@ -223,6 +223,8 @@ export default function EnergySystemPage() {
   )
   const [sendingSite, setSendingSite] = useState('')
   const [sentLog, setSentLog] = useState({})  // site name → { to, sent_at, total } for the current month
+  const [siteExcluded, setSiteExcluded] = useState({})  // site name → true means unchecked (excluded from "send to selected")
+  const isSiteSelected = (site) => !siteExcluded[site]
 
   useEffect(() => {
     fetch(`${API_BASE}/api/energy/committee-emails`)
@@ -681,8 +683,8 @@ export default function EnergySystemPage() {
             {rows.length > 0 && (
               <button
                 onClick={async () => {
-                  let siteNames = committeesSummary.sites.map(s => s.site)
-                  if (!siteNames.length) { alert('אין אתרים לשליחה'); return }
+                  let siteNames = committeesSummary.sites.map(s => s.site).filter(isSiteSelected)
+                  if (!siteNames.length) { alert('לא נבחרו ועדים לשליחה (סמני V ליד הוועדים הרצויים)'); return }
 
                   if (!testMode) {
                     const alreadySent = siteNames.filter(s => sentLog[s])
@@ -715,7 +717,7 @@ export default function EnergySystemPage() {
                   }
                 }}
                 style={{ padding: '8px 20px', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
-              >📧 שלח לכולם</button>
+              >📧 שלח לנבחרים ({committeesSummary.sites.filter(s => isSiteSelected(s.site)).length})</button>
             )}
           </div>
           {rows.length > 0 && (
@@ -807,10 +809,21 @@ export default function EnergySystemPage() {
           return (
             <div style={{ marginBottom: '16px', padding: '12px', background: '#f9fafb', borderRadius: '8px', border: '2px solid #7c3aed' }}>
               <h3 style={{ margin: '0 0 10px', color: '#5b21b6', fontSize: '15px' }}>סיכום ועדים — {sites.length} אתרים, {grand.sessions} סשנים</h3>
+              <div style={{ display: 'flex', gap: '10px', marginBottom: '8px', fontSize: '12px' }}>
+                <button
+                  onClick={() => setSiteExcluded({})}
+                  style={{ padding: '3px 10px', background: '#e5e7eb', border: '1px solid #ccc', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
+                >בחר הכל</button>
+                <button
+                  onClick={() => setSiteExcluded(Object.fromEntries(sites.map(s => [s.site, true])))}
+                  style={{ padding: '3px 10px', background: '#e5e7eb', border: '1px solid #ccc', borderRadius: '4px', fontSize: '12px', cursor: 'pointer' }}
+                >נקה הכל</button>
+              </div>
               <div style={{ overflowX: 'auto', maxHeight: '50vh' }}>
                 <table className="ariel-table" style={{ fontSize: '12px', borderCollapse: 'collapse', width: 'auto' }}>
                   <thead style={{ position: 'sticky', top: 0, background: '#5b21b6', color: '#fff' }}>
                     <tr>
+                      <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}></th>
                       <th style={{ padding: '6px 10px', border: '1px solid #5b21b6', textAlign: 'right' }}>אתר</th>
                       <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>מס לקוח</th>
                       <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>קוד סיווג</th>
@@ -831,7 +844,14 @@ export default function EnergySystemPage() {
                       const cust = siteToCust[s.site]
                       const matchBg = cust ? '#d4edda' : undefined
                       return (
-                      <tr key={s.site} style={{ background: '#fff' }}>
+                      <tr key={s.site} style={{ background: isSiteSelected(s.site) ? '#fff' : '#f3f4f6' }}>
+                        <td style={{ padding: '4px 10px', border: '1px solid #ddd', textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={isSiteSelected(s.site)}
+                            onChange={e => setSiteExcluded(prev => ({ ...prev, [s.site]: !e.target.checked }))}
+                          />
+                        </td>
                         <td style={{ padding: '4px 10px', border: '1px solid #ddd', whiteSpace: 'nowrap' }}>{s.site}</td>
                         <td style={{ padding: '4px 10px', border: '1px solid #ddd', background: matchBg, fontWeight: 'bold' }}>{cust ? cust.custname : ''}</td>
                         <td style={{ padding: '4px 10px', border: '1px solid #ddd', background: matchBg, textAlign: 'center' }}>{cust ? cust.ctypecode : ''}</td>
@@ -886,7 +906,7 @@ export default function EnergySystemPage() {
                       )
                     })}
                     <tr style={{ background: '#f0fdf4', fontWeight: 'bold' }}>
-                      <td colSpan={4} style={{ padding: '6px 10px', border: '1px solid #ccc' }}>סה"כ כללי</td>
+                      <td colSpan={5} style={{ padding: '6px 10px', border: '1px solid #ccc' }}>סה"כ כללי</td>
                       <td style={{ padding: '6px 10px', border: '1px solid #ccc', textAlign: 'left', direction: 'ltr' }}>{grand.sessions}</td>
                       <td style={{ padding: '6px 10px', border: '1px solid #ccc', textAlign: 'left', direction: 'ltr' }}>{fN(grand.kwh)}</td>
                       <td style={{ padding: '6px 10px', border: '1px solid #ccc', textAlign: 'left', direction: 'ltr' }}>{fN(grand.energy)}</td>
