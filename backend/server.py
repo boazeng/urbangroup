@@ -3120,6 +3120,36 @@ def energy_send_committee_emails():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.route("/api/energy/committee-emails", methods=["GET"])
+def energy_get_committee_emails():
+    """Get saved committee email addresses (site name -> email string)."""
+    try:
+        emails = delivery_notes_db.get_committee_emails()
+        return jsonify({"ok": True, "emails": emails})
+    except Exception as e:
+        logger.error(f"Get committee emails failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/energy/committee-emails", methods=["POST"])
+def energy_save_committee_email():
+    """Save (or clear) the email address(es) for one building committee site.
+
+    Body: { site: "אתר X", email: "a@x.com, b@x.com" }
+    """
+    try:
+        body = request.get_json(force=True)
+        site = (body.get("site") or "").strip()
+        email = (body.get("email") or "").strip()
+        if not site:
+            return jsonify({"ok": False, "error": "Missing site"}), 400
+        emails = delivery_notes_db.save_committee_email(site, email)
+        return jsonify({"ok": True, "emails": emails})
+    except Exception as e:
+        logger.error(f"Save committee email failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/api/energy/upload-reports", methods=["POST"])
 def energy_upload_reports():
     """Upload Excel reports to SharePoint folder per month.

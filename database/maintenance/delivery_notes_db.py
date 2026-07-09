@@ -442,6 +442,39 @@ def list_charging_months():
     return months
 
 
+def get_committee_emails():
+    """Get saved building-committee email addresses: {site name -> email string (may contain several, comma-separated)}."""
+    resp = _table.get_item(Key={"id": "COMMITTEE_EMAILS"})
+    item = resp.get("Item")
+    if not item:
+        return {}
+    raw = item.get("emails", "{}")
+    try:
+        return json.loads(raw) if isinstance(raw, str) else raw
+    except (json.JSONDecodeError, TypeError):
+        return {}
+
+
+def save_committee_email(site, email):
+    """Save (or clear, if email is empty) the email address(es) for one building committee site.
+
+    Merges into the existing map so concurrent edits to different sites don't overwrite each other.
+    """
+    now = datetime.utcnow().isoformat() + "Z"
+    emails = get_committee_emails()
+    if email:
+        emails[site] = email
+    else:
+        emails.pop(site, None)
+    _table.put_item(Item={
+        "id": "COMMITTEE_EMAILS",
+        "emails": json.dumps(emails, ensure_ascii=False),
+        "updated_at": now,
+    })
+    logger.info(f"Saved committee email for site '{site}'")
+    return emails
+
+
 def save_accounts_cache(accounts_map):
     """Save accounts trial balance map to DB. Uses gzip compression to fit DynamoDB 400KB limit."""
     import gzip, base64

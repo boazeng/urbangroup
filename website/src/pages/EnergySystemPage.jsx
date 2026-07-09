@@ -213,7 +213,8 @@ export default function EnergySystemPage() {
   const [availableMonths, setAvailableMonths] = useState([])
   const [showCommittees, setShowCommittees] = useState(false)
   const [siteToCust, setSiteToCust] = useState({})  // site name → customer info
-  const [emailOverrides, setEmailOverrides] = useState({})  // site name → manual email override
+  const [emailOverrides, setEmailOverrides] = useState({})  // site name → unsaved edit in progress
+  const [savedEmails, setSavedEmails] = useState({})  // site name → email saved on the server
   const [custStatus, setCustStatus] = useState({ count: 0, updatedAt: '' })
   const [testMode, setTestMode] = useState(false)
   const [testEmail, setTestEmail] = useState('yael.israel303@gmail.com')
@@ -222,7 +223,31 @@ export default function EnergySystemPage() {
   )
   const [sendingSite, setSendingSite] = useState('')
 
-  const siteEmail = (site) => (emailOverrides[site] !== undefined ? emailOverrides[site] : (siteToCust[site]?.email || '')).trim()
+  useEffect(() => {
+    fetch(`${API_BASE}/api/energy/committee-emails`)
+      .then(r => r.json())
+      .then(d => { if (d.ok) setSavedEmails(d.emails || {}) })
+      .catch(() => {})
+  }, [])
+
+  const siteEmail = (site) => (
+    emailOverrides[site] !== undefined ? emailOverrides[site] :
+    savedEmails[site] !== undefined ? savedEmails[site] :
+    (siteToCust[site]?.email || '')
+  ).trim()
+
+  const saveCommitteeEmail = async (site) => {
+    const email = siteEmail(site)
+    try {
+      const r = await fetch(`${API_BASE}/api/energy/committee-emails`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ site, email }),
+      })
+      const d = await r.json()
+      if (d.ok) setSavedEmails(d.emails || {})
+    } catch { /* non-blocking */ }
+  }
 
   const sendCommitteeEmails = async (siteNames) => {
     const groups = {}
@@ -676,7 +701,7 @@ export default function EnergySystemPage() {
                   value={messageText}
                   onChange={e => setMessageText(e.target.value)}
                   rows={3}
-                  style={{ width: '100%', padding: '6px 8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '13px', fontFamily: 'inherit', direction: 'rtl' }}
+                  style={{ width: '100%', padding: '6px 8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '13px', fontFamily: 'inherit', direction: 'rtl', textAlign: 'right' }}
                 />
               </div>
             </div>
@@ -773,10 +798,11 @@ export default function EnergySystemPage() {
                           <input
                             type="email"
                             multiple
-                            title="אפשר להזין כמה כתובות מייל, מופרדות בפסיק"
+                            title="אפשר להזין כמה כתובות מייל, מופרדות בפסיק. נשמר אוטומטית."
                             placeholder="mail1@x.com, mail2@x.com"
-                            value={emailOverrides[s.site] !== undefined ? emailOverrides[s.site] : (cust?.email || '')}
+                            value={siteEmail(s.site)}
                             onChange={e => setEmailOverrides(prev => ({ ...prev, [s.site]: e.target.value }))}
+                            onBlur={() => saveCommitteeEmail(s.site)}
                             style={{ width: '100%', border: '1px solid #ddd', borderRadius: '3px', padding: '2px 4px', fontSize: '11px', direction: 'ltr', textAlign: 'left' }}
                           />
                         </td>
