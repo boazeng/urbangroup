@@ -3023,14 +3023,16 @@ def energy_send_committee_emails():
 
     Body:
       month: "4.26"
-      sites: [{ siteName, rows: [...] }]
-      testRecipient: optional override (string). When provided, ALL emails go there.
+      sites: [{ siteName, rows: [...], email: "committee@example.com" }]
+      bodyText: optional custom message template. Supports {date}, {total}, {site} placeholders.
+      testRecipient: optional override (string). When provided, ALL emails go there instead of each site's own address.
     """
     try:
         body = request.get_json(force=True)
         month = (body.get("month") or "").strip()
         sites = body.get("sites") or []
         test_recipient = (body.get("testRecipient") or "").strip()
+        body_template = body.get("bodyText") or ""
         if not month or not sites:
             return jsonify({"ok": False, "error": "Missing month or sites"}), 400
 
@@ -3059,23 +3061,36 @@ def energy_send_committee_emails():
             for s in sites:
                 site_name = (s.get("siteName") or "").strip()
                 site_rows = s.get("rows") or []
+                site_email = (s.get("email") or "").strip()
                 if not site_name or not site_rows:
                     continue
+
+                recipient = test_recipient or site_email
+                if not recipient:
+                    results.append({"siteName": site_name, "ok": False, "error": "אין כתובת מייל לוועד זה"})
+                    continue
+
                 try:
                     xlsx_bytes, total = _build_committee_xlsx(site_name, site_rows, month)
                     file_name = f"{_safe_committee_filename(site_name)} - {month}.xlsx"
-
-                    recipient = test_recipient or "yael.israel303@gmail.com"
 
                     msg = MIMEMultipart()
                     msg["Subject"] = str(Header(f"דוח שימוש בחשמל - {site_name} - {month}", "utf-8"))
                     msg["From"] = sender_label
                     msg["To"] = recipient
 
-                    body_text = (
-                        f"בתאריך {today_str} הועבר לחשבונכם סך {total:,.2f} ש\"ח.\n"
-                        f"מצ\"ב דוח מפרט.\n"
-                    )
+                    if body_template:
+                        body_text = (
+                            body_template
+                            .replace("{date}", today_str)
+                            .replace("{total}", f"{total:,.2f}")
+                            .replace("{site}", site_name)
+                        )
+                    else:
+                        body_text = (
+                            f"בתאריך {today_str} הועבר לחשבונכם סך {total:,.2f} ש\"ח.\n"
+                            f"מצ\"ב דוח מפרט.\n"
+                        )
                     msg.attach(MIMEText(body_text, "plain", "utf-8"))
 
                     part = MIMEBase("application", "vnd.openxmlformats-officedocument.spreadsheetml.sheet")

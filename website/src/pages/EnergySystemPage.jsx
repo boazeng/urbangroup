@@ -215,6 +215,39 @@ export default function EnergySystemPage() {
   const [siteToCust, setSiteToCust] = useState({})  // site name → customer info
   const [emailOverrides, setEmailOverrides] = useState({})  // site name → manual email override
   const [custStatus, setCustStatus] = useState({ count: 0, updatedAt: '' })
+  const [testMode, setTestMode] = useState(false)
+  const [testEmail, setTestEmail] = useState('yael.israel303@gmail.com')
+  const [messageText, setMessageText] = useState(
+    'בתאריך {date} הועבר לחשבונכם סך {total} ש"ח.\nמצ"ב דוח מפרט.'
+  )
+  const [sendingSite, setSendingSite] = useState('')
+
+  const siteEmail = (site) => (emailOverrides[site] !== undefined ? emailOverrides[site] : (siteToCust[site]?.email || '')).trim()
+
+  const sendCommitteeEmails = async (siteNames) => {
+    const groups = {}
+    for (const r of rows) {
+      const key = (r['PARTNER'] || 'ללא אתר').trim()
+      if (!groups[key]) groups[key] = []
+      groups[key].push(r)
+    }
+    const sitesPayload = siteNames.map(s => ({ siteName: s, rows: groups[s], email: siteEmail(s) }))
+    const missing = sitesPayload.filter(s => !s.email && !testMode)
+    if (missing.length && !testMode) {
+      if (!confirm(`ל-${missing.length} אתרים אין כתובת מייל (${missing.map(s => s.siteName).join(', ')}). לשלוח לשאר?`)) return
+    }
+    const r = await fetch(`${API_BASE}/api/energy/send-committee-emails`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        month,
+        sites: sitesPayload,
+        bodyText: messageText,
+        testRecipient: testMode ? testEmail : '',
+      }),
+    })
+    return r.json()
+  }
 
   const loadCustStatus = () => {
     fetch(`${API_BASE}/api/energy/customers-status`)
@@ -596,30 +629,14 @@ export default function EnergySystemPage() {
             {rows.length > 0 && (
               <button
                 onClick={async () => {
-                  const groups = {}
-                  for (const r of rows) {
-                    const site = (r['PARTNER'] || 'ללא אתר').trim()
-                    if (!groups[site]) groups[site] = []
-                    groups[site].push(r)
-                  }
-                  const siteNames = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'he'))
+                  const siteNames = committeesSummary.sites.map(s => s.site)
                   if (!siteNames.length) { alert('אין אתרים לשליחה'); return }
 
-                  const testTo = prompt(
-                    `שליחה לבדיקה — לאיזו כתובת לשלוח את כל ${siteNames.length} הדוחות?`,
-                    'yael.israel303@gmail.com'
-                  )
-                  if (testTo === null) return
-                  if (!confirm(`שלח ${siteNames.length} דוחות לכתובת ${testTo}?`)) return
+                  const dest = testMode ? `לכתובת הבדיקה ${testEmail}` : 'לכתובת המייל של כל ועד בית בנפרד'
+                  if (!confirm(`שלח ${siteNames.length} דוחות ${dest}?`)) return
 
-                  const sitesPayload = siteNames.map(s => ({ siteName: s, rows: groups[s] }))
                   try {
-                    const r = await fetch(`${API_BASE}/api/energy/send-committee-emails`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ month, sites: sitesPayload, testRecipient: testTo }),
-                    })
-                    const d = await r.json()
+                    const d = await sendCommitteeEmails(siteNames)
                     if (!d.ok) { alert(`שגיאה: ${d.error}`); return }
                     const failed = (d.results || []).filter(x => !x.ok)
                     let msg = `נשלחו ${d.sent}/${d.total} דוחות`
@@ -632,9 +649,38 @@ export default function EnergySystemPage() {
                   }
                 }}
                 style={{ padding: '8px 20px', background: '#7c3aed', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' }}
-              >📧 שלח דוחות במייל</button>
+              >📧 שלח לכולם</button>
             )}
           </div>
+          {rows.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <label style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <input type="checkbox" checked={testMode} onChange={e => setTestMode(e.target.checked)} />
+                  מצב בדיקה (שלח את כל הדוחות לכתובת אחת)
+                </label>
+                {testMode && (
+                  <input
+                    type="email"
+                    value={testEmail}
+                    onChange={e => setTestEmail(e.target.value)}
+                    style={{ padding: '4px 8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '13px', direction: 'ltr' }}
+                  />
+                )}
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', color: '#5b21b6', display: 'block', marginBottom: '4px' }}>
+                  טקסט בגוף ההודעה (אפשר להשתמש ב-{'{date}'}, {'{total}'}, {'{site}'}):
+                </label>
+                <textarea
+                  value={messageText}
+                  onChange={e => setMessageText(e.target.value)}
+                  rows={3}
+                  style={{ width: '100%', padding: '6px 8px', border: '1px solid #ccc', borderRadius: '4px', fontSize: '13px', fontFamily: 'inherit', direction: 'rtl' }}
+                />
+              </div>
+            </div>
+          )}
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
           <input ref={inputRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }}
             onChange={e => e.target.files[0] && handleFile(e.target.files[0])} />
@@ -710,6 +756,7 @@ export default function EnergySystemPage() {
                       <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>עלות שירות</th>
                       <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>השבתה</th>
                       <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>סה"כ ₪</th>
+                      <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>פעולה</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -736,6 +783,29 @@ export default function EnergySystemPage() {
                         <td style={{ padding: '4px 10px', border: '1px solid #ddd', textAlign: 'left', direction: 'ltr' }}>{fN(s.service)}</td>
                         <td style={{ padding: '4px 10px', border: '1px solid #ddd', textAlign: 'left', direction: 'ltr' }}>{fN(s.idling)}</td>
                         <td style={{ padding: '4px 10px', border: '1px solid #ddd', textAlign: 'left', direction: 'ltr', fontWeight: 'bold' }}>{fN(s.amount)}</td>
+                        <td style={{ padding: '2px 6px', border: '1px solid #ddd', textAlign: 'center' }}>
+                          <button
+                            disabled={sendingSite === s.site}
+                            onClick={async () => {
+                              const email = siteEmail(s.site)
+                              if (!email && !testMode) { alert(`אין כתובת מייל עבור ${s.site}`); return }
+                              const dest = testMode ? testEmail : email
+                              if (!confirm(`שלח דוח ${s.site} לכתובת ${dest}?`)) return
+                              setSendingSite(s.site)
+                              try {
+                                const d = await sendCommitteeEmails([s.site])
+                                if (!d.ok) { alert(`שגיאה: ${d.error}`); return }
+                                const r0 = (d.results || [])[0]
+                                alert(r0 && r0.ok ? `נשלח ל-${r0.to}` : `שגיאה: ${r0?.error || 'לא נשלח'}`)
+                              } catch (e) {
+                                alert(`שגיאה: ${e.message}`)
+                              } finally {
+                                setSendingSite('')
+                              }
+                            }}
+                            style={{ padding: '3px 8px', background: sendingSite === s.site ? '#999' : '#7c3aed', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '11px', cursor: sendingSite === s.site ? 'wait' : 'pointer' }}
+                          >{sendingSite === s.site ? '...' : '📧 שלח'}</button>
+                        </td>
                       </tr>
                       )
                     })}
@@ -747,6 +817,7 @@ export default function EnergySystemPage() {
                       <td style={{ padding: '6px 10px', border: '1px solid #ccc', textAlign: 'left', direction: 'ltr' }}>{fN(grand.service)}</td>
                       <td style={{ padding: '6px 10px', border: '1px solid #ccc', textAlign: 'left', direction: 'ltr' }}>{fN(grand.idling)}</td>
                       <td style={{ padding: '6px 10px', border: '1px solid #ccc', textAlign: 'left', direction: 'ltr' }}>{fN(grand.amount)}</td>
+                      <td style={{ padding: '6px 10px', border: '1px solid #ccc' }}></td>
                     </tr>
                   </tbody>
                 </table>
