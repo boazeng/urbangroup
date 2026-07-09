@@ -222,6 +222,7 @@ export default function EnergySystemPage() {
     'שלום,\nביום {date} הועבר לחשבונכם סך {total} ש"ח בגין חודש {month}.\nמצ"ב פירוט.'
   )
   const [sendingSite, setSendingSite] = useState('')
+  const [sentLog, setSentLog] = useState({})  // site name → { to, sent_at, total } for the current month
 
   useEffect(() => {
     fetch(`${API_BASE}/api/energy/committee-emails`)
@@ -229,6 +230,14 @@ export default function EnergySystemPage() {
       .then(d => { if (d.ok) setSavedEmails(d.emails || {}) })
       .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!month) { setSentLog({}); return }
+    fetch(`${API_BASE}/api/energy/committee-sends?month=${encodeURIComponent(month)}`)
+      .then(r => r.json())
+      .then(d => { if (d.ok) setSentLog(d.sends || {}) })
+      .catch(() => {})
+  }, [month])
 
   const siteEmail = (site) => (
     emailOverrides[site] !== undefined ? emailOverrides[site] :
@@ -271,7 +280,25 @@ export default function EnergySystemPage() {
         testRecipient: testMode ? testEmail : '',
       }),
     })
-    return r.json()
+    const d = await r.json()
+    if (d.ok && !testMode) {
+      const now = new Date().toISOString()
+      setSentLog(prev => {
+        const next = { ...prev }
+        for (const res of (d.results || [])) {
+          if (res.ok) next[res.siteName] = { to: res.to, sent_at: now, total: res.total }
+        }
+        return next
+      })
+    }
+    return d
+  }
+
+  const alreadySentLabel = (site) => {
+    const s = sentLog[site]
+    if (!s) return ''
+    const d = new Date(s.sent_at)
+    return `נשלח ${d.toLocaleDateString('he-IL')} ל-${s.to}`
   }
 
   const loadCustStatus = () => {
@@ -654,8 +681,22 @@ export default function EnergySystemPage() {
             {rows.length > 0 && (
               <button
                 onClick={async () => {
-                  const siteNames = committeesSummary.sites.map(s => s.site)
+                  let siteNames = committeesSummary.sites.map(s => s.site)
                   if (!siteNames.length) { alert('אין אתרים לשליחה'); return }
+
+                  if (!testMode) {
+                    const alreadySent = siteNames.filter(s => sentLog[s])
+                    if (alreadySent.length) {
+                      const proceed = confirm(
+                        `${alreadySent.length} ועדים כבר קיבלו דוח לחודש ${month} (${alreadySent.join(', ')}).\n` +
+                        `לשלוח רק ל-${siteNames.length - alreadySent.length} הוועדים שעדיין לא קיבלו?\n` +
+                        `(ביטול = לא לשלוח כלום. לשליחה חוזרת לוועד ספציפי - השתמשי בכפתור השליחה בשורה שלו.)`
+                      )
+                      if (!proceed) return
+                      siteNames = siteNames.filter(s => !sentLog[s])
+                    }
+                  }
+                  if (!siteNames.length) { alert('כל הוועדים כבר קיבלו דוח לחודש זה'); return }
 
                   const dest = testMode ? `לכתובת הבדיקה ${testEmail}` : 'לכתובת המייל של כל ועד בית בנפרד'
                   if (!confirm(`שלח ${siteNames.length} דוחות ${dest}?`)) return
@@ -781,6 +822,7 @@ export default function EnergySystemPage() {
                       <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>עלות שירות</th>
                       <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>השבתה</th>
                       <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>סה"כ ₪</th>
+                      <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>נשלח</th>
                       <th style={{ padding: '6px 10px', border: '1px solid #5b21b6' }}>פעולה</th>
                     </tr>
                   </thead>
@@ -812,6 +854,9 @@ export default function EnergySystemPage() {
                         <td style={{ padding: '4px 10px', border: '1px solid #ddd', textAlign: 'left', direction: 'ltr' }}>{fN(s.service)}</td>
                         <td style={{ padding: '4px 10px', border: '1px solid #ddd', textAlign: 'left', direction: 'ltr' }}>{fN(s.idling)}</td>
                         <td style={{ padding: '4px 10px', border: '1px solid #ddd', textAlign: 'left', direction: 'ltr', fontWeight: 'bold' }}>{fN(s.amount)}</td>
+                        <td style={{ padding: '4px 6px', border: '1px solid #ddd', fontSize: '10px', color: '#16a34a', whiteSpace: 'nowrap' }} title={alreadySentLabel(s.site)}>
+                          {sentLog[s.site] ? `✓ ${new Date(sentLog[s.site].sent_at).toLocaleDateString('he-IL')}` : ''}
+                        </td>
                         <td style={{ padding: '2px 6px', border: '1px solid #ddd', textAlign: 'center' }}>
                           <button
                             disabled={sendingSite === s.site}
@@ -819,7 +864,9 @@ export default function EnergySystemPage() {
                               const email = siteEmail(s.site)
                               if (!email && !testMode) { alert(`אין כתובת מייל עבור ${s.site}`); return }
                               const dest = testMode ? testEmail : email
-                              if (!confirm(`שלח דוח ${s.site} לכתובת ${dest}?`)) return
+                              if (!testMode && sentLog[s.site]) {
+                                if (!confirm(`${alreadySentLabel(s.site)}.\nלשלוח שוב ל-${dest}?`)) return
+                              } else if (!confirm(`שלח דוח ${s.site} לכתובת ${dest}?`)) return
                               setSendingSite(s.site)
                               try {
                                 const d = await sendCommitteeEmails([s.site])
@@ -846,6 +893,7 @@ export default function EnergySystemPage() {
                       <td style={{ padding: '6px 10px', border: '1px solid #ccc', textAlign: 'left', direction: 'ltr' }}>{fN(grand.service)}</td>
                       <td style={{ padding: '6px 10px', border: '1px solid #ccc', textAlign: 'left', direction: 'ltr' }}>{fN(grand.idling)}</td>
                       <td style={{ padding: '6px 10px', border: '1px solid #ccc', textAlign: 'left', direction: 'ltr' }}>{fN(grand.amount)}</td>
+                      <td style={{ padding: '6px 10px', border: '1px solid #ccc' }}></td>
                       <td style={{ padding: '6px 10px', border: '1px solid #ccc' }}></td>
                     </tr>
                   </tbody>

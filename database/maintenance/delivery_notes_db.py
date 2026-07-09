@@ -475,6 +475,34 @@ def save_committee_email(site, email):
     return emails
 
 
+def get_committee_sends(month):
+    """Get the sent-report log for a month: {site name -> {to, sent_at, total}}."""
+    resp = _table.get_item(Key={"id": f"COMMITTEE_SENT_{month}"})
+    item = resp.get("Item")
+    if not item:
+        return {}
+    raw = item.get("sends", "{}")
+    try:
+        return json.loads(raw) if isinstance(raw, str) else raw
+    except (json.JSONDecodeError, TypeError):
+        return {}
+
+
+def mark_committee_sent(month, site, to, total):
+    """Record that a committee report was sent for a given month (merges into existing log)."""
+    now = datetime.utcnow().isoformat() + "Z"
+    sends = get_committee_sends(month)
+    sends[site] = {"to": to, "sent_at": now, "total": total}
+    _table.put_item(Item={
+        "id": f"COMMITTEE_SENT_{month}",
+        "month": month,
+        "sends": json.dumps(sends, ensure_ascii=False),
+        "updated_at": now,
+    })
+    logger.info(f"Marked committee '{site}' as sent for {month}")
+    return sends
+
+
 def save_accounts_cache(accounts_map):
     """Save accounts trial balance map to DB. Uses gzip compression to fit DynamoDB 400KB limit."""
     import gzip, base64

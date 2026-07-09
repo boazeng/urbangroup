@@ -3109,6 +3109,11 @@ def energy_send_committee_emails():
 
                     smtp.send_message(msg)
                     results.append({"siteName": site_name, "ok": True, "to": recipient, "total": total})
+                    if not test_recipient:
+                        try:
+                            delivery_notes_db.mark_committee_sent(month, site_name, recipient, total)
+                        except Exception as e:
+                            logger.error(f"Mark committee sent failed for {site_name}: {e}")
                 except Exception as e:
                     logger.error(f"Send email for {site_name} failed: {e}")
                     results.append({"siteName": site_name, "ok": False, "error": str(e)})
@@ -3147,6 +3152,20 @@ def energy_save_committee_email():
         return jsonify({"ok": True, "emails": emails})
     except Exception as e:
         logger.error(f"Save committee email failed: {e}")
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/energy/committee-sends", methods=["GET"])
+def energy_get_committee_sends():
+    """Get the sent-report log for a month: {site name -> {to, sent_at, total}}."""
+    try:
+        month = request.args.get("month", "").strip()
+        if not month:
+            return jsonify({"ok": False, "error": "Missing month"}), 400
+        sends = delivery_notes_db.get_committee_sends(month)
+        return jsonify({"ok": True, "sends": sends})
+    except Exception as e:
+        logger.error(f"Get committee sends failed: {e}")
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
