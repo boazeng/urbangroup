@@ -3243,8 +3243,8 @@ def energy_create_journal_entries():
     """Create journal entries (FNCTRANS) for electricity usage per site.
 
     For each site:
-    - Debit: site's customer account (gross total)
-    - Credit: each user customer with their portion (sums equal to debit)
+    - Credit: site's customer account (gross total)
+    - Debit: each user customer with their portion (sums equal to credit)
 
     Body:
       month: "3.26"
@@ -3299,12 +3299,12 @@ def energy_create_journal_entries():
                 results.append({"site": site_name, "ok": False, "error": "Total amount is zero"})
                 continue
 
-            subform = [{"ACCNAME": f"{site_cust}-110", "DEBIT1": round(total, 2), "CREDIT1": 0, "DETAILS": details}]
+            subform = [{"ACCNAME": f"{site_cust}-110", "DEBIT1": 0, "CREDIT1": round(total, 2), "DETAILS": details}]
             for u in users:
                 cn = str(u.get("custname") or "").strip()
                 amt = float(u.get("amount") or 0)
                 if cn and amt > 0:
-                    subform.append({"ACCNAME": f"{cn}-110", "DEBIT1": 0, "CREDIT1": round(amt, 2), "DETAILS": details})
+                    subform.append({"ACCNAME": f"{cn}-110", "DEBIT1": round(amt, 2), "CREDIT1": 0, "DETAILS": details})
 
             body_post = {
                 "FNCDATE": fnc_date,
